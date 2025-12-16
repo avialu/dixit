@@ -7,3 +7,8 @@ server/public/
 .vscode
 .idea
 
+# Image folders
+server/default-images/
+img/
+images/
+
