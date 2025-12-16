@@ -144,6 +144,10 @@ export function useGameState(socket: Socket | null) {
     socket?.emit('adminUnlockDeck');
   };
 
+  const promotePlayer = (targetPlayerId: string) => {
+    socket?.emit('adminPromotePlayer', { targetPlayerId });
+  };
+
   return {
     roomState,
     playerState,
@@ -165,6 +169,7 @@ export function useGameState(socket: Socket | null) {
       newDeck,
       changeName,
       kickPlayer,
+      promotePlayer,
     },
   };
 }

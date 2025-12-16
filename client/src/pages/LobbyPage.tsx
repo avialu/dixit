@@ -11,12 +11,12 @@ interface LobbyPageProps {
   onUploadImage: (imageData: string) => void;
   onDeleteImage: (imageId: string) => void;
   onSetDeckMode: (mode: string) => void;
-  onSetWinTarget: (target: number | null) => void;
   onLockDeck: () => void;
   onUnlockDeck: () => void;
   onStartGame: () => void;
   onChangeName: (newName: string) => void;
   onKickPlayer: (playerId: string) => void;
+  onPromotePlayer: (playerId: string) => void;
 }
 
 export function LobbyPage({
@@ -25,12 +25,12 @@ export function LobbyPage({
   onUploadImage,
   onDeleteImage,
   onSetDeckMode,
-  onSetWinTarget,
   onLockDeck,
   onUnlockDeck,
   onStartGame,
   onChangeName,
   onKickPlayer,
+  onPromotePlayer,
 }: LobbyPageProps) {
   const navigate = useNavigate();
   const [isEditingName, setIsEditingName] = useState(false);
@@ -49,7 +49,13 @@ export function LobbyPage({
 
   const isAdmin =
     roomState.players.find((p) => p.id === playerId)?.isAdmin || false;
-  const canStart = roomState.deckSize >= 100 && roomState.players.length >= 3;
+
+  // Minimum images required based on deck mode
+  // PLAYERS_ONLY: 100 images, HOST_ONLY/MIXED: no minimum (can use default images)
+  const minImagesRequired = roomState.deckMode === "PLAYERS_ONLY" ? 100 : 0;
+  const hasEnoughImages = roomState.deckSize >= minImagesRequired;
+  const canStart = hasEnoughImages && roomState.players.length >= 3;
+
   const currentPlayer = roomState.players.find((p) => p.id === playerId);
   // Use server URL (LAN IP) for QR code, fallback to current location
   const joinUrl = roomState.serverUrl || window.location.origin;
@@ -109,7 +115,9 @@ export function LobbyPage({
                 players={roomState.players}
                 currentPlayerId={playerId}
                 isAdmin={isAdmin}
+                showScores={false}
                 onKickPlayer={onKickPlayer}
+                onPromotePlayer={onPromotePlayer}
               />
 
               <div
@@ -123,16 +131,37 @@ export function LobbyPage({
               >
                 <p
                   style={{
-                    fontSize: "16px",
+                    fontSize: "18px",
                     color: "#f39c12",
                     marginBottom: "10px",
+                    fontWeight: "bold",
                   }}
                 >
-                  ⏳ Waiting for host to build the deck...
+                  ⏳ Waiting for the admin to start the game
+                </p>
+                <p
+                  style={{
+                    fontSize: "14px",
+                    color: "#95a5a6",
+                    marginBottom: "5px",
+                  }}
+                >
+                  The host is building the deck...
                 </p>
                 <p style={{ fontSize: "14px", color: "#95a5a6" }}>
-                  Deck: {roomState.deckSize} / 100 images
+                  Deck Progress: {roomState.deckSize} / 100 images
                 </p>
+                {roomState.players.length < 3 && (
+                  <p
+                    style={{
+                      fontSize: "14px",
+                      color: "#e74c3c",
+                      marginTop: "10px",
+                    }}
+                  >
+                    Need {3 - roomState.players.length} more player(s) to start
+                  </p>
+                )}
               </div>
             </div>
 
@@ -241,67 +270,124 @@ export function LobbyPage({
                 players={roomState.players}
                 currentPlayerId={playerId}
                 isAdmin={isAdmin}
+                showScores={false}
                 onKickPlayer={onKickPlayer}
+                onPromotePlayer={onPromotePlayer}
               />
 
               {isAdmin && (
                 <div className="admin-controls">
                   <h3>Admin Controls</h3>
 
-                  {!roomState.deckLocked && (
-                    <div className="setting-group">
-                      <label>
-                        Win Target:
-                        <select
-                          value={
-                            roomState.winTarget === null
-                              ? "unlimited"
-                              : roomState.winTarget
-                          }
-                          onChange={(e) => {
-                            const value = e.target.value;
-                            onSetWinTarget(
-                              value === "unlimited" ? null : Number(value)
-                            );
-                          }}
-                        >
-                          <option value="30">30 Points</option>
-                          <option value="50">50 Points</option>
-                          <option value="unlimited">
-                            Unlimited (deck runs out)
-                          </option>
-                        </select>
-                      </label>
-                    </div>
-                  )}
-
-                  {roomState.deckLocked && (
+                  {(roomState.phase === "WAITING_FOR_PLAYERS" ||
+                    roomState.phase === "DECK_BUILDING") && (
                     <button
-                      onClick={onUnlockDeck}
+                      onClick={() => navigate("/settings")}
                       className="btn-secondary"
-                      style={{ marginBottom: "10px" }}
+                      style={{ marginBottom: "10px", width: "100%" }}
                     >
-                      Unlock Deck
+                      ⚙️ Game Settings
                     </button>
                   )}
 
-                  <button
-                    onClick={onStartGame}
-                    disabled={!canStart}
-                    className="btn-primary btn-large"
-                  >
-                    {canStart
-                      ? "Start Game"
-                      : `Need ${100 - roomState.deckSize} more images`}
-                  </button>
-                  {roomState.players.length < 3 && (
-                    <p className="warning">Need at least 3 players</p>
+                  {roomState.deckLocked &&
+                    (roomState.phase === "WAITING_FOR_PLAYERS" ||
+                      roomState.phase === "DECK_BUILDING") && (
+                      <button
+                        onClick={onUnlockDeck}
+                        className="btn-secondary"
+                        style={{ marginBottom: "10px", width: "100%" }}
+                      >
+                        🔓 Unlock Deck
+                      </button>
+                    )}
+
+                  {(roomState.phase === "WAITING_FOR_PLAYERS" ||
+                    roomState.phase === "DECK_BUILDING") && (
+                    <>
+                      <button
+                        onClick={onStartGame}
+                        disabled={!canStart}
+                        className="btn-primary btn-large"
+                        style={{ width: "100%" }}
+                      >
+                        {canStart
+                          ? "🎮 Start Game"
+                          : !hasEnoughImages && minImagesRequired > 0
+                          ? `Need ${
+                              minImagesRequired - roomState.deckSize
+                            } more images`
+                          : roomState.players.length < 3
+                          ? "Need more players"
+                          : "🎮 Start Game"}
+                      </button>
+                      {roomState.players.length < 3 && (
+                        <p className="warning">Need at least 3 players</p>
+                      )}
+                      {!hasEnoughImages && minImagesRequired > 0 && (
+                        <p className="warning">
+                          Need {minImagesRequired - roomState.deckSize} more
+                          images (PLAYERS_ONLY mode requires 100)
+                        </p>
+                      )}
+                      {roomState.deckMode !== "PLAYERS_ONLY" &&
+                        roomState.deckSize === 0 && (
+                          <p
+                            style={{
+                              color: "#95a5a6",
+                              fontSize: "14px",
+                              marginTop: "10px",
+                            }}
+                          >
+                            ℹ️ Default images will be used
+                          </p>
+                        )}
+                    </>
                   )}
+
+                  {roomState.phase !== "WAITING_FOR_PLAYERS" &&
+                    roomState.phase !== "DECK_BUILDING" && (
+                      <div
+                        style={{
+                          padding: "15px",
+                          background: "#2a2a3e",
+                          borderRadius: "8px",
+                          textAlign: "center",
+                        }}
+                      >
+                        <p style={{ color: "#95a5a6", margin: 0 }}>
+                          Game is in progress. Return to lobby after game ends
+                          to change settings.
+                        </p>
+                      </div>
+                    )}
                 </div>
               )}
             </div>
 
             <div className="lobby-center">
+              {!isAdmin && (
+                <div
+                  style={{
+                    marginBottom: "15px",
+                    padding: "12px",
+                    background: "#2a2a3e",
+                    borderRadius: "8px",
+                    textAlign: "center",
+                  }}
+                >
+                  <p
+                    style={{
+                      fontSize: "16px",
+                      color: "#f39c12",
+                      margin: 0,
+                      fontWeight: "bold",
+                    }}
+                  >
+                    ⏳ Waiting for the admin to start the game
+                  </p>
+                </div>
+              )}
               <DeckUploader
                 roomState={roomState}
                 playerId={playerId}

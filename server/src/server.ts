@@ -17,6 +17,7 @@ import {
   playerVoteSchema,
   changeNameSchema,
   kickPlayerSchema,
+  promotePlayerSchema,
 } from './utils/validation.js';
 import { getLanIpAddress } from './utils/network.js';
 
@@ -418,6 +419,20 @@ npm start</pre>
         if (!clientId) throw new Error('Not authenticated');
 
         gameManager.unlockDeck(clientId);
+
+        broadcastRoomState();
+      } catch (error: any) {
+        socket.emit('error', { message: error.message });
+      }
+    });
+
+    socket.on('adminPromotePlayer', (data) => {
+      try {
+        const clientId = socketToClient.get(socket.id);
+        if (!clientId) throw new Error('Not authenticated');
+
+        const { targetPlayerId } = promotePlayerSchema.parse(data);
+        gameManager.promoteToAdmin(clientId, targetPlayerId);
 
         broadcastRoomState();
       } catch (error: any) {

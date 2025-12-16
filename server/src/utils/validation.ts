@@ -42,3 +42,7 @@ export const kickPlayerSchema = z.object({
   targetPlayerId: z.string(),
 });
 
+export const promotePlayerSchema = z.object({
+  targetPlayerId: z.string(),
+});
+

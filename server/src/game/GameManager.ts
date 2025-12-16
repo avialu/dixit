@@ -14,6 +14,7 @@ import {
 } from "./types.js";
 
 const HAND_SIZE = 6;
+const MIN_IMAGES_TO_START = 100;
 
 export class GameManager {
   private state: GameState;
@@ -135,6 +136,33 @@ export class GameManager {
     this.state.deckLocked = false;
   }
 
+  promoteToAdmin(adminId: string, targetPlayerId: string): void {
+    this.validateAdmin(adminId);
+
+    // Cannot promote during active game
+    if (
+      this.state.phase !== GamePhase.WAITING_FOR_PLAYERS &&
+      this.state.phase !== GamePhase.DECK_BUILDING
+    ) {
+      throw new Error("Cannot promote players during an active game");
+    }
+
+    const targetPlayer = this.state.players.get(targetPlayerId);
+    if (!targetPlayer) {
+      throw new Error("Player not found");
+    }
+
+    if (targetPlayer.isAdmin) {
+      throw new Error("Player is already an admin");
+    }
+
+    // Promote target player
+    targetPlayer.isAdmin = true;
+
+    // Update deck manager to recognize new admin
+    // Note: DeckManager stores adminId but we'll need to ensure both admins can manage
+  }
+
   reconnectPlayer(clientId: string): Player | null {
     const player = this.state.players.get(clientId);
     if (player) {
@@ -188,12 +216,30 @@ export class GameManager {
       throw new Error("Can only start game from DECK_BUILDING phase");
     }
 
-    if (!this.deckManager.canStartGame()) {
-      throw new Error("Need at least 100 images to start game");
+    // Only require 100 images minimum when deck mode is PLAYERS_ONLY
+    // For HOST_ONLY and MIXED modes, no minimum (can use default images)
+    if (this.state.deckMode === DeckMode.PLAYERS_ONLY) {
+      if (!this.deckManager.canStartGame()) {
+        throw new Error(
+          "Need at least 100 images to start game in PLAYERS_ONLY mode"
+        );
+      }
     }
+    // No minimum check for HOST_ONLY and MIXED modes
 
     if (this.state.players.size < 3) {
       throw new Error("Need at least 3 players to start");
+    }
+
+    // For HOST_ONLY and MIXED modes, load default images if needed
+    if (this.state.deckMode !== DeckMode.PLAYERS_ONLY) {
+      const currentDeckSize = this.deckManager.getDeckSize();
+      if (currentDeckSize < MIN_IMAGES_TO_START) {
+        console.log(
+          `Loading default images (current deck: ${currentDeckSize})`
+        );
+        this.deckManager.loadDefaultImages();
+      }
     }
 
     // Lock the deck

@@ -1,5 +1,6 @@
 import { nanoid } from 'nanoid';
 import { Card, DeckMode } from './types.js';
+import { loadDefaultImages } from '../utils/defaultImages.js';
 
 const MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5MB
 const MAX_IMAGES_PER_PLAYER = 20;
@@ -144,6 +145,25 @@ export class DeckManager {
     this.locked = false;
     this.mode = DeckMode.MIXED;
     this.imageCountByPlayer.clear();
+  }
+
+  /**
+   * Load default images into the deck
+   * Used when there aren't enough uploaded images
+   */
+  loadDefaultImages(): void {
+    const defaultImages = loadDefaultImages();
+    
+    for (const imageData of defaultImages) {
+      const card: Card = {
+        id: nanoid(),
+        imageData,
+        uploadedBy: 'system', // Mark as system-provided
+      };
+      this.deck.push(card);
+    }
+    
+    console.log(`Added ${defaultImages.length} default images to deck. Total: ${this.deck.length}`);
   }
 }
 

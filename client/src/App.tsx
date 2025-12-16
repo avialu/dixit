@@ -3,6 +3,7 @@ import { useSocket } from './hooks/useSocket';
 import { useGameState } from './hooks/useGameState';
 import { JoinPage } from './pages/JoinPage';
 import { LobbyPage } from './pages/LobbyPage';
+import { AdminSettingsPage } from './pages/AdminSettingsPage';
 import { GamePage } from './pages/GamePage';
 import { BoardPage } from './pages/BoardPage';
 
@@ -40,12 +41,24 @@ function App() {
                 onUploadImage={actions.uploadImage}
                 onDeleteImage={actions.deleteImage}
                 onSetDeckMode={actions.setDeckMode}
-                onSetWinTarget={actions.setWinTarget}
                 onLockDeck={actions.lockDeck}
                 onUnlockDeck={actions.unlockDeck}
                 onStartGame={actions.startGame}
                 onChangeName={actions.changeName}
                 onKickPlayer={actions.kickPlayer}
+                onPromotePlayer={actions.promotePlayer}
+              />
+            }
+          />
+
+          <Route
+            path="/settings"
+            element={
+              <AdminSettingsPage
+                roomState={roomState}
+                playerId={getClientId()}
+                onSetDeckMode={actions.setDeckMode}
+                onSetWinTarget={actions.setWinTarget}
               />
             }
           />
