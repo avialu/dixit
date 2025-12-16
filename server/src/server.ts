@@ -9,11 +9,14 @@ import { DeckMode } from './game/types.js';
 import {
   joinSchema,
   adminSetDeckModeSchema,
+  adminSetWinTargetSchema,
   uploadImageSchema,
   deleteImageSchema,
   storytellerSubmitSchema,
   playerSubmitCardSchema,
   playerVoteSchema,
+  changeNameSchema,
+  kickPlayerSchema,
 } from './utils/validation.js';
 import { getLanIpAddress } from './utils/network.js';
 
@@ -152,6 +155,20 @@ npm start</pre>
 
         const { mode } = adminSetDeckModeSchema.parse(data);
         gameManager.setDeckMode(mode as DeckMode, clientId);
+
+        broadcastRoomState();
+      } catch (error: any) {
+        socket.emit('error', { message: error.message });
+      }
+    });
+
+    socket.on('adminSetWinTarget', (data) => {
+      try {
+        const clientId = socketToClient.get(socket.id);
+        if (!clientId) throw new Error('Not authenticated');
+
+        const { target } = adminSetWinTargetSchema.parse(data);
+        gameManager.setWinTarget(target, clientId);
 
         broadcastRoomState();
       } catch (error: any) {
@@ -342,6 +359,67 @@ npm start</pre>
         }
 
         io.emit('phaseChanged', { phase: gameManager.getCurrentPhase() });
+      } catch (error: any) {
+        socket.emit('error', { message: error.message });
+      }
+    });
+
+    socket.on('changeName', (data) => {
+      try {
+        const clientId = socketToClient.get(socket.id);
+        if (!clientId) throw new Error('Not authenticated');
+
+        const { newName } = changeNameSchema.parse(data);
+        gameManager.changeName(clientId, newName);
+
+        broadcastRoomState();
+      } catch (error: any) {
+        socket.emit('error', { message: error.message });
+      }
+    });
+
+    socket.on('adminKickPlayer', (data) => {
+      try {
+        const clientId = socketToClient.get(socket.id);
+        if (!clientId) throw new Error('Not authenticated');
+
+        const { targetPlayerId } = kickPlayerSchema.parse(data);
+        
+        // Find the socket for the target player and disconnect them
+        let targetSocketId: string | undefined;
+        for (const [socketId, playerId] of socketToClient.entries()) {
+          if (playerId === targetPlayerId) {
+            targetSocketId = socketId;
+            break;
+          }
+        }
+
+        gameManager.kickPlayer(clientId, targetPlayerId);
+
+        // Disconnect the kicked player's socket
+        if (targetSocketId) {
+          const targetSocket = io.sockets.sockets.get(targetSocketId);
+          if (targetSocket) {
+            targetSocket.emit('error', { message: 'You have been kicked from the game' });
+            targetSocket.disconnect(true);
+          }
+          socketToClient.delete(targetSocketId);
+        }
+
+        broadcastRoomState();
+      } catch (error: any) {
+        socket.emit('error', { message: error.message });
+      }
+    });
+
+    socket.on('adminUnlockDeck', () => {
+      try {
+        const clientId = socketToClient.get(socket.id);
+        if (!clientId) throw new Error('Not authenticated');
+
+        gameManager.unlockDeck(clientId);
+
+        broadcastRoomState();
       } catch (error: any) {
         socket.emit('error', { message: error.message });
       }

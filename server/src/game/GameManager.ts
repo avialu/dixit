@@ -27,6 +27,7 @@ export class GameManager {
       deck: [],
       deckMode: DeckMode.MIXED,
       deckLocked: false,
+      winTarget: 30, // Default: 30 points to win
       currentRound: 0,
       storytellerId: null,
       currentClue: null,
@@ -74,6 +75,66 @@ export class GameManager {
     }
   }
 
+  kickPlayer(adminId: string, targetPlayerId: string): void {
+    this.validateAdmin(adminId);
+
+    // Cannot kick yourself
+    if (adminId === targetPlayerId) {
+      throw new Error("Cannot kick yourself");
+    }
+
+    // Cannot kick during active game
+    if (
+      this.state.phase !== GamePhase.WAITING_FOR_PLAYERS &&
+      this.state.phase !== GamePhase.DECK_BUILDING
+    ) {
+      throw new Error("Cannot kick players during an active game");
+    }
+
+    const targetPlayer = this.state.players.get(targetPlayerId);
+    if (!targetPlayer) {
+      throw new Error("Player not found");
+    }
+
+    // Remove the player completely
+    this.state.players.delete(targetPlayerId);
+
+    // Remove their uploaded images
+    const cards = this.deckManager.getAllCards();
+    cards.forEach((card) => {
+      if (card.uploadedBy === targetPlayerId) {
+        this.deckManager.deleteImage(card.id, adminId);
+      }
+    });
+  }
+
+  changeName(playerId: string, newName: string): void {
+    const player = this.state.players.get(playerId);
+    if (!player) {
+      throw new Error("Player not found");
+    }
+
+    // Check if name is already taken by another player
+    for (const [id, p] of this.state.players.entries()) {
+      if (id !== playerId && p.name.toLowerCase() === newName.toLowerCase()) {
+        throw new Error("Name is already taken");
+      }
+    }
+
+    player.name = newName;
+  }
+
+  unlockDeck(adminId: string): void {
+    this.validateAdmin(adminId);
+
+    if (this.state.phase !== GamePhase.DECK_BUILDING) {
+      throw new Error("Can only unlock deck during deck building phase");
+    }
+
+    this.deckManager.unlock();
+    this.state.deckLocked = false;
+  }
+
   reconnectPlayer(clientId: string): Player | null {
     const player = this.state.players.get(clientId);
     if (player) {
@@ -92,6 +153,16 @@ export class GameManager {
     this.validateAdmin(adminId);
     this.deckManager.setMode(mode);
     this.state.deckMode = mode;
+  }
+
+  setWinTarget(target: number | null, adminId: string): void {
+    this.validateAdmin(adminId);
+
+    if (this.state.phase !== GamePhase.DECK_BUILDING) {
+      throw new Error("Can only change win target during deck building");
+    }
+
+    this.state.winTarget = target;
   }
 
   uploadImage(imageData: string, playerId: string): Card {
@@ -317,6 +388,17 @@ export class GameManager {
       throw new Error("Not in scoring phase");
     }
 
+    // Check if any player reached win target
+    if (this.state.winTarget !== null) {
+      const hasWinner = Array.from(this.state.players.values()).some(
+        (p) => p.score >= this.state.winTarget!
+      );
+      if (hasWinner) {
+        this.state.phase = GamePhase.GAME_END;
+        return;
+      }
+    }
+
     // Check if deck has enough cards to continue
     const needCards = this.state.players.size; // Each player needs 1 to refill to 6
     if (this.deckManager.getDeckSize() < needCards) {
@@ -372,6 +454,7 @@ export class GameManager {
 
     // Keep the uploaded images but reset to deck building
     this.state.deckLocked = false;
+    this.state.winTarget = 30; // Reset to default
     this.state.phase = GamePhase.DECK_BUILDING;
   }
 
@@ -395,6 +478,7 @@ export class GameManager {
     this.state.lastScoreDeltas.clear();
     this.state.deckLocked = false;
     this.state.deckMode = DeckMode.MIXED;
+    this.state.winTarget = 30; // Reset to default
     this.submittedCardsData.clear();
   }
 
@@ -447,6 +531,7 @@ export class GameManager {
       deckMode: this.state.deckMode,
       deckSize: this.deckManager.getDeckSize(),
       deckLocked: this.state.deckLocked,
+      winTarget: this.state.winTarget,
       deckImages,
       currentRound: this.state.currentRound,
       storytellerId: this.state.storytellerId,

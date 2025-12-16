@@ -35,6 +35,10 @@ export class DeckManager {
     this.locked = true;
   }
 
+  unlock(): void {
+    this.locked = false;
+  }
+
   canStartGame(): boolean {
     return this.deck.length >= MIN_IMAGES_TO_START;
   }

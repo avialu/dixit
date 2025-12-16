@@ -22,6 +22,7 @@ export interface RoomState {
   deckMode: string;
   deckSize: number;
   deckLocked: boolean;
+  winTarget: number | null;
   deckImages: { id: string; uploadedBy: string }[];
   currentRound: number;
   storytellerId: string | null;
@@ -87,6 +88,10 @@ export function useGameState(socket: Socket | null) {
     socket?.emit('adminSetDeckMode', { mode });
   };
 
+  const setWinTarget = (target: number | null) => {
+    socket?.emit('adminSetWinTarget', { target });
+  };
+
   const uploadImage = (imageData: string) => {
     socket?.emit('uploadImage', { imageData });
   };
@@ -127,6 +132,18 @@ export function useGameState(socket: Socket | null) {
     socket?.emit('adminNewDeck');
   };
 
+  const changeName = (newName: string) => {
+    socket?.emit('changeName', { newName });
+  };
+
+  const kickPlayer = (targetPlayerId: string) => {
+    socket?.emit('adminKickPlayer', { targetPlayerId });
+  };
+
+  const unlockDeck = () => {
+    socket?.emit('adminUnlockDeck');
+  };
+
   return {
     roomState,
     playerState,
@@ -134,9 +151,11 @@ export function useGameState(socket: Socket | null) {
     actions: {
       join,
       setDeckMode,
+      setWinTarget,
       uploadImage,
       deleteImage,
       lockDeck,
+      unlockDeck,
       startGame,
       storytellerSubmit,
       playerSubmitCard,
@@ -144,6 +163,8 @@ export function useGameState(socket: Socket | null) {
       advanceRound,
       resetGame,
       newDeck,
+      changeName,
+      kickPlayer,
     },
   };
 }

@@ -9,6 +9,10 @@ export const adminSetDeckModeSchema = z.object({
   mode: z.enum(['HOST_ONLY', 'PLAYERS_ONLY', 'MIXED']),
 });
 
+export const adminSetWinTargetSchema = z.object({
+  target: z.union([z.literal(30), z.literal(50), z.null()]),
+});
+
 export const uploadImageSchema = z.object({
   imageData: z.string(), // base64 image data
 });
@@ -28,5 +32,13 @@ export const playerSubmitCardSchema = z.object({
 
 export const playerVoteSchema = z.object({
   cardId: z.string(),
+});
+
+export const changeNameSchema = z.object({
+  newName: z.string().min(1).max(50),
+});
+
+export const kickPlayerSchema = z.object({
+  targetPlayerId: z.string(),
 });
 

@@ -12,6 +12,8 @@ interface GamePageProps {
   onPlayerSubmitCard: (cardId: string) => void;
   onPlayerVote: (cardId: string) => void;
   onAdvanceRound: () => void;
+  onResetGame: () => void;
+  onNewDeck: () => void;
 }
 
 export function GamePage({
@@ -22,6 +24,8 @@ export function GamePage({
   onPlayerSubmitCard,
   onPlayerVote,
   onAdvanceRound,
+  onResetGame,
+  onNewDeck,
 }: GamePageProps) {
   const navigate = useNavigate();
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
@@ -43,6 +47,7 @@ export function GamePage({
 
   const isStoryteller = roomState.storytellerId === playerId;
   const myPlayer = roomState.players.find(p => p.id === playerId);
+  const isAdmin = myPlayer?.isAdmin || false;
 
   const handleStorytellerSubmit = () => {
     if (selectedCardId && clue.trim()) {
@@ -245,19 +250,47 @@ export function GamePage({
       {/* GAME_END */}
       {roomState.phase === 'GAME_END' && (
         <div className="game-end-section">
-          <h2>Game Over!</h2>
-          <div className="final-scores">
-            {[...roomState.players].sort((a, b) => b.score - a.score).map((player, index) => (
-              <div key={player.id} className={`final-score ${index === 0 ? 'winner' : ''}`}>
-                <span className="rank">{index + 1}.</span>
-                <span className="name">{player.name}</span>
-                <span className="score">{player.score} points</span>
-              </div>
-            ))}
-          </div>
+          <h2>🏆 Game Over!</h2>
+          
+          {(() => {
+            const sortedPlayers = [...roomState.players].sort((a, b) => b.score - a.score);
+            const winner = sortedPlayers[0];
+            const wonByTarget = roomState.winTarget !== null && winner.score >= roomState.winTarget;
+            
+            return (
+              <>
+                {wonByTarget && (
+                  <p className="winner-announcement">
+                    {winner.name} wins with {winner.score} points!
+                  </p>
+                )}
+                <div className="final-scores">
+                  {sortedPlayers.map((player, index) => (
+                    <div key={player.id} className={`final-score ${index === 0 ? 'winner' : ''}`}>
+                      <span className="rank">{index + 1}.</span>
+                      <span className="name">{player.name}</span>
+                      <span className="score">{player.score} points</span>
+                    </div>
+                  ))}
+                </div>
+              </>
+            );
+          })()}
+          
           <button onClick={() => navigate('/lobby')} className="btn-primary">
             Back to Lobby
           </button>
+          
+          {isAdmin && (
+            <>
+              <button onClick={onResetGame} className="btn-secondary">
+                Reset Game (Keep Deck)
+              </button>
+              <button onClick={onNewDeck} className="btn-secondary">
+                New Deck
+              </button>
+            </>
+          )}
         </div>
       )}
     </div>

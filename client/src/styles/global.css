@@ -49,9 +49,27 @@ button:disabled {
   color: white;
 }
 
+.btn-secondary:hover:not(:disabled) {
+  background: #5a6268;
+}
+
+.btn-danger {
+  background: #dc3545;
+  color: white;
+}
+
+.btn-danger:hover:not(:disabled) {
+  background: #c82333;
+}
+
 .btn-large {
   font-size: 1.2rem;
   padding: 1rem 2rem;
+}
+
+.btn-small {
+  font-size: 0.875rem;
+  padding: 0.375rem 0.75rem;
 }
 
 .btn-delete {

@@ -40,8 +40,12 @@ function App() {
                 onUploadImage={actions.uploadImage}
                 onDeleteImage={actions.deleteImage}
                 onSetDeckMode={actions.setDeckMode}
+                onSetWinTarget={actions.setWinTarget}
                 onLockDeck={actions.lockDeck}
+                onUnlockDeck={actions.unlockDeck}
                 onStartGame={actions.startGame}
+                onChangeName={actions.changeName}
+                onKickPlayer={actions.kickPlayer}
               />
             }
           />
@@ -57,6 +61,8 @@ function App() {
                 onPlayerSubmitCard={actions.playerSubmitCard}
                 onPlayerVote={actions.playerVote}
                 onAdvanceRound={actions.advanceRound}
+                onResetGame={actions.resetGame}
+                onNewDeck={actions.newDeck}
               />
             }
           />
