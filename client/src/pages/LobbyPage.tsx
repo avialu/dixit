@@ -173,6 +173,39 @@ export function LobbyPage({
                 </div>
                 <div className="join-url">{joinUrl}</div>
               </div>
+
+              <div
+                className="board-info-box"
+                style={{
+                  marginTop: "20px",
+                  padding: "15px",
+                  background: "#2a2a3e",
+                  borderRadius: "8px",
+                }}
+              >
+                <h3 style={{ marginTop: 0 }}>📺 Board Display:</h3>
+                <p
+                  style={{
+                    fontSize: "14px",
+                    color: "#95a5a6",
+                    marginBottom: "10px",
+                  }}
+                >
+                  For TV/Projector view:
+                </p>
+                <div className="join-url" style={{ fontSize: "12px" }}>
+                  {joinUrl}/board
+                </div>
+                <p
+                  style={{
+                    fontSize: "12px",
+                    color: "#95a5a6",
+                    marginTop: "10px",
+                  }}
+                >
+                  Open in fullscreen on your TV
+                </p>
+              </div>
             </div>
           </>
         ) : (
@@ -405,6 +438,39 @@ export function LobbyPage({
                   <QRCode url={joinUrl} size={180} />
                 </div>
                 <div className="join-url">{joinUrl}</div>
+              </div>
+
+              <div
+                className="board-info-box"
+                style={{
+                  marginTop: "20px",
+                  padding: "15px",
+                  background: "#2a2a3e",
+                  borderRadius: "8px",
+                }}
+              >
+                <h3 style={{ marginTop: 0 }}>📺 Board Display:</h3>
+                <p
+                  style={{
+                    fontSize: "14px",
+                    color: "#95a5a6",
+                    marginBottom: "10px",
+                  }}
+                >
+                  For TV/Projector view:
+                </p>
+                <div className="join-url" style={{ fontSize: "12px" }}>
+                  {joinUrl}/board
+                </div>
+                <p
+                  style={{
+                    fontSize: "12px",
+                    color: "#95a5a6",
+                    marginTop: "10px",
+                  }}
+                >
+                  Open in fullscreen on your TV
+                </p>
               </div>
             </div>
           </>
