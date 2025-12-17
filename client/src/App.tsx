@@ -1,11 +1,9 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
-import { useSocket } from './hooks/useSocket';
-import { useGameState } from './hooks/useGameState';
-import { JoinPage } from './pages/JoinPage';
-import { LobbyPage } from './pages/LobbyPage';
-import { AdminSettingsPage } from './pages/AdminSettingsPage';
-import { GamePage } from './pages/GamePage';
-import { BoardPage } from './pages/BoardPage';
+import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { useSocket } from "./hooks/useSocket";
+import { useGameState } from "./hooks/useGameState";
+import { UnifiedGamePage } from "./pages/UnifiedGamePage";
+import { BoardPage } from "./pages/BoardPage";
+import { DemoPage } from "./pages/DemoPage";
 
 function App() {
   const { socket, clientId, getClientId } = useSocket();
@@ -14,30 +12,19 @@ function App() {
   return (
     <BrowserRouter>
       <div className="app">
-        {error && (
-          <div className="error-toast">
-            {error}
-          </div>
-        )}
+        {error && <div className="error-toast">{error}</div>}
 
         <Routes>
           <Route
             path="/"
             element={
-              <JoinPage
-                socket={socket}
-                clientId={clientId}
-                onJoin={actions.join}
-              />
-            }
-          />
-          
-          <Route
-            path="/lobby"
-            element={
-              <LobbyPage
+              <UnifiedGamePage
                 roomState={roomState}
+                playerState={playerState}
                 playerId={getClientId()}
+                clientId={clientId}
+                socket={socket}
+                onJoin={actions.join}
                 onUploadImage={actions.uploadImage}
                 onDeleteImage={actions.deleteImage}
                 onSetDeckMode={actions.setDeckMode}
@@ -47,43 +34,20 @@ function App() {
                 onChangeName={actions.changeName}
                 onKickPlayer={actions.kickPlayer}
                 onPromotePlayer={actions.promotePlayer}
-              />
-            }
-          />
-
-          <Route
-            path="/settings"
-            element={
-              <AdminSettingsPage
-                roomState={roomState}
-                playerId={getClientId()}
-                onSetDeckMode={actions.setDeckMode}
-                onSetWinTarget={actions.setWinTarget}
-              />
-            }
-          />
-          
-          <Route
-            path="/game"
-            element={
-              <GamePage
-                roomState={roomState}
-                playerState={playerState}
-                playerId={getClientId()}
                 onStorytellerSubmit={actions.storytellerSubmit}
                 onPlayerSubmitCard={actions.playerSubmitCard}
                 onPlayerVote={actions.playerVote}
                 onAdvanceRound={actions.advanceRound}
                 onResetGame={actions.resetGame}
                 onNewDeck={actions.newDeck}
+                onSetWinTarget={actions.setWinTarget}
               />
             }
           />
-          
-          <Route
-            path="/board"
-            element={<BoardPage roomState={roomState} />}
-          />
+
+          <Route path="/board" element={<BoardPage roomState={roomState} />} />
+
+          <Route path="/demo" element={<DemoPage />} />
         </Routes>
       </div>
     </BrowserRouter>
@@ -91,4 +55,3 @@ function App() {
 }
 
 export default App;
-

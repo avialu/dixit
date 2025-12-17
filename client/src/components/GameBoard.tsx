@@ -54,8 +54,83 @@ export function GameBoard({ roomState }: GameBoardProps) {
     return roomState.players.filter((p) => p.score === score);
   };
 
+  // Get game status message
+  const getGameStatus = () => {
+    const storyteller = roomState.players.find(p => p.id === roomState.storytellerId);
+    const storytellerName = storyteller?.name || "Storyteller";
+    
+    switch (roomState.phase) {
+      case "WAITING_FOR_PLAYERS":
+        return {
+          icon: "👥",
+          text: "Waiting for players to join...",
+          subtext: `${roomState.players.length} players connected`
+        };
+      case "DECK_BUILDING":
+        return {
+          icon: "🎴",
+          text: "Building the deck...",
+          subtext: `${roomState.deckSize} images uploaded`
+        };
+      case "STORYTELLER_CHOICE":
+        return {
+          icon: "🎭",
+          text: `${storytellerName} is choosing a card...`,
+          subtext: "Waiting for storyteller to provide a clue"
+        };
+      case "PLAYERS_CHOICE":
+        return {
+          icon: "✍️",
+          text: "Players are choosing their cards...",
+          subtext: `Match the clue: "${roomState.currentClue}"`
+        };
+      case "REVEAL":
+        return {
+          icon: "🎊",
+          text: "Cards revealed!",
+          subtext: "Get ready to vote"
+        };
+      case "VOTING":
+        return {
+          icon: "🗳️",
+          text: "Players are voting...",
+          subtext: "Which card belongs to the storyteller?"
+        };
+      case "SCORING":
+        return {
+          icon: "🏆",
+          text: "Round complete!",
+          subtext: "Calculating scores..."
+        };
+      case "GAME_END":
+        const winner = [...roomState.players].sort((a, b) => b.score - a.score)[0];
+        return {
+          icon: "👑",
+          text: `${winner.name} wins!`,
+          subtext: `Final score: ${winner.score} points`
+        };
+      default:
+        return {
+          icon: "🎨",
+          text: "Dixit",
+          subtext: ""
+        };
+    }
+  };
+
+  const gameStatus = getGameStatus();
+
   return (
     <div className="game-board-visual">
+      {/* Game Status Bar */}
+      <div className="game-status-bar">
+        <div className="status-icon">{gameStatus.icon}</div>
+        <div className="status-content">
+          <div className="status-text">{gameStatus.text}</div>
+          {gameStatus.subtext && <div className="status-subtext">{gameStatus.subtext}</div>}
+        </div>
+      </div>
+
       {/* Decorative background */}
       <div className="board-scenic-background">
         <div className="board-sky"></div>
