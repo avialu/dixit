@@ -5,11 +5,7 @@ interface GameBoardProps {
 }
 
 export function GameBoard({ roomState }: GameBoardProps) {
-  const maxScore = Math.max(
-    ...roomState.players.map((p) => p.score),
-    roomState.winTarget || 30
-  );
-  const trackLength = Math.max(maxScore + 5, 35); // At least 35 spaces
+  const trackLength = 31; // 0 to 30 = 31 spaces
 
   // Generate path positions in a winding pattern
   const generatePathPositions = (length: number) => {
@@ -222,22 +218,6 @@ export function GameBoard({ roomState }: GameBoardProps) {
         </svg>
       </div>
 
-      {/* Player legend */}
-      <div className="player-legend-board">
-        {roomState.players.map((player) => (
-          <div key={player.id} className="legend-item">
-            <div
-              className="legend-token"
-              style={{ backgroundColor: getPlayerColor(player.id) }}
-            ></div>
-            <span className="legend-name">{player.name}</span>
-            <span className="legend-score">{player.score}</span>
-            {roomState.storytellerId === player.id && (
-              <span className="legend-storyteller">📖</span>
-            )}
-          </div>
-        ))}
-      </div>
     </div>
   );
 }

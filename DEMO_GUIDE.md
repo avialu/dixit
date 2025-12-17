@@ -529,3 +529,4 @@ Now that you can see and understand all components:
 6. Test and iterate!
 
 Happy customizing! 🎨
+
