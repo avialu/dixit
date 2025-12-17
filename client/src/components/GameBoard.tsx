@@ -135,7 +135,7 @@ export function GameBoard({ roomState }: GameBoardProps) {
 
       {/* Score track */}
       <div className="score-track-container">
-        <svg viewBox="0 0 100 100" className="score-track-svg">
+        <svg viewBox="0 0 110 70" preserveAspectRatio="xMidYMid meet" className="score-track-svg">
           {/* Draw path connections */}
           {pathPositions.slice(0, -1).map((pos, i) => {
             const nextPos = pathPositions[i + 1];
@@ -148,7 +148,7 @@ export function GameBoard({ roomState }: GameBoardProps) {
                 y2={nextPos.y}
                 className="path-line"
                 stroke="#d4a574"
-                strokeWidth="0.8"
+                strokeWidth="1.5"
               />
             );
           })}
@@ -163,20 +163,21 @@ export function GameBoard({ roomState }: GameBoardProps) {
                 <circle
                   cx={pos.x}
                   cy={pos.y}
-                  r="2.5"
+                  r="3.5"
                   className={`path-space ${isWinTarget ? "win-space" : ""}`}
                   fill={isWinTarget ? "#f39c12" : "#e8d4b8"}
                   stroke="#8b6f47"
-                  strokeWidth="0.3"
+                  strokeWidth="0.4"
                 />
 
                 {/* Score number */}
                 <text
                   x={pos.x}
-                  y={pos.y + 0.5}
+                  y={pos.y + 0.6}
                   className="space-number"
                   fill="#3d2817"
-                  fontSize="1.5"
+                  fontSize="2.2"
+                  fontWeight="bold"
                   textAnchor="middle"
                   dominantBaseline="middle"
                 >
@@ -186,23 +187,23 @@ export function GameBoard({ roomState }: GameBoardProps) {
                 {/* Player tokens at this position */}
                 {playersHere.map((player, playerIndex) => {
                   const offsetX =
-                    playerIndex * 1.2 - (playersHere.length - 1) * 0.6;
+                    playerIndex * 1.8 - (playersHere.length - 1) * 0.9;
                   return (
                     <g key={player.id}>
                       <circle
                         cx={pos.x + offsetX}
-                        cy={pos.y - 3.5}
-                        r="1.5"
+                        cy={pos.y - 5}
+                        r="2.2"
                         fill={getPlayerColor(player.id)}
                         stroke="#fff"
-                        strokeWidth="0.2"
+                        strokeWidth="0.3"
                         className="player-token"
                       />
                       {roomState.storytellerId === player.id && (
                         <text
                           x={pos.x + offsetX}
-                          y={pos.y - 3.2}
-                          fontSize="1.5"
+                          y={pos.y - 4.5}
+                          fontSize="2"
                           textAnchor="middle"
                           dominantBaseline="middle"
                         >
