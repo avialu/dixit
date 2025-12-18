@@ -1,3 +1,4 @@
+import { useState, useEffect, useRef } from "react";
 import { RoomState } from "../hooks/useGameState";
 
 interface GameBoardProps {
@@ -5,7 +6,60 @@ interface GameBoardProps {
 }
 
 export function GameBoard({ roomState }: GameBoardProps) {
+  const [animatingScores, setAnimatingScores] = useState<{ [playerId: string]: number }>({});
+  const [isAnimating, setIsAnimating] = useState(false);
+  const lastAnimatedRound = useRef<number>(-1);
+  
   const trackLength = 31; // 0 to 30 = 31 spaces
+  
+  // Trigger animation when entering SCORING phase
+  useEffect(() => {
+    if (roomState.phase === "SCORING" && 
+        roomState.lastScoreDeltas.length > 0 && 
+        lastAnimatedRound.current !== roomState.currentRound) {
+      
+      lastAnimatedRound.current = roomState.currentRound;
+      
+      console.log('🎯 Starting scoring animation for round:', roomState.currentRound);
+      console.log('Score deltas:', roomState.lastScoreDeltas);
+      
+      // Calculate previous scores (current - delta)
+      const previousScores: { [playerId: string]: number } = {};
+      roomState.players.forEach(player => {
+        const delta = roomState.lastScoreDeltas.find(d => d.playerId === player.id);
+        const prevScore = player.score - (delta?.delta || 0);
+        previousScores[player.id] = Math.max(0, prevScore); // Don't go below 0
+        console.log(`Player ${player.name}: ${prevScore} → ${player.score} (+${delta?.delta || 0})`);
+      });
+      
+      // Set initial position (before animation)
+      setAnimatingScores(previousScores);
+      setIsAnimating(true);
+      
+      // Start animation to final position after a brief delay
+      const animateTimer = setTimeout(() => {
+        console.log('🚀 Animating to final positions...');
+        // Update to final scores to trigger CSS transition
+        const finalScores: { [playerId: string]: number } = {};
+        roomState.players.forEach(player => {
+          finalScores[player.id] = player.score;
+        });
+        setAnimatingScores(finalScores);
+      }, 50);
+      
+      // End animation state
+      const endTimer = setTimeout(() => {
+        console.log('✅ Animation complete');
+        setIsAnimating(false);
+        setAnimatingScores({});
+      }, 2500);
+      
+      return () => {
+        clearTimeout(animateTimer);
+        clearTimeout(endTimer);
+      };
+    }
+  }, [roomState.phase, roomState.currentRound, roomState.lastScoreDeltas, roomState.players]);
 
   // Generate path positions in a winding pattern
   const generatePathPositions = (length: number) => {
@@ -43,11 +97,6 @@ export function GameBoard({ roomState }: GameBoardProps) {
     ];
     const index = roomState.players.findIndex((p) => p.id === playerId);
     return colors[index % colors.length];
-  };
-
-  // Get players at each position
-  const getPlayersAtPosition = (score: number) => {
-    return roomState.players.filter((p) => p.score === score);
   };
 
   // Get game status message
@@ -156,7 +205,6 @@ export function GameBoard({ roomState }: GameBoardProps) {
           {/* Draw spaces */}
           {pathPositions.map((pos) => {
             const isWinTarget = roomState.winTarget === pos.index;
-            const playersHere = getPlayersAtPosition(pos.index);
 
             return (
               <g key={`space-${pos.index}`}>
@@ -183,36 +231,88 @@ export function GameBoard({ roomState }: GameBoardProps) {
                 >
                   {pos.index}
                 </text>
+              </g>
+            );
+          })}
 
-                {/* Player tokens at this position */}
-                {playersHere.map((player, playerIndex) => {
-                  const offsetX =
-                    playerIndex * 1.8 - (playersHere.length - 1) * 0.9;
-                  return (
-                    <g key={player.id}>
-                      <circle
-                        cx={pos.x + offsetX}
-                        cy={pos.y - 5}
-                        r="2.2"
-                        fill={getPlayerColor(player.id)}
-                        stroke="#fff"
-                        strokeWidth="0.3"
-                        className="player-token"
-                      />
-                      {roomState.storytellerId === player.id && (
-                        <text
-                          x={pos.x + offsetX}
-                          y={pos.y - 4.5}
-                          fontSize="2"
-                          textAnchor="middle"
-                          dominantBaseline="middle"
-                        >
-                          📖
-                        </text>
-                      )}
-                    </g>
-                  );
-                })}
+          {/* Draw player tokens separately for smooth animation */}
+          {roomState.players.map((player) => {
+            const displayScore = animatingScores[player.id] !== undefined ? animatingScores[player.id] : player.score;
+            const position = pathPositions[displayScore] || pathPositions[0];
+            
+            // Count players at same position for offset
+            const playersAtSamePosition = roomState.players.filter(p => {
+              const pScore = animatingScores[p.id] !== undefined ? animatingScores[p.id] : p.score;
+              return pScore === displayScore;
+            });
+            const positionIndex = playersAtSamePosition.findIndex(p => p.id === player.id);
+            const offsetX = positionIndex * 1.8 - (playersAtSamePosition.length - 1) * 0.9;
+            
+            const delta = roomState.lastScoreDeltas.find(d => d.playerId === player.id);
+            const isMoving = isAnimating && delta && delta.delta !== 0;
+            
+            return (
+              <g key={player.id} className={isAnimating ? 'token-animating' : ''}>
+                <circle
+                  cx={position.x + offsetX}
+                  cy={position.y - 5}
+                  r="2.2"
+                  fill={getPlayerColor(player.id)}
+                  stroke="#fff"
+                  strokeWidth="0.3"
+                  className="player-token"
+                  style={{
+                    transition: isAnimating ? 'cx 2s ease-in-out, cy 2s ease-in-out' : 'none'
+                  }}
+                />
+                {roomState.storytellerId === player.id && (
+                  <text
+                    x={position.x + offsetX}
+                    y={position.y - 4.5}
+                    fontSize="2"
+                    textAnchor="middle"
+                    dominantBaseline="middle"
+                    style={{
+                      transition: isAnimating ? 'x 2s ease-in-out, y 2s ease-in-out' : 'none'
+                    }}
+                  >
+                    📖
+                  </text>
+                )}
+                {/* Show current score during SCORING phase */}
+                {roomState.phase === "SCORING" && (
+                  <text
+                    x={position.x + offsetX}
+                    y={position.y - 8}
+                    fontSize="2"
+                    fontWeight="bold"
+                    textAnchor="middle"
+                    fill="#fff"
+                    stroke="#000"
+                    strokeWidth="0.2"
+                    style={{
+                      transition: isAnimating ? 'x 2s ease-in-out, y 2s ease-in-out' : 'none'
+                    }}
+                  >
+                    {displayScore}
+                  </text>
+                )}
+                {isMoving && delta.delta > 0 && (
+                  <text
+                    x={position.x + offsetX}
+                    y={position.y - 11}
+                    fontSize="2"
+                    fontWeight="bold"
+                    textAnchor="middle"
+                    fill="#2ecc71"
+                    className="score-delta-floating"
+                    style={{
+                      transition: isAnimating ? 'x 2s ease-in-out, y 2s ease-in-out' : 'none'
+                    }}
+                  >
+                    +{delta.delta}
+                  </text>
+                )}
               </g>
             );
           })}

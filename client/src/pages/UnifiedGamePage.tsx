@@ -1,10 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { RoomState, PlayerState } from "../hooks/useGameState";
 import { GameBoard } from "../components/GameBoard";
 import { HandView } from "../components/HandView";
 import { VotingView } from "../components/VotingView";
 import { QRCode } from "../components/QRCode";
-import { DeckUploader } from "../components/DeckUploader";
 
 interface UnifiedGamePageProps {
   roomState: RoomState | null;
@@ -38,8 +37,8 @@ export function UnifiedGamePage({
   clientId,
   socket,
   onJoin,
-  onUploadImage,
-  onDeleteImage,
+  onUploadImage: _onUploadImage,
+  onDeleteImage: _onDeleteImage,
   onSetDeckMode,
   onLockDeck,
   onUnlockDeck,
@@ -60,9 +59,33 @@ export function UnifiedGamePage({
   const [clue, setClue] = useState("");
   const [showModal, setShowModal] = useState(false);
   const [modalType, setModalType] = useState<"settings" | "cards">("cards");
+  const [detectedServerUrl, setDetectedServerUrl] = useState<string | null>(
+    null
+  );
 
   // Detect demo mode (no socket connection)
   const isDemoMode = socket === null;
+
+  // Fetch server URL on mount (for cases where we need it before roomState is available)
+  useEffect(() => {
+    if (!isDemoMode) {
+      fetch("/api/server-info")
+        .then((res) => res.json())
+        .then((data) => setDetectedServerUrl(data.serverUrl))
+        .catch((err) => console.warn("Could not fetch server URL:", err));
+    }
+  }, [isDemoMode]);
+
+  // Auto-open modal for REVEAL and VOTING phases, close for SCORING
+  useEffect(() => {
+    if (["REVEAL", "VOTING"].includes(roomState?.phase || "")) {
+      setModalType("cards");
+      setShowModal(true);
+    } else if (roomState?.phase === "SCORING") {
+      // Close modal when entering scoring to show board animation
+      setShowModal(false);
+    }
+  }, [roomState?.phase]);
 
   const isSpectator = playerId === "spectator";
   const isJoined =
@@ -73,8 +96,8 @@ export function UnifiedGamePage({
     [
       "STORYTELLER_CHOICE",
       "PLAYERS_CHOICE",
-      "REVEAL",
       "VOTING",
+      "REVEAL",
       "SCORING",
       "GAME_END",
     ].includes(roomState.phase);
@@ -110,7 +133,7 @@ export function UnifiedGamePage({
     if (selectedCardId) {
       onPlayerVote(selectedCardId);
       setSelectedCardId(null);
-      setShowModal(false);
+      // Keep modal open after voting
     }
   };
 
@@ -126,9 +149,10 @@ export function UnifiedGamePage({
 
   // JOIN SCREEN (before joining)
   if (!isJoined) {
-    // Get server URL from current location or roomState
-    const serverUrl = roomState?.serverUrl || window.location.origin;
-    
+    // Get server URL with priority: roomState > detected from API > current location
+    const serverUrl =
+      roomState?.serverUrl || detectedServerUrl || window.location.origin;
+
     return (
       <div className="unified-game-page join-state">
         <div className="join-container">
@@ -169,6 +193,7 @@ export function UnifiedGamePage({
             <div className="qr-code-section">
               <p className="qr-hint">Scan to join on mobile</p>
               <QRCode url={serverUrl} size={180} />
+              <p className="qr-url">{serverUrl}</p>
             </div>
           </div>
         </div>
@@ -212,21 +237,6 @@ export function UnifiedGamePage({
               onClick={openSettings}
             >
               ⚙️ Settings
-            </button>
-          )}
-
-          {/* Start Game Button - Admin Only, Lobby Phase */}
-          {isAdmin && !isInGame && (
-            <button
-              className="floating-action-button start-button"
-              onClick={onStartGame}
-              disabled={
-                roomState.players.length < 3 ||
-                (roomState.deckMode === "PLAYERS_ONLY" &&
-                  roomState.deckSize < 100)
-              }
-            >
-              🚀 Start Game
             </button>
           )}
 
@@ -351,6 +361,17 @@ export function UnifiedGamePage({
                       </div>
 
                       <div className="action-buttons">
+                        <button
+                          onClick={onStartGame}
+                          disabled={
+                            roomState.players.length < 3 ||
+                            (roomState.deckMode === "PLAYERS_ONLY" &&
+                              roomState.deckSize < 100)
+                          }
+                          className="btn-primary btn-large"
+                        >
+                          🚀 Start Game
+                        </button>
                         {roomState.deckLocked ? (
                           <button
                             onClick={onUnlockDeck}
@@ -384,7 +405,7 @@ export function UnifiedGamePage({
               {/* CARDS MODAL - Game Actions */}
               {modalType === "cards" && (
                 <>
-                  {/* LOBBY - Before game starts, show player list and deck upload */}
+                  {/* LOBBY - Before game starts, show player list */}
                   {!isInGame && (
                     <div className="modal-section lobby-modal">
                       <h2>👥 Players ({roomState.players.length})</h2>
@@ -408,27 +429,13 @@ export function UnifiedGamePage({
                           </div>
                         ))}
                       </div>
-                      
-                      {/* Show deck uploader if not HOST_ONLY mode */}
-                      {roomState.deckMode !== "HOST_ONLY" && (
-                        <div className="deck-upload-section">
-                          <h3>📦 Upload Images for Deck</h3>
-                          <DeckUploader
-                            roomState={roomState}
-                            playerId={playerId}
-                            onUpload={onUploadImage}
-                            onDelete={onDeleteImage}
-                            onSetMode={onSetDeckMode}
-                            onLock={onLockDeck}
-                          />
-                        </div>
-                      )}
-                      
+
                       <div className="qr-code-modal-section">
                         <p className="qr-hint">Scan to join</p>
                         <QRCode url={roomState.serverUrl} size={150} />
+                        <p className="qr-url">{roomState.serverUrl}</p>
                       </div>
-                      
+
                       <p style={{ color: "#95a5a6", marginTop: "1rem" }}>
                         {isAdmin
                           ? "Use the ⚙️ Settings button to configure the game"
@@ -440,7 +447,7 @@ export function UnifiedGamePage({
                   {/* STORYTELLER_CHOICE */}
                   {roomState.phase === "STORYTELLER_CHOICE" && (
                     <>
-                      {isStoryteller && !playerState?.mySubmittedCardId && (
+                      {isStoryteller && (
                         <div className="modal-section storyteller-modal">
                           <h2>🎭 You are the Storyteller!</h2>
                           <p>Choose a card and provide a clue</p>
@@ -473,41 +480,25 @@ export function UnifiedGamePage({
                           </div>
                         </div>
                       )}
-                      {isStoryteller && playerState?.mySubmittedCardId && (
-                        <div className="modal-section waiting-modal">
-                          <h2>⏳ Waiting for Players to Select Their Cards</h2>
-                          <p>You've submitted your card. Here's your hand:</p>
-                          
-                          <div className="modal-hand">
-                            <HandView
-                              hand={playerState?.hand || []}
-                              selectedCardId={playerState.mySubmittedCardId}
-                              onSelectCard={() => {}}
-                              disabled={true}
-                            />
-                          </div>
-
-                          <p className="clue-reminder">
-                            Your clue: <strong>"{roomState.currentClue}"</strong>
-                          </p>
-                        </div>
-                      )}
-                      {!isStoryteller && (
+                      {!isStoryteller && isDemoMode && showModal && (
                         <div className="modal-section waiting-modal">
                           <h2>⏳ Waiting for Storyteller</h2>
-                          <p>The storyteller is choosing a card and providing a clue...</p>
-                          
+                          <p>
+                            The storyteller is choosing a card and providing a
+                            clue...
+                          </p>
+
                           <div className="modal-hand">
                             <HandView
                               hand={playerState?.hand || []}
                               selectedCardId={null}
                               onSelectCard={() => {}}
-                              disabled={true}
                             />
                           </div>
-                          
+
                           <p style={{ color: "#95a5a6", fontSize: "0.85rem" }}>
-                            Once they submit, you'll choose a card that matches their clue.
+                            Once they submit, you'll choose a card that matches
+                            their clue.
                           </p>
                         </div>
                       )}
@@ -517,119 +508,155 @@ export function UnifiedGamePage({
                   {/* PLAYERS_CHOICE */}
                   {roomState.phase === "PLAYERS_CHOICE" && (
                     <>
-                      {!isStoryteller && !playerState?.mySubmittedCardId && (
-                        <div className="modal-section player-choice-modal">
-                          <h2>✍️ Choose Your Card</h2>
-                          <p>Pick a card that matches the clue</p>
-
-                          <div className="modal-hand">
-                            <HandView
-                              hand={playerState?.hand || []}
-                              selectedCardId={selectedCardId}
-                              onSelectCard={setSelectedCardId}
-                            />
-                          </div>
-
-                          <button
-                            onClick={handlePlayerSubmit}
-                            disabled={!selectedCardId}
-                            className="btn-primary btn-large"
-                          >
-                            Submit Card
-                          </button>
-                        </div>
-                      )}
-                      {!isStoryteller && playerState?.mySubmittedCardId && (
-                        <div className="modal-section waiting-modal">
-                          <h2>⏳ Waiting for Other Players</h2>
-                          <p>You've submitted your card. Here's your hand:</p>
-                          
-                          <div className="modal-hand">
-                            <HandView
-                              hand={playerState?.hand || []}
-                              selectedCardId={playerState.mySubmittedCardId}
-                              onSelectCard={() => {}}
-                              disabled={true}
-                            />
-                          </div>
-
-                          <p className="clue-reminder">
-                            The clue: <strong>"{roomState.currentClue}"</strong>
-                          </p>
-                        </div>
-                      )}
-                      {isStoryteller && (
-                        <div className="modal-section waiting-modal">
-                          <h2>⏳ Waiting for Players to Choose</h2>
-                          <p>You've submitted your card. Here's your hand:</p>
-                          
-                          <div className="modal-hand">
-                            <HandView
-                              hand={playerState?.hand || []}
-                              selectedCardId={playerState?.mySubmittedCardId || null}
-                              onSelectCard={() => {}}
-                              disabled={true}
-                            />
-                          </div>
-
-                          <p className="clue-reminder">
-                            Your clue: <strong>"{roomState.currentClue}"</strong>
-                          </p>
-                        </div>
-                      )}
-                    </>
-                  )}
-
-                  {/* VOTING */}
-                  {roomState.phase === "VOTING" && (
-                    <>
                       {!isStoryteller &&
-                        (!playerState?.myVote || (isDemoMode && showModal)) && (
-                          <div className="modal-section voting-modal">
-                            <h2>🗳️ Vote for the Storyteller's Card</h2>
-                            <p>
-                              Which card do you think belongs to the
-                              storyteller?
-                            </p>
-                            <p className="hint">
-                              (You cannot vote for your own card)
-                            </p>
+                        (!playerState?.mySubmittedCardId ||
+                          (isDemoMode && showModal)) && (
+                          <div className="modal-section player-choice-modal">
+                            <h2>✍️ Choose Your Card</h2>
+                            <p>Pick a card that matches the clue</p>
 
-                            <div className="modal-voting-cards">
-                              <VotingView
-                                revealedCards={roomState.revealedCards}
+                            <div className="modal-hand">
+                              <HandView
+                                hand={playerState?.hand || []}
                                 selectedCardId={selectedCardId}
                                 onSelectCard={setSelectedCardId}
-                                myCardId={
-                                  playerState?.mySubmittedCardId || undefined
-                                }
                               />
                             </div>
 
                             <button
-                              onClick={handleVote}
+                              onClick={handlePlayerSubmit}
                               disabled={!selectedCardId}
                               className="btn-primary btn-large"
                             >
-                              Vote
+                              Submit Card
                             </button>
                           </div>
                         )}
                       {isStoryteller && isDemoMode && showModal && (
                         <div className="modal-section waiting-modal">
-                          <h2>⏳ Waiting for Votes</h2>
+                          <h2>⏳ Waiting for Players</h2>
                           <p>
-                            Other players are voting for which card they think
-                            is yours...
+                            Other players are choosing cards that match your
+                            clue...
                           </p>
                           <p className="clue-reminder">
-                            Your clue was:{" "}
+                            Your clue:{" "}
                             <strong>"{roomState.currentClue}"</strong>
                           </p>
                         </div>
                       )}
                     </>
                   )}
+
+                  {/* REVEAL - After voting, show who drew and who voted */}
+                  {roomState.phase === "REVEAL" && (
+                    <div className="modal-section reveal-modal">
+                      <h2>🎨 Results Revealed!</h2>
+                      <p className="clue-reminder">
+                        The clue: <strong>"{roomState.currentClue}"</strong>
+                      </p>
+                      <p style={{ color: "#95a5a6", fontSize: "0.9rem" }}>
+                        See who drew each card and who voted for them
+                      </p>
+
+                      <div className="modal-voting-cards">
+                        <VotingView
+                          revealedCards={roomState.revealedCards}
+                          selectedCardId={null}
+                          onSelectCard={() => {}}
+                          myCardId={playerState?.mySubmittedCardId || undefined}
+                          disabled={true}
+                          votes={roomState.votes}
+                          players={roomState.players}
+                          cardOwners={roomState.revealedCards.map((card) => ({
+                            cardId: card.cardId,
+                            playerId: (card as any).playerId || "unknown",
+                          }))}
+                          storytellerCardId={
+                            roomState.revealedCards.find(
+                              (card) =>
+                                (card as any).playerId ===
+                                roomState.storytellerId
+                            )?.cardId || null
+                          }
+                          showResults={true}
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* VOTING */}
+                  {roomState.phase === "VOTING" &&
+                    (() => {
+                      // Calculate if all eligible players have voted
+                      const eligiblePlayers = roomState.players.filter(
+                        (p) => p.id !== roomState.storytellerId
+                      );
+                      const allVotesIn =
+                        roomState.votes.length >= eligiblePlayers.length;
+                      const hasVoted = playerState?.myVote !== null;
+                      const canVote =
+                        !isStoryteller && !isSpectator && !hasVoted;
+
+                      return (
+                        <div className="modal-section voting-modal">
+                          {canVote && (
+                            <h2>🗳️ Vote for the Storyteller's Card</h2>
+                          )}
+                          {hasVoted && !allVotesIn && (
+                            <h2>✅ Waiting for Others to Vote</h2>
+                          )}
+                          {allVotesIn && <h2>📊 All Votes Are In!</h2>}
+                          {isStoryteller && !allVotesIn && (
+                            <h2>👁️ Watching the Vote</h2>
+                          )}
+                          {isStoryteller && allVotesIn && (
+                            <h2>📊 All Votes Are In!</h2>
+                          )}
+                          {isSpectator && <h2>👁️ Spectating</h2>}
+
+                          <p className="clue-reminder">
+                            The clue: <strong>"{roomState.currentClue}"</strong>
+                          </p>
+
+                          {canVote && (
+                            <p className="hint">
+                              Click a card to vote (you cannot vote for your
+                              own)
+                            </p>
+                          )}
+
+                          <div className="modal-voting-cards">
+                            <VotingView
+                              revealedCards={roomState.revealedCards}
+                              selectedCardId={selectedCardId}
+                              onSelectCard={setSelectedCardId}
+                              myCardId={
+                                playerState?.mySubmittedCardId || undefined
+                              }
+                              disabled={!canVote}
+                              showResults={false}
+                            />
+                          </div>
+
+                          {canVote && (
+                            <button
+                              onClick={handleVote}
+                              disabled={!selectedCardId}
+                              className="btn-primary btn-large"
+                            >
+                              Submit Vote
+                            </button>
+                          )}
+
+                          {hasVoted && !allVotesIn && (
+                            <p style={{ color: "#95a5a6", marginTop: "1rem" }}>
+                              Waiting for other players to vote...
+                            </p>
+                          )}
+                        </div>
+                      );
+                    })()}
 
                   {/* SCORING */}
                   {roomState.phase === "SCORING" && (

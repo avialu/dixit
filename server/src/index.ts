@@ -5,7 +5,7 @@ const PORT = Number(process.env.PORT || 3000);
 
 const { httpServer } = createApp(PORT);
 
-httpServer.listen(PORT, () => {
+httpServer.listen(PORT, '0.0.0.0', () => {
   const lanIp = getLanIpAddress();
   
   console.log('\n=================================');
@@ -16,6 +16,7 @@ httpServer.listen(PORT, () => {
   if (lanIp) {
     console.log(`LAN:   http://${lanIp}:${PORT}`);
     console.log('\n📱 Players can join from their phones using the LAN URL');
+    console.log('   (Server listening on all network interfaces)');
   } else {
     console.log('\n⚠️  Could not detect LAN IP address');
     console.log('   Find your IP manually and share: http://YOUR_IP:' + PORT);

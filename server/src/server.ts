@@ -43,6 +43,11 @@ export function createApp(port: number = 3000) {
   // Map socket.id to clientId
   const socketToClient = new Map<string, string>();
 
+  // API endpoint to get server info
+  app.get('/api/server-info', (req, res) => {
+    res.json({ serverUrl });
+  });
+
   // Serve static files (built client)
   const publicPath = path.join(__dirname, '..', 'public');
   app.use(express.static(publicPath));
@@ -130,6 +135,11 @@ npm start</pre>
   // Socket.IO event handlers
   io.on('connection', (socket) => {
     console.log('Client connected:', socket.id);
+    
+    // Send initial room state with server URL immediately on connection
+    const initialRoomState = gameManager.getRoomState();
+    initialRoomState.serverUrl = serverUrl;
+    socket.emit('roomState', initialRoomState);
 
     socket.on('join', (data) => {
       try {

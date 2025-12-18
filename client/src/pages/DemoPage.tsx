@@ -4,11 +4,14 @@ import { UnifiedGamePage } from "./UnifiedGamePage";
 
 // Mock data generator for different game phases
 const generateMockRoomState = (
-  phase: string, 
-  deckMode: string, 
-  deckLocked: boolean, 
-  winTarget: number | null
+  phase: string,
+  customPlayerScores?: { [playerId: string]: number },
+  customScoreDeltas?: { playerId: string; delta: number }[]
 ): RoomState | null => {
+  // Get the current server URL from window location
+  const port = window.location.port || '3000';
+  const currentUrl = `${window.location.protocol}//${window.location.hostname}:${port}`;
+  
   // Special case: NOT_JOINED - return minimal state for join screen with QR code
   if (phase === "NOT_JOINED") {
     return {
@@ -25,7 +28,7 @@ const generateMockRoomState = (
       votes: [],
       lastScoreDeltas: [],
       winTarget: 30,
-      serverUrl: "http://localhost:3000",
+      serverUrl: currentUrl,
     };
   }
 
@@ -33,7 +36,7 @@ const generateMockRoomState = (
     {
       id: "1",
       name: "Alice",
-      score: 22,
+      score: customPlayerScores?.["1"] ?? 22,
       isAdmin: true,
       isConnected: true,
       handSize: 6,
@@ -41,7 +44,7 @@ const generateMockRoomState = (
     {
       id: "2",
       name: "Bob",
-      score: 18,
+      score: customPlayerScores?.["2"] ?? 18,
       isAdmin: false,
       isConnected: true,
       handSize: 6,
@@ -49,7 +52,7 @@ const generateMockRoomState = (
     {
       id: "3",
       name: "Charlie",
-      score: 22,
+      score: customPlayerScores?.["3"] ?? 22,
       isAdmin: false,
       isConnected: true,
       handSize: 6,
@@ -57,7 +60,7 @@ const generateMockRoomState = (
     {
       id: "4",
       name: "Diana",
-      score: 16,
+      score: customPlayerScores?.["4"] ?? 16,
       isAdmin: false,
       isConnected: true,
       handSize: 6,
@@ -68,8 +71,8 @@ const generateMockRoomState = (
     phase: phase as any,
     players: basePlayers,
     deckSize: 100,
-    deckMode: deckMode,
-    deckLocked: deckLocked,
+    deckMode: "MIXED",
+    deckLocked: false,
     deckImages: [],
     currentRound: 5,
     storytellerId: "1",
@@ -77,8 +80,8 @@ const generateMockRoomState = (
     revealedCards: [],
     votes: [],
     lastScoreDeltas: [],
-    winTarget: winTarget,
-    serverUrl: "http://localhost:3000",
+    winTarget: 30,
+    serverUrl: currentUrl,
   };
 
   // Phase-specific modifications
@@ -90,7 +93,16 @@ const generateMockRoomState = (
         players: basePlayers.slice(0, 2),
         currentRound: 0,
         currentClue: "",
-        deckSize: 45, // Show some deck progress
+        deckSize: 0,
+      };
+
+    case "DECK_BUILDING":
+      return {
+        ...baseState,
+        phase: "DECK_BUILDING",
+        currentRound: 0,
+        currentClue: "",
+        deckSize: 45,
       };
 
     case "STORYTELLER_CHOICE":
@@ -106,34 +118,6 @@ const generateMockRoomState = (
         phase: "PLAYERS_CHOICE",
       };
 
-    case "REVEAL":
-      return {
-        ...baseState,
-        phase: "REVEAL",
-        revealedCards: [
-          {
-            cardId: "c1",
-            imageData: "/default-images/img-010.jpg",
-            position: 0,
-          },
-          {
-            cardId: "c2",
-            imageData: "/default-images/img-011.jpg",
-            position: 1,
-          },
-          {
-            cardId: "c3",
-            imageData: "/default-images/img-012.jpg",
-            position: 2,
-          },
-          {
-            cardId: "c4",
-            imageData: "/default-images/img-013.jpg",
-            position: 3,
-          },
-        ],
-      };
-
     case "VOTING":
       return {
         ...baseState,
@@ -141,64 +125,115 @@ const generateMockRoomState = (
         revealedCards: [
           {
             cardId: "c1",
-            imageData: "/default-images/img-010.jpg",
+            imageData: "https://picsum.photos/seed/card1/400/600",
             position: 0,
-          },
+            playerId: "1", // Alice (storyteller)
+          } as any,
           {
             cardId: "c2",
-            imageData: "/default-images/img-011.jpg",
+            imageData: "https://picsum.photos/seed/card2/400/600",
             position: 1,
-          },
+            playerId: "2", // Bob
+          } as any,
           {
             cardId: "c3",
-            imageData: "/default-images/img-012.jpg",
+            imageData: "https://picsum.photos/seed/card3/400/600",
             position: 2,
-          },
+            playerId: "3", // Charlie
+          } as any,
           {
             cardId: "c4",
-            imageData: "/default-images/img-013.jpg",
+            imageData: "https://picsum.photos/seed/card4/400/600",
             position: 3,
-          },
+            playerId: "4", // Diana
+          } as any,
+        ],
+        votes: [], // Start with no votes, will be filled as demo progresses
+      };
+
+    case "REVEAL":
+      return {
+        ...baseState,
+        phase: "REVEAL",
+        revealedCards: [
+          {
+            cardId: "c1",
+            imageData: "https://picsum.photos/seed/card1/400/600",
+            position: 0,
+            playerId: "1", // Alice (storyteller)
+          } as any,
+          {
+            cardId: "c2",
+            imageData: "https://picsum.photos/seed/card2/400/600",
+            position: 1,
+            playerId: "2", // Bob
+          } as any,
+          {
+            cardId: "c3",
+            imageData: "https://picsum.photos/seed/card3/400/600",
+            position: 2,
+            playerId: "3", // Charlie
+          } as any,
+          {
+            cardId: "c4",
+            imageData: "https://picsum.photos/seed/card4/400/600",
+            position: 3,
+            playerId: "4", // Diana
+          } as any,
+        ],
+        votes: [
+          { voterId: "2", cardId: "c4" }, // Bob voted for Diana's card
+          { voterId: "3", cardId: "c4" }, // Charlie voted for Diana's card
+          { voterId: "4", cardId: "c2" }, // Diana voted for Bob's card
+          // This shows scoring: Alice (storyteller) +0, Bob +1, Charlie +0, Diana +2
         ],
       };
 
     case "SCORING":
+      const defaultDeltas = [
+        { playerId: "1", delta: 0 },
+        { playerId: "2", delta: 3 },
+        { playerId: "3", delta: 0 },
+        { playerId: "4", delta: 5 },
+      ];
+      const deltas = customScoreDeltas || defaultDeltas;
+      
       return {
         ...baseState,
         phase: "SCORING",
+        players: basePlayers, // Use basePlayers which already has custom scores
         revealedCards: [
           {
             cardId: "c1",
-            imageData: "/default-images/img-010.jpg",
+            imageData: "https://picsum.photos/seed/card1/400/600",
             position: 0,
-          },
+            playerId: "1", // Alice (storyteller)
+          } as any,
           {
             cardId: "c2",
-            imageData: "/default-images/img-011.jpg",
+            imageData: "https://picsum.photos/seed/card2/400/600",
             position: 1,
-          },
+            playerId: "2", // Bob
+          } as any,
           {
             cardId: "c3",
-            imageData: "/default-images/img-012.jpg",
+            imageData: "https://picsum.photos/seed/card3/400/600",
             position: 2,
-          },
+            playerId: "3", // Charlie
+          } as any,
           {
             cardId: "c4",
-            imageData: "/default-images/img-013.jpg",
+            imageData: "https://picsum.photos/seed/card4/400/600",
             position: 3,
-          },
+            playerId: "4", // Diana
+          } as any,
         ],
         votes: [
-          { voterId: "2", cardId: "c1" },
-          { voterId: "3", cardId: "c2" },
-          { voterId: "4", cardId: "c1" },
+          { voterId: "2", cardId: "c4" }, // Bob voted for Diana's card
+          { voterId: "3", cardId: "c4" }, // Charlie voted for Diana's card
+          { voterId: "4", cardId: "c2" }, // Diana voted for Bob's card
         ],
-        lastScoreDeltas: [
-          { playerId: "1", delta: 3 },
-          { playerId: "2", delta: 1 },
-          { playerId: "3", delta: 1 },
-          { playerId: "4", delta: 1 },
-        ],
+        lastScoreDeltas: deltas,
       };
 
     case "GAME_END":
@@ -247,41 +282,36 @@ const generateMockRoomState = (
   }
 };
 
-const generateMockPlayerState = (
-  phase: string, 
-  playerId: string, 
-  demoSubmittedCardId: string | null,
-  demoVotedCardId: string | null
-): PlayerState => {
+const generateMockPlayerState = (phase: string, playerId: string): PlayerState => {
   const baseHand = [
     {
       id: "h1",
-      imageData: "/default-images/img-001.jpg",
+      imageData: "https://picsum.photos/seed/dixit1/400/600",
       uploadedBy: playerId,
     },
     {
       id: "h2",
-      imageData: "/default-images/img-002.jpg",
+      imageData: "https://picsum.photos/seed/dixit2/400/600",
       uploadedBy: playerId,
     },
     {
       id: "h3",
-      imageData: "/default-images/img-003.jpg",
+      imageData: "https://picsum.photos/seed/dixit3/400/600",
       uploadedBy: playerId,
     },
     {
       id: "h4",
-      imageData: "/default-images/img-004.jpg",
+      imageData: "https://picsum.photos/seed/dixit4/400/600",
       uploadedBy: playerId,
     },
     {
       id: "h5",
-      imageData: "/default-images/img-005.jpg",
+      imageData: "https://picsum.photos/seed/dixit5/400/600",
       uploadedBy: playerId,
     },
     {
       id: "h6",
-      imageData: "/default-images/img-006.jpg",
+      imageData: "https://picsum.photos/seed/dixit6/400/600",
       uploadedBy: playerId,
     },
   ];
@@ -290,35 +320,25 @@ const generateMockPlayerState = (
   // Player 2 (Bob, regular player) behavior
   const isStoryteller = playerId === "1";
   
-  // Determine mySubmittedCardId
-  let mySubmittedCardId = demoSubmittedCardId;
-  if (!mySubmittedCardId) {
-    // Fallback mocks only for phases that come AFTER both storyteller and player submissions
-    if (phase === "VOTING" || phase === "SCORING") {
-      mySubmittedCardId = isStoryteller ? "h1" : "h2";
-    } else if (phase === "PLAYERS_CHOICE" && isStoryteller) {
-      // In PLAYERS_CHOICE, storyteller has already submitted (from previous phase)
-      mySubmittedCardId = "h1";
-    }
-    // For STORYTELLER_CHOICE and PLAYERS_CHOICE (non-storyteller), start with no submission
-  }
-  
   return {
     playerId: playerId,
     hand: baseHand,
-    mySubmittedCardId: mySubmittedCardId,
-    // Use demo voted card ID if available, otherwise fallback to mock
-    myVote: demoVotedCardId || (phase === "VOTING" && !isStoryteller ? "c1" : null),
+    // Only non-storytellers submit cards during PLAYERS_CHOICE
+    mySubmittedCardId:
+      (phase === "PLAYERS_CHOICE" || phase === "VOTING") && !isStoryteller ? "h2" : null,
+    // Only non-storytellers vote during VOTING
+    myVote: phase === "VOTING" && !isStoryteller ? "c1" : null,
   };
 };
 
 const allPhases = [
   "NOT_JOINED", // Special phase for demo to show join screen
-  "WAITING_FOR_PLAYERS", // Merged: waiting + deck building
+  "WAITING_FOR_PLAYERS",
+  "DECK_BUILDING",
   "STORYTELLER_CHOICE",
   "PLAYERS_CHOICE",
-  "REVEAL",
-  "VOTING",
+  "VOTING", // Vote on cards (hidden who drew)
+  "REVEAL", // Show who drew and who voted
   "SCORING",
   "GAME_END",
 ];
@@ -327,24 +347,66 @@ export function DemoPage() {
   const [currentPhaseIndex, setCurrentPhaseIndex] = useState(0);
   const [viewMode, setViewMode] = useState<"player" | "admin" | "spectator">("player");
   const [forcePlayerView, setForcePlayerView] = useState(false); // Toggle storyteller/player in demo
-  
-  // Demo state that persists across view changes
-  const [demoDeckMode, setDemoDeckMode] = useState<string>("MIXED");
-  const [demoDeckLocked, setDemoDeckLocked] = useState(false);
-  const [demoWinTarget, setDemoWinTarget] = useState<number | null>(30);
-  
-  // Demo submission tracking
-  const [demoSubmittedCardId, setDemoSubmittedCardId] = useState<string | null>(null);
-  const [demoClue, setDemoClue] = useState<string>("");
+  const [demoVotes, setDemoVotes] = useState<{ voterId: string; cardId: string }[]>([]);
   const [demoVotedCardId, setDemoVotedCardId] = useState<string | null>(null);
+  const [detectedServerUrl, setDetectedServerUrl] = useState<string | null>(null);
+  
+  // Animation testing states
+  const [customPlayerScores, setCustomPlayerScores] = useState<{ [playerId: string]: number } | undefined>(undefined);
+  const [customScoreDeltas, setCustomScoreDeltas] = useState<{ playerId: string; delta: number }[] | undefined>(undefined);
+  const [animationRound, setAnimationRound] = useState(0);
+
+  // Fetch server URL on mount
+  useEffect(() => {
+    fetch('/api/server-info')
+      .then(res => res.json())
+      .then(data => setDetectedServerUrl(data.serverUrl))
+      .catch(err => {
+        console.warn('Could not fetch server URL:', err);
+        // Fallback to window location
+        const port = window.location.port || '3000';
+        setDetectedServerUrl(`${window.location.protocol}//${window.location.hostname}:${port}`);
+      });
+  }, []);
 
   const currentPhase = allPhases[currentPhaseIndex];
-  const mockRoomState = generateMockRoomState(currentPhase, demoDeckMode, demoDeckLocked, demoWinTarget);
+  const mockRoomState = generateMockRoomState(currentPhase, customPlayerScores, customScoreDeltas);
   
-  // Update mockRoomState with demo clue if submitted
-  if (mockRoomState && demoClue) {
-    mockRoomState.currentClue = demoClue;
+  // Update serverUrl with detected one
+  if (mockRoomState && detectedServerUrl) {
+    mockRoomState.serverUrl = detectedServerUrl;
   }
+  
+  // Override current round for animation testing in SCORING phase
+  if (mockRoomState && currentPhase === "SCORING" && (customPlayerScores || customScoreDeltas)) {
+    mockRoomState.currentRound = 5 + animationRound;
+  }
+  
+  // Update mockRoomState with demo votes if in VOTING phase
+  // For REVEAL, use demo votes if they exist, otherwise keep the default votes from the mock
+  if (mockRoomState && currentPhase === "VOTING") {
+    mockRoomState.votes = demoVotes;
+  } else if (mockRoomState && currentPhase === "REVEAL" && demoVotes.length > 0) {
+    mockRoomState.votes = demoVotes;
+  }
+  
+  // Reset votes when leaving REVEAL phase or going backwards to before VOTING
+  useEffect(() => {
+    const isBeforeVoting = ["NOT_JOINED", "WAITING_FOR_PLAYERS", "DECK_BUILDING", "STORYTELLER_CHOICE", "PLAYERS_CHOICE"].includes(currentPhase);
+    const isAfterReveal = ["SCORING", "GAME_END"].includes(currentPhase);
+    
+    if (isBeforeVoting || isAfterReveal) {
+      setDemoVotes([]);
+      setDemoVotedCardId(null);
+    }
+    
+    // Reset animation test data when leaving SCORING phase
+    if (currentPhase !== "SCORING") {
+      setCustomPlayerScores(undefined);
+      setCustomScoreDeltas(undefined);
+      setAnimationRound(0);
+    }
+  }, [currentPhaseIndex, currentPhase]);
   
   // Different player IDs for different modes
   // Admin = Alice (player 1, storyteller), Player = Bob (player 2)
@@ -362,55 +424,54 @@ export function DemoPage() {
         : "2";
   
   // Generate appropriate player state based on view mode
-  const mockPlayerState = generateMockPlayerState(currentPhase, currentPlayerId, demoSubmittedCardId, demoVotedCardId);
+  const mockPlayerState = generateMockPlayerState(currentPhase, currentPlayerId);
   
-  // Reset all demo submissions when phase changes (for easy testing)
-  useEffect(() => {
-    setDemoSubmittedCardId(null);
-    setDemoClue("");
-    setDemoVotedCardId(null);
-  }, [currentPhaseIndex]);
+  // Update player state with demo vote
+  if (mockPlayerState && demoVotedCardId) {
+    mockPlayerState.myVote = demoVotedCardId;
+  }
 
-  // Mock action handlers (update demo state to simulate real behavior)
+  // Mock action handlers
   const mockActions = {
-    storytellerSubmit: (cardId: string, clue: string) => {
-      console.log("Demo: storyteller submit", cardId, clue);
-      setDemoSubmittedCardId(cardId);
-      setDemoClue(clue);
-      // Update room state with the clue
-      if (mockRoomState) {
-        mockRoomState.currentClue = clue;
-      }
-    },
-    playerSubmitCard: (cardId: string) => {
-      console.log("Demo: player submit", cardId);
-      setDemoSubmittedCardId(cardId);
-    },
+    storytellerSubmit: () => console.log("Demo: storyteller submit"),
+    playerSubmitCard: () => console.log("Demo: player submit"),
     playerVote: (cardId: string) => {
       console.log("Demo: player vote", cardId);
       setDemoVotedCardId(cardId);
+      setDemoVotes(prev => [...prev, { voterId: currentPlayerId, cardId }]);
     },
     advanceRound: () => console.log("Demo: advance round"),
     resetGame: () => console.log("Demo: reset game"),
     newDeck: () => console.log("Demo: new deck"),
-    setDeckMode: (mode: string) => {
-      console.log("Demo: set deck mode to", mode);
-      setDemoDeckMode(mode);
-    },
-    lockDeck: () => {
-      console.log("Demo: lock deck");
-      setDemoDeckLocked(true);
-    },
-    unlockDeck: () => {
-      console.log("Demo: unlock deck");
-      setDemoDeckLocked(false);
-    },
-    setWinTarget: (target: number | null) => {
-      console.log("Demo: set win target to", target);
-      setDemoWinTarget(target);
-    },
-    uploadImage: (imageData: string) => console.log("Demo: upload image", imageData.slice(0, 50)),
-    deleteImage: (imageId: string) => console.log("Demo: delete image", imageId),
+  };
+
+  const testAnimation = () => {
+    // Generate random points for each player (0-10)
+    const randomDeltas = [
+      { playerId: "1", delta: Math.floor(Math.random() * 11) },
+      { playerId: "2", delta: Math.floor(Math.random() * 11) },
+      { playerId: "3", delta: Math.floor(Math.random() * 11) },
+      { playerId: "4", delta: Math.floor(Math.random() * 11) },
+    ];
+    
+    // Get current scores or use defaults
+    const currentScores = customPlayerScores || { "1": 22, "2": 18, "3": 22, "4": 16 };
+    
+    // Calculate new scores
+    const newScores = {
+      "1": Math.min(30, currentScores["1"] + randomDeltas[0].delta),
+      "2": Math.min(30, currentScores["2"] + randomDeltas[1].delta),
+      "3": Math.min(30, currentScores["3"] + randomDeltas[2].delta),
+      "4": Math.min(30, currentScores["4"] + randomDeltas[3].delta),
+    };
+    
+    console.log("🎲 Test Animation - Round", animationRound + 1);
+    console.log("Deltas:", randomDeltas);
+    console.log("New scores:", newScores);
+    
+    setCustomScoreDeltas(randomDeltas);
+    setCustomPlayerScores(newScores);
+    setAnimationRound(prev => prev + 1); // Increment to trigger new animation
   };
 
   const nextPhase = () => {
@@ -507,6 +568,18 @@ export function DemoPage() {
             </button>
           </>
         )}
+        {currentPhase === "SCORING" && (
+          <>
+            <div className="nav-divider"></div>
+            <button
+              onClick={testAnimation}
+              className="nav-btn test-animation-btn"
+              title="Test scoring animation with random points"
+            >
+              🎲 Test Animation
+            </button>
+          </>
+        )}
       </div>
 
       {/* Game Screen */}
@@ -517,23 +590,23 @@ export function DemoPage() {
           playerId={currentPlayerId}
           clientId="demo-client-123"
           socket={null}
-          onJoin={() => console.log("Demo: join")}
-          onUploadImage={mockActions.uploadImage}
-          onDeleteImage={mockActions.deleteImage}
-          onSetDeckMode={mockActions.setDeckMode}
-          onLockDeck={mockActions.lockDeck}
-          onUnlockDeck={mockActions.unlockDeck}
-          onStartGame={() => console.log("Demo: start game")}
-          onChangeName={() => console.log("Demo: change name")}
-          onKickPlayer={() => console.log("Demo: kick player")}
-          onPromotePlayer={() => console.log("Demo: promote player")}
+          onJoin={mockActions.storytellerSubmit}
+          onUploadImage={mockActions.storytellerSubmit}
+          onDeleteImage={mockActions.storytellerSubmit}
+          onSetDeckMode={mockActions.storytellerSubmit}
+          onLockDeck={mockActions.storytellerSubmit}
+          onUnlockDeck={mockActions.storytellerSubmit}
+          onStartGame={mockActions.storytellerSubmit}
+          onChangeName={mockActions.storytellerSubmit}
+          onKickPlayer={mockActions.storytellerSubmit}
+          onPromotePlayer={mockActions.storytellerSubmit}
           onStorytellerSubmit={mockActions.storytellerSubmit}
           onPlayerSubmitCard={mockActions.playerSubmitCard}
           onPlayerVote={mockActions.playerVote}
           onAdvanceRound={mockActions.advanceRound}
           onResetGame={mockActions.resetGame}
           onNewDeck={mockActions.newDeck}
-          onSetWinTarget={mockActions.setWinTarget}
+          onSetWinTarget={mockActions.storytellerSubmit}
         />
       </div>
     </div>
