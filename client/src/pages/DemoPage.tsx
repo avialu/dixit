@@ -3,10 +3,30 @@ import { RoomState, PlayerState } from "../hooks/useGameState";
 import { UnifiedGamePage } from "./UnifiedGamePage";
 
 // Mock data generator for different game phases
-const generateMockRoomState = (phase: string): RoomState | null => {
-  // Special case: NOT_JOINED - return null to show join screen
+const generateMockRoomState = (
+  phase: string, 
+  deckMode: string, 
+  deckLocked: boolean, 
+  winTarget: number | null
+): RoomState | null => {
+  // Special case: NOT_JOINED - return minimal state for join screen with QR code
   if (phase === "NOT_JOINED") {
-    return null;
+    return {
+      phase: "WAITING_FOR_PLAYERS" as any,
+      players: [],
+      deckSize: 0,
+      deckMode: "MIXED",
+      deckLocked: false,
+      deckImages: [],
+      currentRound: 0,
+      storytellerId: "",
+      currentClue: "",
+      revealedCards: [],
+      votes: [],
+      lastScoreDeltas: [],
+      winTarget: 30,
+      serverUrl: "http://localhost:3000",
+    };
   }
 
   const basePlayers = [
@@ -48,8 +68,8 @@ const generateMockRoomState = (phase: string): RoomState | null => {
     phase: phase as any,
     players: basePlayers,
     deckSize: 100,
-    deckMode: "MIXED",
-    deckLocked: false,
+    deckMode: deckMode,
+    deckLocked: deckLocked,
     deckImages: [],
     currentRound: 5,
     storytellerId: "1",
@@ -57,7 +77,7 @@ const generateMockRoomState = (phase: string): RoomState | null => {
     revealedCards: [],
     votes: [],
     lastScoreDeltas: [],
-    winTarget: 30,
+    winTarget: winTarget,
     serverUrl: "http://localhost:3000",
   };
 
@@ -70,16 +90,7 @@ const generateMockRoomState = (phase: string): RoomState | null => {
         players: basePlayers.slice(0, 2),
         currentRound: 0,
         currentClue: "",
-        deckSize: 0,
-      };
-
-    case "DECK_BUILDING":
-      return {
-        ...baseState,
-        phase: "DECK_BUILDING",
-        currentRound: 0,
-        currentClue: "",
-        deckSize: 45,
+        deckSize: 45, // Show some deck progress
       };
 
     case "STORYTELLER_CHOICE":
@@ -236,7 +247,12 @@ const generateMockRoomState = (phase: string): RoomState | null => {
   }
 };
 
-const generateMockPlayerState = (phase: string, playerId: string): PlayerState => {
+const generateMockPlayerState = (
+  phase: string, 
+  playerId: string, 
+  demoSubmittedCardId: string | null,
+  demoVotedCardId: string | null
+): PlayerState => {
   const baseHand = [
     {
       id: "h1",
@@ -274,21 +290,31 @@ const generateMockPlayerState = (phase: string, playerId: string): PlayerState =
   // Player 2 (Bob, regular player) behavior
   const isStoryteller = playerId === "1";
   
+  // Determine mySubmittedCardId
+  let mySubmittedCardId = demoSubmittedCardId;
+  if (!mySubmittedCardId) {
+    // Fallback mocks only for phases that come AFTER both storyteller and player submissions
+    if (phase === "VOTING" || phase === "SCORING") {
+      mySubmittedCardId = isStoryteller ? "h1" : "h2";
+    } else if (phase === "PLAYERS_CHOICE" && isStoryteller) {
+      // In PLAYERS_CHOICE, storyteller has already submitted (from previous phase)
+      mySubmittedCardId = "h1";
+    }
+    // For STORYTELLER_CHOICE and PLAYERS_CHOICE (non-storyteller), start with no submission
+  }
+  
   return {
     playerId: playerId,
     hand: baseHand,
-    // Only non-storytellers submit cards during PLAYERS_CHOICE
-    mySubmittedCardId:
-      (phase === "PLAYERS_CHOICE" || phase === "VOTING") && !isStoryteller ? "h2" : null,
-    // Only non-storytellers vote during VOTING
-    myVote: phase === "VOTING" && !isStoryteller ? "c1" : null,
+    mySubmittedCardId: mySubmittedCardId,
+    // Use demo voted card ID if available, otherwise fallback to mock
+    myVote: demoVotedCardId || (phase === "VOTING" && !isStoryteller ? "c1" : null),
   };
 };
 
 const allPhases = [
   "NOT_JOINED", // Special phase for demo to show join screen
-  "WAITING_FOR_PLAYERS",
-  "DECK_BUILDING",
+  "WAITING_FOR_PLAYERS", // Merged: waiting + deck building
   "STORYTELLER_CHOICE",
   "PLAYERS_CHOICE",
   "REVEAL",
@@ -300,25 +326,91 @@ const allPhases = [
 export function DemoPage() {
   const [currentPhaseIndex, setCurrentPhaseIndex] = useState(0);
   const [viewMode, setViewMode] = useState<"player" | "admin" | "spectator">("player");
+  const [forcePlayerView, setForcePlayerView] = useState(false); // Toggle storyteller/player in demo
+  
+  // Demo state that persists across view changes
+  const [demoDeckMode, setDemoDeckMode] = useState<string>("MIXED");
+  const [demoDeckLocked, setDemoDeckLocked] = useState(false);
+  const [demoWinTarget, setDemoWinTarget] = useState<number | null>(30);
+  
+  // Demo submission tracking
+  const [demoSubmittedCardId, setDemoSubmittedCardId] = useState<string | null>(null);
+  const [demoClue, setDemoClue] = useState<string>("");
+  const [demoVotedCardId, setDemoVotedCardId] = useState<string | null>(null);
 
   const currentPhase = allPhases[currentPhaseIndex];
-  const mockRoomState = generateMockRoomState(currentPhase);
+  const mockRoomState = generateMockRoomState(currentPhase, demoDeckMode, demoDeckLocked, demoWinTarget);
+  
+  // Update mockRoomState with demo clue if submitted
+  if (mockRoomState && demoClue) {
+    mockRoomState.currentClue = demoClue;
+  }
   
   // Different player IDs for different modes
   // Admin = Alice (player 1, storyteller), Player = Bob (player 2)
-  const currentPlayerId = viewMode === "admin" ? "1" : viewMode === "player" ? "2" : "spectator";
+  // In phases where we can toggle, use forcePlayerView to override
+  const shouldShowAsPlayer = 
+    forcePlayerView && 
+    (currentPhase === "STORYTELLER_CHOICE" || currentPhase === "PLAYERS_CHOICE");
+  
+  const currentPlayerId = viewMode === "spectator" 
+    ? "spectator" 
+    : shouldShowAsPlayer 
+      ? "2" // Force player view
+      : viewMode === "admin" 
+        ? "1" 
+        : "2";
   
   // Generate appropriate player state based on view mode
-  const mockPlayerState = generateMockPlayerState(currentPhase, currentPlayerId);
+  const mockPlayerState = generateMockPlayerState(currentPhase, currentPlayerId, demoSubmittedCardId, demoVotedCardId);
+  
+  // Reset all demo submissions when phase changes (for easy testing)
+  useEffect(() => {
+    setDemoSubmittedCardId(null);
+    setDemoClue("");
+    setDemoVotedCardId(null);
+  }, [currentPhaseIndex]);
 
-  // Mock action handlers (do nothing in demo)
+  // Mock action handlers (update demo state to simulate real behavior)
   const mockActions = {
-    storytellerSubmit: () => console.log("Demo: storyteller submit"),
-    playerSubmitCard: () => console.log("Demo: player submit"),
-    playerVote: () => console.log("Demo: player vote"),
+    storytellerSubmit: (cardId: string, clue: string) => {
+      console.log("Demo: storyteller submit", cardId, clue);
+      setDemoSubmittedCardId(cardId);
+      setDemoClue(clue);
+      // Update room state with the clue
+      if (mockRoomState) {
+        mockRoomState.currentClue = clue;
+      }
+    },
+    playerSubmitCard: (cardId: string) => {
+      console.log("Demo: player submit", cardId);
+      setDemoSubmittedCardId(cardId);
+    },
+    playerVote: (cardId: string) => {
+      console.log("Demo: player vote", cardId);
+      setDemoVotedCardId(cardId);
+    },
     advanceRound: () => console.log("Demo: advance round"),
     resetGame: () => console.log("Demo: reset game"),
     newDeck: () => console.log("Demo: new deck"),
+    setDeckMode: (mode: string) => {
+      console.log("Demo: set deck mode to", mode);
+      setDemoDeckMode(mode);
+    },
+    lockDeck: () => {
+      console.log("Demo: lock deck");
+      setDemoDeckLocked(true);
+    },
+    unlockDeck: () => {
+      console.log("Demo: unlock deck");
+      setDemoDeckLocked(false);
+    },
+    setWinTarget: (target: number | null) => {
+      console.log("Demo: set win target to", target);
+      setDemoWinTarget(target);
+    },
+    uploadImage: (imageData: string) => console.log("Demo: upload image", imageData.slice(0, 50)),
+    deleteImage: (imageId: string) => console.log("Demo: delete image", imageId),
   };
 
   const nextPhase = () => {
@@ -402,6 +494,19 @@ export function DemoPage() {
         >
           📺
         </button>
+        {(currentPhase === "STORYTELLER_CHOICE" || currentPhase === "PLAYERS_CHOICE") && 
+         viewMode === "admin" && (
+          <>
+            <div className="nav-divider"></div>
+            <button
+              onClick={() => setForcePlayerView(!forcePlayerView)}
+              className={`nav-btn ${forcePlayerView ? "active" : ""}`}
+              title="Toggle between Storyteller/Player view"
+            >
+              {forcePlayerView ? "👤 Player" : "🎭 Storyteller"}
+            </button>
+          </>
+        )}
       </div>
 
       {/* Game Screen */}
@@ -412,23 +517,23 @@ export function DemoPage() {
           playerId={currentPlayerId}
           clientId="demo-client-123"
           socket={null}
-          onJoin={mockActions.storytellerSubmit}
-          onUploadImage={mockActions.storytellerSubmit}
-          onDeleteImage={mockActions.storytellerSubmit}
-          onSetDeckMode={mockActions.storytellerSubmit}
-          onLockDeck={mockActions.storytellerSubmit}
-          onUnlockDeck={mockActions.storytellerSubmit}
-          onStartGame={mockActions.storytellerSubmit}
-          onChangeName={mockActions.storytellerSubmit}
-          onKickPlayer={mockActions.storytellerSubmit}
-          onPromotePlayer={mockActions.storytellerSubmit}
+          onJoin={() => console.log("Demo: join")}
+          onUploadImage={mockActions.uploadImage}
+          onDeleteImage={mockActions.deleteImage}
+          onSetDeckMode={mockActions.setDeckMode}
+          onLockDeck={mockActions.lockDeck}
+          onUnlockDeck={mockActions.unlockDeck}
+          onStartGame={() => console.log("Demo: start game")}
+          onChangeName={() => console.log("Demo: change name")}
+          onKickPlayer={() => console.log("Demo: kick player")}
+          onPromotePlayer={() => console.log("Demo: promote player")}
           onStorytellerSubmit={mockActions.storytellerSubmit}
           onPlayerSubmitCard={mockActions.playerSubmitCard}
           onPlayerVote={mockActions.playerVote}
           onAdvanceRound={mockActions.advanceRound}
           onResetGame={mockActions.resetGame}
           onNewDeck={mockActions.newDeck}
-          onSetWinTarget={mockActions.storytellerSubmit}
+          onSetWinTarget={mockActions.setWinTarget}
         />
       </div>
     </div>

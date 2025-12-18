@@ -3,6 +3,8 @@ import { RoomState, PlayerState } from "../hooks/useGameState";
 import { GameBoard } from "../components/GameBoard";
 import { HandView } from "../components/HandView";
 import { VotingView } from "../components/VotingView";
+import { QRCode } from "../components/QRCode";
+import { DeckUploader } from "../components/DeckUploader";
 
 interface UnifiedGamePageProps {
   roomState: RoomState | null;
@@ -36,8 +38,8 @@ export function UnifiedGamePage({
   clientId,
   socket,
   onJoin,
-  onUploadImage: _onUploadImage,
-  onDeleteImage: _onDeleteImage,
+  onUploadImage,
+  onDeleteImage,
   onSetDeckMode,
   onLockDeck,
   onUnlockDeck,
@@ -124,6 +126,9 @@ export function UnifiedGamePage({
 
   // JOIN SCREEN (before joining)
   if (!isJoined) {
+    // Get server URL from current location or roomState
+    const serverUrl = roomState?.serverUrl || window.location.origin;
+    
     return (
       <div className="unified-game-page join-state">
         <div className="join-container">
@@ -159,6 +164,11 @@ export function UnifiedGamePage({
               >
                 👀 Join as Spectator
               </button>
+            </div>
+
+            <div className="qr-code-section">
+              <p className="qr-hint">Scan to join on mobile</p>
+              <QRCode url={serverUrl} size={180} />
             </div>
           </div>
         </div>
@@ -202,6 +212,21 @@ export function UnifiedGamePage({
               onClick={openSettings}
             >
               ⚙️ Settings
+            </button>
+          )}
+
+          {/* Start Game Button - Admin Only, Lobby Phase */}
+          {isAdmin && !isInGame && (
+            <button
+              className="floating-action-button start-button"
+              onClick={onStartGame}
+              disabled={
+                roomState.players.length < 3 ||
+                (roomState.deckMode === "PLAYERS_ONLY" &&
+                  roomState.deckSize < 100)
+              }
+            >
+              🚀 Start Game
             </button>
           )}
 
@@ -326,17 +351,6 @@ export function UnifiedGamePage({
                       </div>
 
                       <div className="action-buttons">
-                        <button
-                          onClick={onStartGame}
-                          disabled={
-                            roomState.players.length < 3 ||
-                            (roomState.deckMode === "PLAYERS_ONLY" &&
-                              roomState.deckSize < 100)
-                          }
-                          className="btn-primary btn-large"
-                        >
-                          🚀 Start Game
-                        </button>
                         {roomState.deckLocked ? (
                           <button
                             onClick={onUnlockDeck}
@@ -370,7 +384,7 @@ export function UnifiedGamePage({
               {/* CARDS MODAL - Game Actions */}
               {modalType === "cards" && (
                 <>
-                  {/* LOBBY - Before game starts, show player list */}
+                  {/* LOBBY - Before game starts, show player list and deck upload */}
                   {!isInGame && (
                     <div className="modal-section lobby-modal">
                       <h2>👥 Players ({roomState.players.length})</h2>
@@ -394,7 +408,28 @@ export function UnifiedGamePage({
                           </div>
                         ))}
                       </div>
-                      <p style={{ color: "#95a5a6", marginTop: "1.5rem" }}>
+                      
+                      {/* Show deck uploader if not HOST_ONLY mode */}
+                      {roomState.deckMode !== "HOST_ONLY" && (
+                        <div className="deck-upload-section">
+                          <h3>📦 Upload Images for Deck</h3>
+                          <DeckUploader
+                            roomState={roomState}
+                            playerId={playerId}
+                            onUpload={onUploadImage}
+                            onDelete={onDeleteImage}
+                            onSetMode={onSetDeckMode}
+                            onLock={onLockDeck}
+                          />
+                        </div>
+                      )}
+                      
+                      <div className="qr-code-modal-section">
+                        <p className="qr-hint">Scan to join</p>
+                        <QRCode url={roomState.serverUrl} size={150} />
+                      </div>
+                      
+                      <p style={{ color: "#95a5a6", marginTop: "1rem" }}>
                         {isAdmin
                           ? "Use the ⚙️ Settings button to configure the game"
                           : "⏳ Waiting for admin to start the game..."}
@@ -405,20 +440,87 @@ export function UnifiedGamePage({
                   {/* STORYTELLER_CHOICE */}
                   {roomState.phase === "STORYTELLER_CHOICE" && (
                     <>
-                      {isStoryteller && (
+                      {isStoryteller && !playerState?.mySubmittedCardId && (
                         <div className="modal-section storyteller-modal">
                           <h2>🎭 You are the Storyteller!</h2>
                           <p>Choose a card and provide a clue</p>
 
-                          <input
-                            type="text"
-                            placeholder="Enter your clue..."
-                            value={clue}
-                            onChange={(e) => setClue(e.target.value)}
-                            maxLength={200}
-                            className="clue-input"
-                            autoFocus
-                          />
+                          <div className="modal-hand">
+                            <HandView
+                              hand={playerState?.hand || []}
+                              selectedCardId={selectedCardId}
+                              onSelectCard={setSelectedCardId}
+                            />
+                          </div>
+
+                          <div className="clue-submit-row">
+                            <input
+                              type="text"
+                              placeholder="Enter your clue..."
+                              value={clue}
+                              onChange={(e) => setClue(e.target.value)}
+                              maxLength={200}
+                              className="clue-input-inline"
+                              autoFocus
+                            />
+                            <button
+                              onClick={handleStorytellerSubmit}
+                              disabled={!selectedCardId || !clue.trim()}
+                              className="btn-primary btn-inline"
+                            >
+                              Submit
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                      {isStoryteller && playerState?.mySubmittedCardId && (
+                        <div className="modal-section waiting-modal">
+                          <h2>⏳ Waiting for Players to Select Their Cards</h2>
+                          <p>You've submitted your card. Here's your hand:</p>
+                          
+                          <div className="modal-hand">
+                            <HandView
+                              hand={playerState?.hand || []}
+                              selectedCardId={playerState.mySubmittedCardId}
+                              onSelectCard={() => {}}
+                              disabled={true}
+                            />
+                          </div>
+
+                          <p className="clue-reminder">
+                            Your clue: <strong>"{roomState.currentClue}"</strong>
+                          </p>
+                        </div>
+                      )}
+                      {!isStoryteller && (
+                        <div className="modal-section waiting-modal">
+                          <h2>⏳ Waiting for Storyteller</h2>
+                          <p>The storyteller is choosing a card and providing a clue...</p>
+                          
+                          <div className="modal-hand">
+                            <HandView
+                              hand={playerState?.hand || []}
+                              selectedCardId={null}
+                              onSelectCard={() => {}}
+                              disabled={true}
+                            />
+                          </div>
+                          
+                          <p style={{ color: "#95a5a6", fontSize: "0.85rem" }}>
+                            Once they submit, you'll choose a card that matches their clue.
+                          </p>
+                        </div>
+                      )}
+                    </>
+                  )}
+
+                  {/* PLAYERS_CHOICE */}
+                  {roomState.phase === "PLAYERS_CHOICE" && (
+                    <>
+                      {!isStoryteller && !playerState?.mySubmittedCardId && (
+                        <div className="modal-section player-choice-modal">
+                          <h2>✍️ Choose Your Card</h2>
+                          <p>Pick a card that matches the clue</p>
 
                           <div className="modal-hand">
                             <HandView
@@ -429,67 +531,49 @@ export function UnifiedGamePage({
                           </div>
 
                           <button
-                            onClick={handleStorytellerSubmit}
-                            disabled={!selectedCardId || !clue.trim()}
+                            onClick={handlePlayerSubmit}
+                            disabled={!selectedCardId}
                             className="btn-primary btn-large"
                           >
-                            Submit Card & Clue
+                            Submit Card
                           </button>
                         </div>
                       )}
-                      {!isStoryteller && isDemoMode && showModal && (
+                      {!isStoryteller && playerState?.mySubmittedCardId && (
                         <div className="modal-section waiting-modal">
-                          <h2>⏳ Waiting for Storyteller</h2>
-                          <p>
-                            The storyteller is choosing a card and providing a
-                            clue...
-                          </p>
-                          <p style={{ color: "#95a5a6", marginTop: "1rem" }}>
-                            Once they submit, you'll choose a card that matches
-                            their clue.
+                          <h2>⏳ Waiting for Other Players</h2>
+                          <p>You've submitted your card. Here's your hand:</p>
+                          
+                          <div className="modal-hand">
+                            <HandView
+                              hand={playerState?.hand || []}
+                              selectedCardId={playerState.mySubmittedCardId}
+                              onSelectCard={() => {}}
+                              disabled={true}
+                            />
+                          </div>
+
+                          <p className="clue-reminder">
+                            The clue: <strong>"{roomState.currentClue}"</strong>
                           </p>
                         </div>
                       )}
-                    </>
-                  )}
-
-                  {/* PLAYERS_CHOICE */}
-                  {roomState.phase === "PLAYERS_CHOICE" && (
-                    <>
-                      {!isStoryteller &&
-                        (!playerState?.mySubmittedCardId ||
-                          (isDemoMode && showModal)) && (
-                          <div className="modal-section player-choice-modal">
-                            <h2>✍️ Choose Your Card</h2>
-                            <p>Pick a card that matches the clue</p>
-
-                            <div className="modal-hand">
-                              <HandView
-                                hand={playerState?.hand || []}
-                                selectedCardId={selectedCardId}
-                                onSelectCard={setSelectedCardId}
-                              />
-                            </div>
-
-                            <button
-                              onClick={handlePlayerSubmit}
-                              disabled={!selectedCardId}
-                              className="btn-primary btn-large"
-                            >
-                              Submit Card
-                            </button>
-                          </div>
-                        )}
-                      {isStoryteller && isDemoMode && showModal && (
+                      {isStoryteller && (
                         <div className="modal-section waiting-modal">
-                          <h2>⏳ Waiting for Players</h2>
-                          <p>
-                            Other players are choosing cards that match your
-                            clue...
-                          </p>
+                          <h2>⏳ Waiting for Players to Choose</h2>
+                          <p>You've submitted your card. Here's your hand:</p>
+                          
+                          <div className="modal-hand">
+                            <HandView
+                              hand={playerState?.hand || []}
+                              selectedCardId={playerState?.mySubmittedCardId || null}
+                              onSelectCard={() => {}}
+                              disabled={true}
+                            />
+                          </div>
+
                           <p className="clue-reminder">
-                            Your clue:{" "}
-                            <strong>"{roomState.currentClue}"</strong>
+                            Your clue: <strong>"{roomState.currentClue}"</strong>
                           </p>
                         </div>
                       )}

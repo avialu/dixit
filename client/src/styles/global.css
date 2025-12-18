@@ -770,6 +770,37 @@ select {
   box-shadow: 0 0 10px rgba(74, 144, 226, 0.3);
 }
 
+.clue-submit-row {
+  display: flex;
+  gap: 0.75rem;
+  width: 100%;
+  align-items: center;
+  margin-top: 0.5rem;
+}
+
+.clue-input-inline {
+  flex: 1;
+  padding: 0.75rem 1rem;
+  font-size: 1rem;
+  border: 2px solid #4a90e2;
+  border-radius: 8px;
+  background: #2a2a3e;
+  color: #fff;
+}
+
+.clue-input-inline:focus {
+  outline: none;
+  border-color: #5aa3f5;
+  box-shadow: 0 0 10px rgba(74, 144, 226, 0.3);
+}
+
+.btn-inline {
+  padding: 0.75rem 2rem;
+  font-size: 1rem;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
 .hand-container {
   margin: 1rem 0;
 }
@@ -1372,6 +1403,53 @@ select {
   font-style: italic;
 }
 
+.qr-code-section {
+  margin-top: 2rem;
+  padding-top: 2rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  text-align: center;
+}
+
+.qr-code-modal-section {
+  margin: 1.5rem 0;
+  text-align: center;
+  padding: 1rem;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+}
+
+.deck-upload-section {
+  width: 100%;
+  margin: 1.5rem 0;
+  padding: 1.5rem;
+  background: rgba(74, 144, 226, 0.1);
+  border-radius: 12px;
+  border: 2px solid rgba(74, 144, 226, 0.3);
+}
+
+.deck-upload-section h3 {
+  margin: 0 0 1rem 0;
+  font-size: 1.2rem;
+  color: #4a90e2;
+  text-align: center;
+}
+
+.qr-hint {
+  font-size: 0.85rem;
+  color: #4a90e2;
+  margin-bottom: 0.75rem;
+  font-weight: 500;
+}
+
+.qr-code-section canvas,
+.qr-code-modal-section canvas {
+  display: block;
+  margin: 0 auto;
+  border-radius: 8px;
+  background: white;
+  padding: 0.5rem;
+}
+
 .btn-secondary {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   border: none;
@@ -1633,10 +1711,11 @@ select {
   left: 50%;
   transform: translate(-50%, -50%);
   z-index: 101;
-  width: 90%;
-  max-width: 900px;
-  max-height: 90vh;
-  overflow-y: auto;
+  width: 95%;
+  max-width: 1400px;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
   animation: slide-up 0.3s ease-out;
 }
 
@@ -1687,6 +1766,25 @@ select {
   display: none;
 }
 
+.floating-action-button.start-button {
+  bottom: 14rem;
+  background: linear-gradient(135deg, #27ae60 0%, #2ecc71 100%);
+  box-shadow: 0 8px 24px rgba(46, 204, 113, 0.4);
+  animation: pulse-glow-green 2s ease-in-out infinite;
+}
+
+.floating-action-button.start-button:hover {
+  box-shadow: 0 12px 32px rgba(46, 204, 113, 0.6);
+}
+
+.floating-action-button.start-button:disabled {
+  background: linear-gradient(135deg, #95a5a6 0%, #7f8c8d 100%);
+  box-shadow: none;
+  animation: none;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
 .floating-action-button.settings-button {
   bottom: 8rem;
   background: linear-gradient(135deg, #e67e22 0%, #e74c3c 100%);
@@ -1699,6 +1797,16 @@ select {
 
 .floating-action-button.cards-button {
   bottom: 2rem;
+}
+
+@keyframes pulse-glow-green {
+  0%,
+  100% {
+    box-shadow: 0 8px 24px rgba(46, 204, 113, 0.4);
+  }
+  50% {
+    box-shadow: 0 8px 32px rgba(46, 204, 113, 0.7);
+  }
 }
 
 @keyframes pulse-glow {
@@ -1746,20 +1854,26 @@ select {
   background: rgba(26, 26, 46, 0.98);
   border: 3px solid #4a90e2;
   border-radius: 20px;
-  padding: 2.5rem;
+  padding: 1.5rem;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.8);
+  display: flex;
+  flex-direction: column;
+  max-height: 100%;
+  overflow: hidden;
 }
 
 .modal-section {
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
+  gap: 1rem;
   align-items: center;
+  overflow-y: auto;
+  flex: 1;
 }
 
 .modal-section h2 {
   margin: 0;
-  font-size: 2rem;
+  font-size: 1.5rem;
   color: #fff;
   text-align: center;
 }
@@ -1768,7 +1882,7 @@ select {
   margin: 0;
   color: #95a5a6;
   text-align: center;
-  font-size: 1.1rem;
+  font-size: 0.95rem;
 }
 
 .modal-section .hint {
@@ -1860,14 +1974,16 @@ select {
 
 .modal-hand {
   width: 100%;
-  margin: 1rem 0;
+  max-height: 45vh;
+  overflow-y: auto;
+  flex-shrink: 1;
 }
 
 .modal-voting-cards {
   width: 100%;
-  max-height: 50vh;
+  max-height: 45vh;
   overflow-y: auto;
-  margin: 1rem 0;
+  flex-shrink: 1;
 }
 
 .score-deltas-grid {
