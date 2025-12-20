@@ -2,6 +2,25 @@
 
 A local-multiplayer implementation of the Dixit card game. Players join from their phones/laptops via browser on a home LAN network. No internet, no cloud, no accounts required.
 
+## 🚀 Quick Setup for LAN Play
+
+```bash
+# 1. Install dependencies
+npm install
+
+# 2. Build and start the server
+npm run build
+npm start
+
+# 3. The server will show your LAN URL (e.g., http://10.0.0.5:3000)
+# 4. Players join from their devices using that URL
+
+# Troubleshooting? Run:
+./diagnose-network.sh
+```
+
+**Important:** For LAN play (multiple devices), use `npm run build && npm start`, NOT `npm run dev`!
+
 ## Features
 
 - **Local Network Play**: One server, multiple devices on the same LAN
@@ -175,6 +194,57 @@ ifconfig | grep "inet " | grep -v 127.0.0.1
 ```cmd
 ipconfig | findstr IPv4
 ```
+
+### Or Let the Server Tell You
+
+## 🔧 Troubleshooting Network Issues
+
+### Can't Join from Other Devices?
+
+**Run the diagnostic script:**
+
+```bash
+./diagnose-network.sh
+```
+
+This will check:
+
+- ✅ Your LAN IP address
+- ✅ Server is running and listening on all interfaces
+- ✅ Firewall status
+- ✅ Network connectivity
+
+### Common Issues
+
+**1. Wrong Mode**
+
+- ❌ `npm run dev` - Only works on localhost
+- ✅ `npm run build && npm start` - Required for LAN play
+
+**2. Different WiFi Networks**
+
+- Make sure all devices are on the SAME WiFi network
+- Check you're not on guest network or cellular data
+
+**3. Firewall Blocking**
+
+- **macOS:** System Preferences → Security & Privacy → Firewall
+  - Allow Node.js or disable firewall temporarily
+- **Windows:** Windows Defender → Allow an app → Add Node.js
+- **Linux:** `sudo ufw allow 3000/tcp`
+
+**4. IP Address Wrong**
+
+- Get your current IP: `ifconfig | grep "inet " | grep -v 127.0.0.1`
+- Manual override: `SERVER_URL=http://YOUR_IP:3000 npm start`
+
+**5. Router Client Isolation**
+
+- Some routers block device-to-device communication
+- Check router settings for "AP Isolation" or "Client Isolation"
+- Disable this feature if enabled
+
+See [NETWORK_TROUBLESHOOTING.md](./NETWORK_TROUBLESHOOTING.md) for detailed diagnostics.
 
 ### Or Let the Server Tell You
 

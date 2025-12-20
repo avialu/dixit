@@ -5,8 +5,8 @@ const PORT = Number(process.env.PORT || 3000);
 
 const { httpServer } = createApp(PORT);
 
-// Listen on all interfaces (default behavior when host is omitted)
-httpServer.listen(PORT, () => {
+// Listen on all interfaces (0.0.0.0) to accept connections from other devices
+httpServer.listen(PORT, "0.0.0.0", () => {
   const lanIp = getLanIpAddress();
 
   console.log("\n=================================");
@@ -17,7 +17,7 @@ httpServer.listen(PORT, () => {
   if (lanIp) {
     console.log(`LAN:   http://${lanIp}:${PORT}`);
     console.log("\n📱 Players can join from their phones using the LAN URL");
-    console.log("   (Server listening on all network interfaces)");
+    console.log("   (Server listening on all network interfaces: 0.0.0.0)");
   } else {
     console.log("\n⚠️  Could not auto-detect LAN IP address");
     console.log("   Find your IP manually:");
