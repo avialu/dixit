@@ -9,9 +9,9 @@ const generateMockRoomState = (
   customScoreDeltas?: { playerId: string; delta: number }[]
 ): RoomState | null => {
   // Get the current server URL from window location
-  const port = window.location.port || '3000';
+  const port = window.location.port || "3000";
   const currentUrl = `${window.location.protocol}//${window.location.hostname}:${port}`;
-  
+
   // Special case: NOT_JOINED - return minimal state for join screen with QR code
   if (phase === "NOT_JOINED") {
     return {
@@ -36,7 +36,7 @@ const generateMockRoomState = (
     {
       id: "1",
       name: "Alice",
-      score: customPlayerScores?.["1"] ?? 22,
+      score: customPlayerScores?.["1"] ?? 0,
       isAdmin: true,
       isConnected: true,
       handSize: 6,
@@ -44,7 +44,7 @@ const generateMockRoomState = (
     {
       id: "2",
       name: "Bob",
-      score: customPlayerScores?.["2"] ?? 18,
+      score: customPlayerScores?.["2"] ?? 0,
       isAdmin: false,
       isConnected: true,
       handSize: 6,
@@ -52,7 +52,7 @@ const generateMockRoomState = (
     {
       id: "3",
       name: "Charlie",
-      score: customPlayerScores?.["3"] ?? 22,
+      score: customPlayerScores?.["3"] ?? 0,
       isAdmin: false,
       isConnected: true,
       handSize: 6,
@@ -60,7 +60,7 @@ const generateMockRoomState = (
     {
       id: "4",
       name: "Diana",
-      score: customPlayerScores?.["4"] ?? 16,
+      score: customPlayerScores?.["4"] ?? 0,
       isAdmin: false,
       isConnected: true,
       handSize: 6,
@@ -197,7 +197,7 @@ const generateMockRoomState = (
         { playerId: "4", delta: 5 },
       ];
       const deltas = customScoreDeltas || defaultDeltas;
-      
+
       return {
         ...baseState,
         phase: "SCORING",
@@ -282,7 +282,10 @@ const generateMockRoomState = (
   }
 };
 
-const generateMockPlayerState = (phase: string, playerId: string): PlayerState => {
+const generateMockPlayerState = (
+  phase: string,
+  playerId: string
+): PlayerState => {
   const baseHand = [
     {
       id: "h1",
@@ -319,13 +322,15 @@ const generateMockPlayerState = (phase: string, playerId: string): PlayerState =
   // Player 1 (Alice, admin, storyteller) behavior
   // Player 2 (Bob, regular player) behavior
   const isStoryteller = playerId === "1";
-  
+
   return {
     playerId: playerId,
     hand: baseHand,
     // Only non-storytellers submit cards during PLAYERS_CHOICE
     mySubmittedCardId:
-      (phase === "PLAYERS_CHOICE" || phase === "VOTING") && !isStoryteller ? "h2" : null,
+      (phase === "PLAYERS_CHOICE" || phase === "VOTING") && !isStoryteller
+        ? "h2"
+        : null,
     // Only non-storytellers vote during VOTING
     myVote: phase === "VOTING" && !isStoryteller ? "c1" : null,
   };
@@ -345,61 +350,91 @@ const allPhases = [
 
 export function DemoPage() {
   const [currentPhaseIndex, setCurrentPhaseIndex] = useState(0);
-  const [viewMode, setViewMode] = useState<"player" | "admin" | "spectator">("player");
+  const [viewMode, setViewMode] = useState<"player" | "admin" | "spectator">(
+    "player"
+  );
   const [forcePlayerView, setForcePlayerView] = useState(false); // Toggle storyteller/player in demo
-  const [demoVotes, setDemoVotes] = useState<{ voterId: string; cardId: string }[]>([]);
+  const [demoVotes, setDemoVotes] = useState<
+    { voterId: string; cardId: string }[]
+  >([]);
   const [demoVotedCardId, setDemoVotedCardId] = useState<string | null>(null);
-  const [detectedServerUrl, setDetectedServerUrl] = useState<string | null>(null);
-  
+  const [detectedServerUrl, setDetectedServerUrl] = useState<string | null>(
+    null
+  );
+
   // Animation testing states
-  const [customPlayerScores, setCustomPlayerScores] = useState<{ [playerId: string]: number } | undefined>(undefined);
-  const [customScoreDeltas, setCustomScoreDeltas] = useState<{ playerId: string; delta: number }[] | undefined>(undefined);
+  const [customPlayerScores, setCustomPlayerScores] = useState<
+    { [playerId: string]: number } | undefined
+  >(undefined);
+  const [customScoreDeltas, setCustomScoreDeltas] = useState<
+    { playerId: string; delta: number }[] | undefined
+  >(undefined);
   const [animationRound, setAnimationRound] = useState(0);
 
   // Fetch server URL on mount
   useEffect(() => {
-    fetch('/api/server-info')
-      .then(res => res.json())
-      .then(data => setDetectedServerUrl(data.serverUrl))
-      .catch(err => {
-        console.warn('Could not fetch server URL:', err);
+    fetch("/api/server-info")
+      .then((res) => res.json())
+      .then((data) => setDetectedServerUrl(data.serverUrl))
+      .catch((err) => {
+        console.warn("Could not fetch server URL:", err);
         // Fallback to window location
-        const port = window.location.port || '3000';
-        setDetectedServerUrl(`${window.location.protocol}//${window.location.hostname}:${port}`);
+        const port = window.location.port || "3000";
+        setDetectedServerUrl(
+          `${window.location.protocol}//${window.location.hostname}:${port}`
+        );
       });
   }, []);
 
   const currentPhase = allPhases[currentPhaseIndex];
-  const mockRoomState = generateMockRoomState(currentPhase, customPlayerScores, customScoreDeltas);
-  
+  const mockRoomState = generateMockRoomState(
+    currentPhase,
+    customPlayerScores,
+    customScoreDeltas
+  );
+
   // Update serverUrl with detected one
   if (mockRoomState && detectedServerUrl) {
     mockRoomState.serverUrl = detectedServerUrl;
   }
-  
+
   // Override current round for animation testing in SCORING phase
-  if (mockRoomState && currentPhase === "SCORING" && (customPlayerScores || customScoreDeltas)) {
+  if (
+    mockRoomState &&
+    currentPhase === "SCORING" &&
+    (customPlayerScores || customScoreDeltas)
+  ) {
     mockRoomState.currentRound = 5 + animationRound;
   }
-  
+
   // Update mockRoomState with demo votes if in VOTING phase
   // For REVEAL, use demo votes if they exist, otherwise keep the default votes from the mock
   if (mockRoomState && currentPhase === "VOTING") {
     mockRoomState.votes = demoVotes;
-  } else if (mockRoomState && currentPhase === "REVEAL" && demoVotes.length > 0) {
+  } else if (
+    mockRoomState &&
+    currentPhase === "REVEAL" &&
+    demoVotes.length > 0
+  ) {
     mockRoomState.votes = demoVotes;
   }
-  
+
   // Reset votes when leaving REVEAL phase or going backwards to before VOTING
   useEffect(() => {
-    const isBeforeVoting = ["NOT_JOINED", "WAITING_FOR_PLAYERS", "DECK_BUILDING", "STORYTELLER_CHOICE", "PLAYERS_CHOICE"].includes(currentPhase);
+    const isBeforeVoting = [
+      "NOT_JOINED",
+      "WAITING_FOR_PLAYERS",
+      "DECK_BUILDING",
+      "STORYTELLER_CHOICE",
+      "PLAYERS_CHOICE",
+    ].includes(currentPhase);
     const isAfterReveal = ["SCORING", "GAME_END"].includes(currentPhase);
-    
+
     if (isBeforeVoting || isAfterReveal) {
       setDemoVotes([]);
       setDemoVotedCardId(null);
     }
-    
+
     // Reset animation test data when leaving SCORING phase
     if (currentPhase !== "SCORING") {
       setCustomPlayerScores(undefined);
@@ -407,25 +442,30 @@ export function DemoPage() {
       setAnimationRound(0);
     }
   }, [currentPhaseIndex, currentPhase]);
-  
+
   // Different player IDs for different modes
   // Admin = Alice (player 1, storyteller), Player = Bob (player 2)
   // In phases where we can toggle, use forcePlayerView to override
-  const shouldShowAsPlayer = 
-    forcePlayerView && 
-    (currentPhase === "STORYTELLER_CHOICE" || currentPhase === "PLAYERS_CHOICE");
-  
-  const currentPlayerId = viewMode === "spectator" 
-    ? "spectator" 
-    : shouldShowAsPlayer 
+  const shouldShowAsPlayer =
+    forcePlayerView &&
+    (currentPhase === "STORYTELLER_CHOICE" ||
+      currentPhase === "PLAYERS_CHOICE");
+
+  const currentPlayerId =
+    viewMode === "spectator"
+      ? "spectator"
+      : shouldShowAsPlayer
       ? "2" // Force player view
-      : viewMode === "admin" 
-        ? "1" 
-        : "2";
-  
+      : viewMode === "admin"
+      ? "1"
+      : "2";
+
   // Generate appropriate player state based on view mode
-  const mockPlayerState = generateMockPlayerState(currentPhase, currentPlayerId);
-  
+  const mockPlayerState = generateMockPlayerState(
+    currentPhase,
+    currentPlayerId
+  );
+
   // Update player state with demo vote
   if (mockPlayerState && demoVotedCardId) {
     mockPlayerState.myVote = demoVotedCardId;
@@ -438,7 +478,7 @@ export function DemoPage() {
     playerVote: (cardId: string) => {
       console.log("Demo: player vote", cardId);
       setDemoVotedCardId(cardId);
-      setDemoVotes(prev => [...prev, { voterId: currentPlayerId, cardId }]);
+      setDemoVotes((prev) => [...prev, { voterId: currentPlayerId, cardId }]);
     },
     advanceRound: () => console.log("Demo: advance round"),
     resetGame: () => console.log("Demo: reset game"),
@@ -446,32 +486,37 @@ export function DemoPage() {
   };
 
   const testAnimation = () => {
-    // Generate random points for each player (0-10)
-    const randomDeltas = [
-      { playerId: "1", delta: Math.floor(Math.random() * 11) },
-      { playerId: "2", delta: Math.floor(Math.random() * 11) },
-      { playerId: "3", delta: Math.floor(Math.random() * 11) },
-      { playerId: "4", delta: Math.floor(Math.random() * 11) },
+    // Add exactly 1 point to each player
+    const deltas = [
+      { playerId: "1", delta: 1 },
+      { playerId: "2", delta: 1 },
+      { playerId: "3", delta: 1 },
+      { playerId: "4", delta: 1 },
     ];
-    
-    // Get current scores or use defaults
-    const currentScores = customPlayerScores || { "1": 22, "2": 18, "3": 22, "4": 16 };
-    
+
+    // Get current scores or use defaults (starting from 0)
+    const currentScores = customPlayerScores || {
+      "1": 0,
+      "2": 0,
+      "3": 0,
+      "4": 0,
+    };
+
     // Calculate new scores
     const newScores = {
-      "1": Math.min(30, currentScores["1"] + randomDeltas[0].delta),
-      "2": Math.min(30, currentScores["2"] + randomDeltas[1].delta),
-      "3": Math.min(30, currentScores["3"] + randomDeltas[2].delta),
-      "4": Math.min(30, currentScores["4"] + randomDeltas[3].delta),
+      "1": Math.min(30, currentScores["1"] + deltas[0].delta),
+      "2": Math.min(30, currentScores["2"] + deltas[1].delta),
+      "3": Math.min(30, currentScores["3"] + deltas[2].delta),
+      "4": Math.min(30, currentScores["4"] + deltas[3].delta),
     };
-    
+
     console.log("🎲 Test Animation - Round", animationRound + 1);
-    console.log("Deltas:", randomDeltas);
+    console.log("Deltas:", deltas);
     console.log("New scores:", newScores);
-    
-    setCustomScoreDeltas(randomDeltas);
+
+    setCustomScoreDeltas(deltas);
     setCustomPlayerScores(newScores);
-    setAnimationRound(prev => prev + 1); // Increment to trigger new animation
+    setAnimationRound((prev) => prev + 1); // Increment to trigger new animation
   };
 
   const nextPhase = () => {
@@ -526,11 +571,7 @@ export function DemoPage() {
             {currentPhaseIndex + 1} / {allPhases.length}
           </span>
         </div>
-        <button
-          onClick={nextPhase}
-          className="nav-btn"
-          title="Next (→ Arrow)"
-        >
+        <button onClick={nextPhase} className="nav-btn" title="Next (→ Arrow)">
           ▶
         </button>
         <div className="nav-divider"></div>
@@ -555,19 +596,20 @@ export function DemoPage() {
         >
           📺
         </button>
-        {(currentPhase === "STORYTELLER_CHOICE" || currentPhase === "PLAYERS_CHOICE") && 
-         viewMode === "admin" && (
-          <>
-            <div className="nav-divider"></div>
-            <button
-              onClick={() => setForcePlayerView(!forcePlayerView)}
-              className={`nav-btn ${forcePlayerView ? "active" : ""}`}
-              title="Toggle between Storyteller/Player view"
-            >
-              {forcePlayerView ? "👤 Player" : "🎭 Storyteller"}
-            </button>
-          </>
-        )}
+        {(currentPhase === "STORYTELLER_CHOICE" ||
+          currentPhase === "PLAYERS_CHOICE") &&
+          viewMode === "admin" && (
+            <>
+              <div className="nav-divider"></div>
+              <button
+                onClick={() => setForcePlayerView(!forcePlayerView)}
+                className={`nav-btn ${forcePlayerView ? "active" : ""}`}
+                title="Toggle between Storyteller/Player view"
+              >
+                {forcePlayerView ? "👤 Player" : "🎭 Storyteller"}
+              </button>
+            </>
+          )}
         {currentPhase === "SCORING" && (
           <>
             <div className="nav-divider"></div>

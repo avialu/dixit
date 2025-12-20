@@ -76,6 +76,21 @@ LAN:   http://192.168.1.100:3000
 
 **Use the LAN URL** (not localhost) to join from other devices.
 
+**Manual IP Configuration (if auto-detection fails):**
+
+If the server can't detect your LAN IP automatically, you can set it manually:
+
+```bash
+# Find your IP first
+# macOS/Linux:
+ifconfig | grep "inet "
+# Windows:
+ipconfig
+
+# Then start with the IP
+SERVER_URL=http://YOUR_IP:3000 npm start
+```
+
 ## How to Play
 
 ### Setup Phase

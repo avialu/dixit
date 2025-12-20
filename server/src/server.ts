@@ -25,9 +25,10 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 export function createApp(port: number = 3000) {
-  // Get server URL (prefer LAN IP)
+  // Get server URL (prefer ENV, then LAN IP, then localhost)
+  const envServerUrl = process.env.SERVER_URL;
   const lanIp = getLanIpAddress();
-  const serverUrl = lanIp ? `http://${lanIp}:${port}` : `http://localhost:${port}`;
+  const serverUrl = envServerUrl || (lanIp ? `http://${lanIp}:${port}` : `http://localhost:${port}`);
   const app = express();
   const httpServer = createServer(app);
   const io = new SocketIOServer(httpServer, {
@@ -42,11 +43,6 @@ export function createApp(port: number = 3000) {
 
   // Map socket.id to clientId
   const socketToClient = new Map<string, string>();
-
-  // API endpoint to get server info
-  app.get('/api/server-info', (req, res) => {
-    res.json({ serverUrl });
-  });
 
   // Serve static files (built client)
   const publicPath = path.join(__dirname, '..', 'public');
@@ -135,11 +131,9 @@ npm start</pre>
   // Socket.IO event handlers
   io.on('connection', (socket) => {
     console.log('Client connected:', socket.id);
-    
-    // Send initial room state with server URL immediately on connection
-    const initialRoomState = gameManager.getRoomState();
-    initialRoomState.serverUrl = serverUrl;
-    socket.emit('roomState', initialRoomState);
+
+    // Send initial room state immediately so QR code shows correct URL
+    broadcastRoomState();
 
     socket.on('join', (data) => {
       try {
