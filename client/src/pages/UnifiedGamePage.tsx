@@ -4,6 +4,7 @@ import { GameBoard } from "../components/GameBoard";
 import { HandView } from "../components/HandView";
 import { VotingView } from "../components/VotingView";
 import { QRCode } from "../components/QRCode";
+import { DeckUploader } from "../components/DeckUploader";
 
 interface UnifiedGamePageProps {
   roomState: RoomState | null;
@@ -14,7 +15,7 @@ interface UnifiedGamePageProps {
   onJoin: (name: string, clientId: string) => void;
   onUploadImage: (imageData: string) => void;
   onDeleteImage: (imageId: string) => void;
-  onSetDeckMode: (mode: string) => void;
+  onSetAllowPlayerUploads: (allow: boolean) => void;
   onLockDeck: () => void;
   onUnlockDeck: () => void;
   onStartGame: () => void;
@@ -39,7 +40,7 @@ export function UnifiedGamePage({
   onJoin,
   onUploadImage: _onUploadImage,
   onDeleteImage: _onDeleteImage,
-  onSetDeckMode,
+  onSetAllowPlayerUploads,
   onLockDeck,
   onUnlockDeck,
   onStartGame,
@@ -320,16 +321,25 @@ export function UnifiedGamePage({
                       <h2 style={{ marginTop: "2rem" }}>⚙️ Game Settings</h2>
 
                       <div className="setting-group">
-                        <label>Deck Mode:</label>
-                        <select
-                          value={roomState.deckMode}
-                          onChange={(e) => onSetDeckMode(e.target.value)}
-                          disabled={roomState.deckLocked}
-                        >
-                          <option value="PLAYERS_ONLY">Players Upload</option>
-                          <option value="HOST_ONLY">Host Only</option>
-                          <option value="MIXED">Mixed</option>
-                        </select>
+                        <label className="toggle-label">
+                          <input
+                            type="checkbox"
+                            checked={roomState.allowPlayerUploads}
+                            onChange={(e) =>
+                              onSetAllowPlayerUploads(e.target.checked)
+                            }
+                            disabled={roomState.deckLocked}
+                            className="toggle-checkbox"
+                          />
+                          <span className="toggle-text">
+                            Allow players to upload images
+                          </span>
+                        </label>
+                        <p className="toggle-hint">
+                          {roomState.allowPlayerUploads
+                            ? "✅ Players can upload images (you can always upload)"
+                            : "🔒 Only you can upload images"}
+                        </p>
                       </div>
 
                       <div className="setting-group">
@@ -352,12 +362,12 @@ export function UnifiedGamePage({
 
                       <div className="deck-info">
                         <p>📦 Deck Size: {roomState.deckSize} images</p>
-                        {roomState.deckMode === "PLAYERS_ONLY" &&
-                          roomState.deckSize < 100 && (
-                            <p className="warning">
-                              ⚠️ Need 100 images to start
-                            </p>
-                          )}
+                        {roomState.deckSize < 100 && (
+                          <p className="warning">
+                            ⚠️ Need 100 images to start (default images will be
+                            added if needed)
+                          </p>
+                        )}
                       </div>
 
                       <div className="action-buttons">
@@ -365,8 +375,7 @@ export function UnifiedGamePage({
                           onClick={onStartGame}
                           disabled={
                             roomState.players.length < 3 ||
-                            (roomState.deckMode === "PLAYERS_ONLY" &&
-                              roomState.deckSize < 100)
+                            roomState.deckSize < 100
                           }
                           className="btn-primary btn-large"
                         >
@@ -428,6 +437,19 @@ export function UnifiedGamePage({
                             </div>
                           </div>
                         ))}
+                      </div>
+
+                      {/* Image Upload Section - Available to everyone */}
+                      <div style={{ marginTop: "2rem" }}>
+                        <h2>🖼️ Deck Images</h2>
+                        <DeckUploader
+                          roomState={roomState}
+                          playerId={playerId}
+                          onUpload={_onUploadImage}
+                          onDelete={_onDeleteImage}
+                          onSetAllowPlayerUploads={onSetAllowPlayerUploads}
+                          onLock={onLockDeck}
+                        />
                       </div>
 
                       <div className="qr-code-modal-section">

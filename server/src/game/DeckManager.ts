@@ -1,14 +1,14 @@
 import { nanoid } from 'nanoid';
-import { Card, DeckMode } from './types.js';
+import { Card } from './types.js';
 import { loadDefaultImages } from '../utils/defaultImages.js';
 
 const MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5MB
-const MAX_IMAGES_PER_PLAYER = 20;
+const MAX_IMAGES_PER_PLAYER = 200; // Increased from 20 to 200
 const MIN_IMAGES_TO_START = 100;
 
 export class DeckManager {
   private deck: Card[] = [];
-  private mode: DeckMode = DeckMode.MIXED;
+  private allowPlayerUploads: boolean = true; // Players can upload by default
   private locked: boolean = false;
   private adminId: string;
   private imageCountByPlayer: Map<string, number> = new Map();
@@ -17,15 +17,15 @@ export class DeckManager {
     this.adminId = adminId;
   }
 
-  setMode(mode: DeckMode): void {
+  setAllowPlayerUploads(allow: boolean): void {
     if (this.locked) {
-      throw new Error('Cannot change deck mode: deck is locked');
+      throw new Error('Cannot change upload settings: deck is locked');
     }
-    this.mode = mode;
+    this.allowPlayerUploads = allow;
   }
 
-  getMode(): DeckMode {
-    return this.mode;
+  getAllowPlayerUploads(): boolean {
+    return this.allowPlayerUploads;
   }
 
   isLocked(): boolean {
@@ -63,13 +63,10 @@ export class DeckManager {
       throw new Error(`Image too large: ${Math.round(sizeInBytes / 1024 / 1024)}MB (max 5MB)`);
     }
 
-    // Check deck mode restrictions
+    // Check upload permissions
     const isAdmin = playerId === this.adminId;
-    if (this.mode === DeckMode.HOST_ONLY && !isAdmin) {
-      throw new Error('Only the host can upload images in HOST_ONLY mode');
-    }
-    if (this.mode === DeckMode.PLAYERS_ONLY && isAdmin) {
-      throw new Error('Host cannot upload images in PLAYERS_ONLY mode');
+    if (!isAdmin && !this.allowPlayerUploads) {
+      throw new Error('Only the host can upload images');
     }
 
     // Check per-player limit
@@ -137,13 +134,13 @@ export class DeckManager {
     this.deck = [];
     this.locked = false;
     this.imageCountByPlayer.clear();
-    // Note: mode is preserved on reset
+    // Note: allowPlayerUploads is preserved on reset
   }
 
   clearAll(): void {
     this.deck = [];
     this.locked = false;
-    this.mode = DeckMode.MIXED;
+    this.allowPlayerUploads = true;
     this.imageCountByPlayer.clear();
   }
 

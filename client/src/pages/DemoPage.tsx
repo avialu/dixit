@@ -15,10 +15,10 @@ const generateMockRoomState = (
   // Special case: NOT_JOINED - return minimal state for join screen with QR code
   if (phase === "NOT_JOINED") {
     return {
-      phase: "WAITING_FOR_PLAYERS" as any,
+      phase: "DECK_BUILDING" as any,
       players: [],
+      allowPlayerUploads: true,
       deckSize: 0,
-      deckMode: "MIXED",
       deckLocked: false,
       deckImages: [],
       currentRound: 0,
@@ -70,8 +70,8 @@ const generateMockRoomState = (
   const baseState: RoomState = {
     phase: phase as any,
     players: basePlayers,
+    allowPlayerUploads: true,
     deckSize: 100,
-    deckMode: "MIXED",
     deckLocked: false,
     deckImages: [],
     currentRound: 5,
@@ -86,20 +86,11 @@ const generateMockRoomState = (
 
   // Phase-specific modifications
   switch (phase) {
-    case "WAITING_FOR_PLAYERS":
-      return {
-        ...baseState,
-        phase: "WAITING_FOR_PLAYERS",
-        players: basePlayers.slice(0, 2),
-        currentRound: 0,
-        currentClue: "",
-        deckSize: 0,
-      };
-
     case "DECK_BUILDING":
       return {
         ...baseState,
         phase: "DECK_BUILDING",
+        players: basePlayers.slice(0, 2),
         currentRound: 0,
         currentClue: "",
         deckSize: 45,
@@ -338,7 +329,6 @@ const generateMockPlayerState = (
 
 const allPhases = [
   "NOT_JOINED", // Special phase for demo to show join screen
-  "WAITING_FOR_PLAYERS",
   "DECK_BUILDING",
   "STORYTELLER_CHOICE",
   "PLAYERS_CHOICE",
@@ -361,6 +351,15 @@ export function DemoPage() {
   const [detectedServerUrl, setDetectedServerUrl] = useState<string | null>(
     null
   );
+
+  // Interactive demo state
+  const [allowPlayerUploads, setAllowPlayerUploads] = useState(true);
+  const [winTarget, setWinTarget] = useState<number | null>(30);
+  const [deckSize, setDeckSize] = useState(45);
+  const [deckLocked, setDeckLocked] = useState(false);
+  const [uploadedImages, setUploadedImages] = useState<
+    Array<{ id: string; uploadedBy: string }>
+  >([]);
 
   // Animation testing states
   const [customPlayerScores, setCustomPlayerScores] = useState<
@@ -393,9 +392,18 @@ export function DemoPage() {
     customScoreDeltas
   );
 
-  // Update serverUrl with detected one
-  if (mockRoomState && detectedServerUrl) {
-    mockRoomState.serverUrl = detectedServerUrl;
+  // Update with interactive demo state
+  if (mockRoomState) {
+    mockRoomState.allowPlayerUploads = allowPlayerUploads;
+    mockRoomState.winTarget = winTarget;
+    mockRoomState.deckSize = deckSize;
+    mockRoomState.deckLocked = deckLocked;
+    mockRoomState.deckImages = uploadedImages;
+
+    // Update serverUrl with detected one
+    if (detectedServerUrl) {
+      mockRoomState.serverUrl = detectedServerUrl;
+    }
   }
 
   // Override current round for animation testing in SCORING phase
@@ -423,7 +431,6 @@ export function DemoPage() {
   useEffect(() => {
     const isBeforeVoting = [
       "NOT_JOINED",
-      "WAITING_FOR_PLAYERS",
       "DECK_BUILDING",
       "STORYTELLER_CHOICE",
       "PLAYERS_CHOICE",
@@ -483,6 +490,36 @@ export function DemoPage() {
     advanceRound: () => console.log("Demo: advance round"),
     resetGame: () => console.log("Demo: reset game"),
     newDeck: () => console.log("Demo: new deck"),
+    setAllowPlayerUploads: (allow: boolean) => {
+      console.log("Demo: setAllowPlayerUploads", allow);
+      setAllowPlayerUploads(allow);
+    },
+    setWinTarget: (target: number | null) => {
+      console.log("Demo: setWinTarget", target);
+      setWinTarget(target);
+    },
+    lockDeck: () => {
+      console.log("Demo: lockDeck");
+      setDeckLocked(true);
+    },
+    unlockDeck: () => {
+      console.log("Demo: unlockDeck");
+      setDeckLocked(false);
+    },
+    uploadImage: (imageData: string) => {
+      console.log("Demo: uploadImage", imageData.substring(0, 50) + "...");
+      const newImage = {
+        id: `demo-img-${Date.now()}`,
+        uploadedBy: currentPlayerId,
+      };
+      setUploadedImages((prev) => [...prev, newImage]);
+      setDeckSize((prev) => prev + 1);
+    },
+    deleteImage: (imageId: string) => {
+      console.log("Demo: deleteImage", imageId);
+      setUploadedImages((prev) => prev.filter((img) => img.id !== imageId));
+      setDeckSize((prev) => Math.max(0, prev - 1));
+    },
   };
 
   const testAnimation = () => {
@@ -633,11 +670,11 @@ export function DemoPage() {
           clientId="demo-client-123"
           socket={null}
           onJoin={mockActions.storytellerSubmit}
-          onUploadImage={mockActions.storytellerSubmit}
-          onDeleteImage={mockActions.storytellerSubmit}
-          onSetDeckMode={mockActions.storytellerSubmit}
-          onLockDeck={mockActions.storytellerSubmit}
-          onUnlockDeck={mockActions.storytellerSubmit}
+          onUploadImage={mockActions.uploadImage}
+          onDeleteImage={mockActions.deleteImage}
+          onSetAllowPlayerUploads={mockActions.setAllowPlayerUploads}
+          onLockDeck={mockActions.lockDeck}
+          onUnlockDeck={mockActions.unlockDeck}
           onStartGame={mockActions.storytellerSubmit}
           onChangeName={mockActions.storytellerSubmit}
           onKickPlayer={mockActions.storytellerSubmit}
@@ -648,7 +685,7 @@ export function DemoPage() {
           onAdvanceRound={mockActions.advanceRound}
           onResetGame={mockActions.resetGame}
           onNewDeck={mockActions.newDeck}
-          onSetWinTarget={mockActions.storytellerSubmit}
+          onSetWinTarget={mockActions.setWinTarget}
         />
       </div>
     </div>

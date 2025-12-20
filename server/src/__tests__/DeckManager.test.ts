@@ -1,6 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { DeckManager } from '../game/DeckManager.js';
-import { DeckMode } from '../game/types.js';
 
 describe('DeckManager', () => {
   let deckManager: DeckManager;
@@ -12,37 +11,37 @@ describe('DeckManager', () => {
     deckManager = new DeckManager(adminId);
   });
 
-  describe('Mode Management', () => {
-    it('should default to MIXED mode', () => {
-      expect(deckManager.getMode()).toBe(DeckMode.MIXED);
+  describe('Upload Permissions', () => {
+    it('should default to allowing player uploads', () => {
+      expect(deckManager.getAllowPlayerUploads()).toBe(true);
     });
 
-    it('should allow changing mode when not locked', () => {
-      deckManager.setMode(DeckMode.HOST_ONLY);
-      expect(deckManager.getMode()).toBe(DeckMode.HOST_ONLY);
+    it('should allow changing upload permissions when not locked', () => {
+      deckManager.setAllowPlayerUploads(false);
+      expect(deckManager.getAllowPlayerUploads()).toBe(false);
     });
 
-    it('should not allow changing mode when locked', () => {
+    it('should not allow changing permissions when locked', () => {
       deckManager.lock();
-      expect(() => deckManager.setMode(DeckMode.HOST_ONLY)).toThrow('deck is locked');
+      expect(() => deckManager.setAllowPlayerUploads(false)).toThrow('deck is locked');
     });
   });
 
   describe('Image Upload', () => {
-    it('should allow admin to upload in MIXED mode', () => {
+    it('should allow admin to upload when player uploads allowed', () => {
       const card = deckManager.addImage(mockImage, adminId);
       expect(card.uploadedBy).toBe(adminId);
       expect(deckManager.getDeckSize()).toBe(1);
     });
 
-    it('should allow player to upload in MIXED mode', () => {
+    it('should allow player to upload when player uploads allowed', () => {
       const card = deckManager.addImage(mockImage, playerId);
       expect(card.uploadedBy).toBe(playerId);
       expect(deckManager.getDeckSize()).toBe(1);
     });
 
-    it('should only allow admin in HOST_ONLY mode', () => {
-      deckManager.setMode(DeckMode.HOST_ONLY);
+    it('should only allow admin when player uploads disabled', () => {
+      deckManager.setAllowPlayerUploads(false);
       
       const adminCard = deckManager.addImage(mockImage, adminId);
       expect(adminCard.uploadedBy).toBe(adminId);
@@ -50,13 +49,12 @@ describe('DeckManager', () => {
       expect(() => deckManager.addImage(mockImage, playerId)).toThrow('Only the host');
     });
 
-    it('should only allow players in PLAYERS_ONLY mode', () => {
-      deckManager.setMode(DeckMode.PLAYERS_ONLY);
+    it('should allow admin to upload even when player uploads disabled', () => {
+      deckManager.setAllowPlayerUploads(false);
       
-      const playerCard = deckManager.addImage(mockImage, playerId);
-      expect(playerCard.uploadedBy).toBe(playerId);
-
-      expect(() => deckManager.addImage(mockImage, adminId)).toThrow('Host cannot upload');
+      const adminCard = deckManager.addImage(mockImage, adminId);
+      expect(adminCard.uploadedBy).toBe(adminId);
+      expect(deckManager.getDeckSize()).toBe(1);
     });
 
     it('should enforce per-player limit of 20 images', () => {
@@ -172,23 +170,23 @@ describe('DeckManager', () => {
 
   describe('Reset and Clear', () => {
     beforeEach(() => {
-      deckManager.setMode(DeckMode.HOST_ONLY);
+      deckManager.setAllowPlayerUploads(false);
       deckManager.addImage(mockImage, adminId);
       deckManager.lock();
     });
 
-    it('should reset deck but keep mode', () => {
+    it('should reset deck but keep upload settings', () => {
       deckManager.reset();
       expect(deckManager.getDeckSize()).toBe(0);
       expect(deckManager.isLocked()).toBe(false);
-      expect(deckManager.getMode()).toBe(DeckMode.HOST_ONLY);
+      expect(deckManager.getAllowPlayerUploads()).toBe(false);
     });
 
-    it('should clear everything including mode', () => {
+    it('should clear everything including upload settings', () => {
       deckManager.clearAll();
       expect(deckManager.getDeckSize()).toBe(0);
       expect(deckManager.isLocked()).toBe(false);
-      expect(deckManager.getMode()).toBe(DeckMode.MIXED);
+      expect(deckManager.getAllowPlayerUploads()).toBe(true);
     });
   });
 });

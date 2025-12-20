@@ -237,9 +237,119 @@ select {
   gap: 0.5rem;
 }
 
+.toggle-label {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  cursor: pointer;
+  user-select: none;
+}
+
+.toggle-checkbox {
+  width: 48px;
+  height: 24px;
+  cursor: pointer;
+  appearance: none;
+  background: #6c757d;
+  border-radius: 12px;
+  position: relative;
+  transition: background 0.3s ease;
+}
+
+.toggle-checkbox:checked {
+  background: #4a90e2;
+}
+
+.toggle-checkbox::before {
+  content: '';
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: white;
+  top: 2px;
+  left: 2px;
+  transition: left 0.3s ease;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.toggle-checkbox:checked::before {
+  left: 26px;
+}
+
+.toggle-text {
+  font-size: 1rem;
+  color: #eee;
+  font-weight: 500;
+}
+
+.toggle-hint {
+  font-size: 0.875rem;
+  color: #95a5a6;
+  margin: 0;
+  padding-left: 3.5rem;
+}
+
 .upload-section {
   display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.upload-buttons {
+  display: flex;
   gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.upload-disabled-message {
+  margin-top: 0.5rem;
+  padding: 0.75rem;
+  background: rgba(220, 53, 69, 0.1);
+  border: 1px solid rgba(220, 53, 69, 0.3);
+  border-radius: 8px;
+  color: #dc3545;
+  font-size: 0.9rem;
+  text-align: center;
+  font-weight: 500;
+}
+
+.upload-progress {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 1rem;
+  background: rgba(74, 144, 226, 0.1);
+  border-radius: 8px;
+  border: 1px solid rgba(74, 144, 226, 0.3);
+}
+
+.progress-text {
+  font-size: 0.9rem;
+  color: #4a90e2;
+  text-align: center;
+  font-weight: 500;
+}
+
+.progress-bar-container {
+  width: 100%;
+  height: 8px;
+  background: rgba(42, 42, 62, 0.6);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, #4a90e2, #667eea);
+  transition: width 0.3s ease;
+  box-shadow: 0 0 10px rgba(74, 144, 226, 0.5);
+}
+
+.progress-stats {
+  font-size: 0.85rem;
+  color: #95a5a6;
+  text-align: center;
 }
 
 .deck-images {

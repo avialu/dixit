@@ -19,7 +19,7 @@ export interface Player {
 export interface RoomState {
   phase: string;
   players: Player[];
-  deckMode: string;
+  allowPlayerUploads: boolean; // If true, players can upload. Admin can always upload.
   deckSize: number;
   deckLocked: boolean;
   winTarget: number | null;
@@ -84,8 +84,8 @@ export function useGameState(socket: Socket | null) {
     socket.emit('join', { name, clientId });
   };
 
-  const setDeckMode = (mode: string) => {
-    socket?.emit('adminSetDeckMode', { mode });
+  const setAllowPlayerUploads = (allow: boolean) => {
+    socket?.emit('adminSetAllowPlayerUploads', { allow });
   };
 
   const setWinTarget = (target: number | null) => {
@@ -154,7 +154,7 @@ export function useGameState(socket: Socket | null) {
     error,
     actions: {
       join,
-      setDeckMode,
+      setAllowPlayerUploads,
       setWinTarget,
       uploadImage,
       deleteImage,

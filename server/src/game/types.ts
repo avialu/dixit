@@ -1,5 +1,4 @@
 export enum GamePhase {
-  WAITING_FOR_PLAYERS = "WAITING_FOR_PLAYERS",
   DECK_BUILDING = "DECK_BUILDING",
   STORYTELLER_CHOICE = "STORYTELLER_CHOICE",
   PLAYERS_CHOICE = "PLAYERS_CHOICE",
@@ -8,12 +7,6 @@ export enum GamePhase {
   SCORING = "SCORING",
   ROUND_END = "ROUND_END",
   GAME_END = "GAME_END",
-}
-
-export enum DeckMode {
-  HOST_ONLY = "HOST_ONLY",
-  PLAYERS_ONLY = "PLAYERS_ONLY",
-  MIXED = "MIXED",
 }
 
 export interface Card {
@@ -55,7 +48,7 @@ export interface GameState {
   phase: GamePhase;
   players: Map<string, Player>;
   deck: Card[];
-  deckMode: DeckMode;
+  allowPlayerUploads: boolean; // If true, players can upload images. Admin can always upload.
   deckLocked: boolean;
   winTarget: number | null; // 30, 50, or null (unlimited)
   currentRound: number;
@@ -77,7 +70,7 @@ export interface RoomState {
     score: number;
     handSize: number;
   }[];
-  deckMode: DeckMode;
+  allowPlayerUploads: boolean; // If true, players can upload images. Admin can always upload.
   deckSize: number;
   deckLocked: boolean;
   winTarget: number | null; // 30, 50, or null (unlimited)

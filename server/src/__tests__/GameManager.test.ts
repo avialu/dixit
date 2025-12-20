@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { GameManager } from '../game/GameManager.js';
-import { GamePhase, DeckMode } from '../game/types.js';
+import { GamePhase } from '../game/types.js';
 
 describe('GameManager', () => {
   let gameManager: GameManager;
@@ -11,8 +11,8 @@ describe('GameManager', () => {
   });
 
   describe('Player Management', () => {
-    it('should start in WAITING_FOR_PLAYERS phase', () => {
-      expect(gameManager.getCurrentPhase()).toBe(GamePhase.WAITING_FOR_PLAYERS);
+    it('should start in DECK_BUILDING phase', () => {
+      expect(gameManager.getCurrentPhase()).toBe(GamePhase.DECK_BUILDING);
     });
 
     it('should add first player as admin', () => {
@@ -27,10 +27,10 @@ describe('GameManager', () => {
       expect(player2.isAdmin).toBe(false);
     });
 
-    it('should transition to DECK_BUILDING when 3 players join', () => {
+    it('should remain in DECK_BUILDING when players join', () => {
       gameManager.addPlayer('Alice', 'client-1');
       gameManager.addPlayer('Bob', 'client-2');
-      expect(gameManager.getCurrentPhase()).toBe(GamePhase.WAITING_FOR_PLAYERS);
+      expect(gameManager.getCurrentPhase()).toBe(GamePhase.DECK_BUILDING);
       
       gameManager.addPlayer('Charlie', 'client-3');
       expect(gameManager.getCurrentPhase()).toBe(GamePhase.DECK_BUILDING);
@@ -58,14 +58,14 @@ describe('GameManager', () => {
       expect(card.uploadedBy).toBe('player1');
     });
 
-    it('should allow admin to change deck mode', () => {
-      gameManager.setDeckMode(DeckMode.HOST_ONLY, 'admin');
+    it('should allow admin to toggle player uploads', () => {
+      gameManager.setAllowPlayerUploads(false, 'admin');
       const roomState = gameManager.getRoomState();
-      expect(roomState.deckMode).toBe(DeckMode.HOST_ONLY);
+      expect(roomState.allowPlayerUploads).toBe(false);
     });
 
-    it('should not allow non-admin to change deck mode', () => {
-      expect(() => gameManager.setDeckMode(DeckMode.HOST_ONLY, 'player1'))
+    it('should not allow non-admin to toggle player uploads', () => {
+      expect(() => gameManager.setAllowPlayerUploads(false, 'player1'))
         .toThrow('Admin privileges');
     });
 
@@ -285,7 +285,7 @@ describe('GameManager', () => {
       const roomState = gameManager.getRoomState();
       expect(roomState.deckSize).toBe(0);
       expect(roomState.deckImages.length).toBe(0);
-      expect(roomState.deckMode).toBe(DeckMode.MIXED);
+      expect(roomState.allowPlayerUploads).toBe(true);
     });
   });
 });

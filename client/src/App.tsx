@@ -27,7 +27,7 @@ function App() {
                 onJoin={actions.join}
                 onUploadImage={actions.uploadImage}
                 onDeleteImage={actions.deleteImage}
-                onSetDeckMode={actions.setDeckMode}
+                onSetAllowPlayerUploads={actions.setAllowPlayerUploads}
                 onLockDeck={actions.lockDeck}
                 onUnlockDeck={actions.unlockDeck}
                 onStartGame={actions.startGame}

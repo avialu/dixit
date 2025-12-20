@@ -105,17 +105,13 @@ export function GameBoard({ roomState }: GameBoardProps) {
     const storytellerName = storyteller?.name || "Storyteller";
     
     switch (roomState.phase) {
-      case "WAITING_FOR_PLAYERS":
-        return {
-          icon: "👥",
-          text: "Waiting for players to join...",
-          subtext: `${roomState.players.length} players connected`
-        };
       case "DECK_BUILDING":
         return {
           icon: "🎴",
-          text: "Building the deck...",
-          subtext: `${roomState.deckSize} images uploaded`
+          text: roomState.players.length < 3 
+            ? "Waiting for players to join..." 
+            : "Building the deck...",
+          subtext: `${roomState.players.length} players | ${roomState.deckSize} images`
         };
       case "STORYTELLER_CHOICE":
         return {

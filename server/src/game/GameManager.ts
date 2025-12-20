@@ -10,7 +10,6 @@ import {
   SubmittedCard,
   Vote,
   Card,
-  DeckMode,
 } from "./types.js";
 
 const HAND_SIZE = 6;
@@ -23,10 +22,10 @@ export class GameManager {
 
   constructor() {
     this.state = {
-      phase: GamePhase.WAITING_FOR_PLAYERS,
+      phase: GamePhase.DECK_BUILDING,
       players: new Map(),
       deck: [],
-      deckMode: DeckMode.MIXED,
+      allowPlayerUploads: true, // Players can upload by default
       deckLocked: false,
       winTarget: 30, // Default: 30 points to win
       currentRound: 0,
@@ -58,14 +57,6 @@ export class GameManager {
       this.deckManager = new DeckManager(clientId);
     }
 
-    // Auto-transition from WAITING_FOR_PLAYERS to DECK_BUILDING
-    if (
-      this.state.phase === GamePhase.WAITING_FOR_PLAYERS &&
-      this.state.players.size >= 3
-    ) {
-      this.state.phase = GamePhase.DECK_BUILDING;
-    }
-
     return player;
   }
 
@@ -85,10 +76,7 @@ export class GameManager {
     }
 
     // Cannot kick during active game
-    if (
-      this.state.phase !== GamePhase.WAITING_FOR_PLAYERS &&
-      this.state.phase !== GamePhase.DECK_BUILDING
-    ) {
+    if (this.state.phase !== GamePhase.DECK_BUILDING) {
       throw new Error("Cannot kick players during an active game");
     }
 
@@ -140,10 +128,7 @@ export class GameManager {
     this.validateAdmin(adminId);
 
     // Cannot promote during active game
-    if (
-      this.state.phase !== GamePhase.WAITING_FOR_PLAYERS &&
-      this.state.phase !== GamePhase.DECK_BUILDING
-    ) {
+    if (this.state.phase !== GamePhase.DECK_BUILDING) {
       throw new Error("Cannot promote players during an active game");
     }
 
@@ -177,10 +162,10 @@ export class GameManager {
   }
 
   // Deck Management
-  setDeckMode(mode: DeckMode, adminId: string): void {
+  setAllowPlayerUploads(allow: boolean, adminId: string): void {
     this.validateAdmin(adminId);
-    this.deckManager.setMode(mode);
-    this.state.deckMode = mode;
+    this.deckManager.setAllowPlayerUploads(allow);
+    this.state.allowPlayerUploads = allow;
   }
 
   setWinTarget(target: number | null, adminId: string): void {
@@ -216,30 +201,17 @@ export class GameManager {
       throw new Error("Can only start game from DECK_BUILDING phase");
     }
 
-    // Only require 100 images minimum when deck mode is PLAYERS_ONLY
-    // For HOST_ONLY and MIXED modes, no minimum (can use default images)
-    if (this.state.deckMode === DeckMode.PLAYERS_ONLY) {
-      if (!this.deckManager.canStartGame()) {
-        throw new Error(
-          "Need at least 100 images to start game in PLAYERS_ONLY mode"
-        );
-      }
-    }
-    // No minimum check for HOST_ONLY and MIXED modes
-
     if (this.state.players.size < 3) {
       throw new Error("Need at least 3 players to start");
     }
 
-    // For HOST_ONLY and MIXED modes, load default images if needed
-    if (this.state.deckMode !== DeckMode.PLAYERS_ONLY) {
-      const currentDeckSize = this.deckManager.getDeckSize();
-      if (currentDeckSize < MIN_IMAGES_TO_START) {
-        console.log(
-          `Loading default images (current deck: ${currentDeckSize})`
-        );
-        this.deckManager.loadDefaultImages();
-      }
+    // Load default images if needed
+    const currentDeckSize = this.deckManager.getDeckSize();
+    if (currentDeckSize < MIN_IMAGES_TO_START) {
+      console.log(
+        `Loading default images (current deck: ${currentDeckSize})`
+      );
+      this.deckManager.loadDefaultImages();
     }
 
     // Lock the deck
@@ -523,7 +495,7 @@ export class GameManager {
     this.state.votes = [];
     this.state.lastScoreDeltas.clear();
     this.state.deckLocked = false;
-    this.state.deckMode = DeckMode.MIXED;
+    this.state.allowPlayerUploads = true;
     this.state.winTarget = 30; // Reset to default
     this.submittedCardsData.clear();
   }
@@ -574,7 +546,7 @@ export class GameManager {
     return {
       phase: this.state.phase,
       players,
-      deckMode: this.state.deckMode,
+      allowPlayerUploads: this.state.allowPlayerUploads,
       deckSize: this.deckManager.getDeckSize(),
       deckLocked: this.state.deckLocked,
       winTarget: this.state.winTarget,
