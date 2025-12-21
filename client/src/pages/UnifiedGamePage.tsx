@@ -1,10 +1,9 @@
 import { useState, useEffect } from "react";
 import { RoomState, PlayerState } from "../hooks/useGameState";
 import { GameBoard } from "../components/GameBoard";
-import { HandView } from "../components/HandView";
-import { VotingView } from "../components/VotingView";
 import { QRCode } from "../components/QRCode";
-import { DeckUploader } from "../components/DeckUploader";
+import { Modal } from "../components/Modal";
+import * as ModalContent from "../components/ModalContent";
 
 interface UnifiedGamePageProps {
   roomState: RoomState | null;
@@ -336,22 +335,6 @@ export function UnifiedGamePage({
           roomState={roomState}
           triggerAnimation={triggerBoardAnimation}
         />
-
-        {/* Revealed Cards Display (during REVEAL and VOTING) */}
-        {["REVEAL", "VOTING"].includes(roomState.phase) &&
-          roomState.revealedCards.length > 0 && (
-            <div className="board-revealed-cards">
-              <VotingView
-                revealedCards={roomState.revealedCards}
-                selectedCardId={null}
-                onSelectCard={() => {}}
-                disabled={true}
-                votes={
-                  roomState.phase === "REVEAL" ? roomState.votes : undefined
-                }
-              />
-            </div>
-          )}
       </div>
 
       {/* Floating Action Buttons - For Players (not spectators) */}
@@ -404,621 +387,107 @@ export function UnifiedGamePage({
       )}
 
       {/* Modal Popup - Shows when player needs to act */}
-      {showModal && (
-        <>
-          <div className="modal-backdrop" onClick={() => setShowModal(false)} />
-          <div className="modal-popup">
-            <button
-              className="modal-close-button"
-              onClick={() => setShowModal(false)}
-              title="Close and view board"
-            >
-              ✕
-            </button>
-            <div className="modal-content">
-              {/* CARDS MODAL - Game Actions */}
-              {modalType === "cards" && (
-                <>
-                  {/* LOBBY - Before game starts, show player list (for both players and spectators) */}
-                  {!isInGame && (
-                    <div className="modal-section lobby-modal">
-                      <h2>👥 Players ({roomState.players.length})</h2>
+      {showModal && (() => {
+        let modalContent: { header: React.ReactNode; footer: React.ReactNode; content: React.ReactNode } | null = null;
 
-                      <div className="players-grid">
-                        {roomState.players.map((player) => {
-                          const isMe = player.id === playerId;
-                          const isEditing = editingPlayerId === player.id;
+        if (modalType === "cards") {
+          // LOBBY - Before game starts
+          if (!isInGame) {
+            modalContent = ModalContent.LobbyModal({
+              roomState,
+              playerId,
+              isSpectator,
+              isAdmin,
+              editingPlayerId,
+              newName,
+              setEditingPlayerId,
+              setNewName,
+              handleStartEditName,
+              handleSaveName,
+              handleCancelEditName,
+              onUploadImage: _onUploadImage,
+              onDeleteImage: _onDeleteImage,
+              onSetAllowPlayerUploads,
+              onStartGame,
+              handleLogout,
+            });
+          }
+          // STORYTELLER_CHOICE phase
+          else if (roomState.phase === "STORYTELLER_CHOICE") {
+            if (isStoryteller) {
+              modalContent = ModalContent.StorytellerChoiceModal({
+                playerState,
+                selectedCardId,
+                clue,
+                localSubmittedCardId,
+                localSubmittedClue,
+                roomState,
+                setSelectedCardId,
+                setClue,
+                handleStorytellerSubmit,
+              });
+            } else {
+              modalContent = ModalContent.WaitingStorytellerModal({ playerState });
+            }
+          }
+          // PLAYERS_CHOICE phase
+          else if (roomState.phase === "PLAYERS_CHOICE") {
+            if (!isStoryteller) {
+              modalContent = ModalContent.PlayerChoiceModal({
+                playerState,
+                selectedCardId,
+                localSubmittedCardId,
+                roomState,
+                setSelectedCardId,
+                handlePlayerSubmit,
+              });
+            } else {
+              modalContent = ModalContent.WaitingPlayersModal({ playerState, roomState });
+            }
+          }
+          // VOTING phase
+          else if (roomState.phase === "VOTING") {
+            modalContent = ModalContent.VotingModal({
+              roomState,
+              playerState,
+              selectedCardId,
+              localVotedCardId,
+              isStoryteller,
+              isSpectator,
+              setSelectedCardId,
+              handleVote,
+            });
+          }
+          // REVEAL phase
+          else if (roomState.phase === "REVEAL") {
+            modalContent = ModalContent.RevealModal({
+              roomState,
+              playerState,
+              isAdmin,
+            });
+          }
+          // GAME_END phase
+          else if (roomState.phase === "GAME_END") {
+            modalContent = ModalContent.GameEndModal({
+              roomState,
+              isAdmin,
+              onResetGame,
+              onNewDeck,
+            });
+          }
+        }
 
-                          return (
-                            <div
-                              key={player.id}
-                              className={`player-card ${isMe ? "you" : ""}`}
-                            >
-                              {isEditing ? (
-                                // Inline edit mode
-                                <div className="player-name-edit">
-                                  <input
-                                    type="text"
-                                    value={newName}
-                                    onChange={(e) => setNewName(e.target.value)}
-                                    placeholder="Enter new name"
-                                    maxLength={50}
-                                    autoFocus
-                                    className="name-input-inline"
-                                    onKeyDown={(e) => {
-                                      if (e.key === "Enter") handleSaveName();
-                                      if (e.key === "Escape")
-                                        handleCancelEditName();
-                                    }}
-                                  />
-                                  <div className="name-edit-actions">
-                                    <button
-                                      onClick={handleSaveName}
-                                      disabled={!newName.trim()}
-                                      className="btn-icon btn-save"
-                                      title="Save"
-                                    >
-                                      ✓
-                                    </button>
-                                    <button
-                                      onClick={handleCancelEditName}
-                                      className="btn-icon btn-cancel"
-                                      title="Cancel"
-                                    >
-                                      ✕
-                                    </button>
-                                  </div>
-                                </div>
-                              ) : (
-                                // Normal display mode
-                                <div className="player-info">
-                                  <span
-                                    className={`player-name ${
-                                      isMe && !isSpectator ? "editable" : ""
-                                    }`}
-                                    onClick={() =>
-                                      isMe && !isSpectator
-                                        ? handleStartEditName(
-                                            player.id,
-                                            player.name
-                                          )
-                                        : null
-                                    }
-                                    title={
-                                      isMe && !isSpectator
-                                        ? "Click to edit your name"
-                                        : ""
-                                    }
-                                  >
-                                    {player.name}
-                                  </span>
-                                  {isMe && (
-                                    <span className="you-badge">(You)</span>
-                                  )}
-                                  {player.isAdmin && (
-                                    <span className="admin-badge">👑</span>
-                                  )}
-                                </div>
-                              )}
-                            </div>
-                          );
-                        })}
-                      </div>
-
-                      {/* Image Upload Section - Available to everyone (including spectators) */}
-                      <div style={{ marginTop: "2rem" }}>
-                        <h2>🖼️ Deck Images</h2>
-
-                        <DeckUploader
-                          roomState={roomState}
-                          playerId={playerId}
-                          onUpload={_onUploadImage}
-                          onDelete={_onDeleteImage}
-                          onSetAllowPlayerUploads={onSetAllowPlayerUploads}
-                        />
-                      </div>
-
-                      {!isSpectator && (
-                        <p style={{ color: "#95a5a6", marginTop: "1rem" }}>
-                          {isAdmin
-                            ? "Upload images and start when ready!"
-                            : "⏳ Waiting for admin to start the game..."}
-                        </p>
-                      )}
-                      {isSpectator && (
-                        <p style={{ color: "#95a5a6", marginTop: "1rem" }}>
-                          👁️ Spectating - You can upload images to help build
-                          the deck!
-                        </p>
-                      )}
-
-                      {/* Admin Start Button */}
-                      {isAdmin && (
-                        <button
-                          onClick={onStartGame}
-                          disabled={
-                            roomState.players.length < 3 ||
-                            roomState.deckSize < 100
-                          }
-                          className="btn-primary btn-large"
-                          style={{ marginTop: "1rem", width: "100%" }}
-                        >
-                          🚀 Start Game
-                        </button>
-                      )}
-
-                      {/* Logout Button - For all users */}
-                      <button
-                        onClick={handleLogout}
-                        className="btn-secondary"
-                        style={{ marginTop: "1rem", width: "100%" }}
-                      >
-                        🚪 Logout & Return to Join Screen
-                      </button>
-                    </div>
-                  )}
-
-                  {/* STORYTELLER_CHOICE */}
-                  {roomState.phase === "STORYTELLER_CHOICE" && (
-                    <>
-                      {isStoryteller && !localSubmittedCardId && (
-                        <div className="modal-section storyteller-modal">
-                          <h2>🎭 You are the Storyteller!</h2>
-                          <p>Choose a card and provide a clue</p>
-
-                          <div className="modal-hand">
-                            <HandView
-                              hand={playerState?.hand || []}
-                              selectedCardId={selectedCardId}
-                              onSelectCard={setSelectedCardId}
-                            />
-                          </div>
-
-                          <div className="clue-submit-row">
-                            <input
-                              type="text"
-                              placeholder="Enter your clue..."
-                              value={clue}
-                              onChange={(e) => setClue(e.target.value)}
-                              maxLength={200}
-                              className="clue-input-inline"
-                              autoFocus
-                            />
-                            <button
-                              onClick={handleStorytellerSubmit}
-                              disabled={!selectedCardId || !clue.trim()}
-                              className="btn-primary btn-inline"
-                            >
-                              Submit
-                            </button>
-                          </div>
-                        </div>
-                      )}
-                      {isStoryteller &&
-                        (localSubmittedCardId ||
-                          playerState?.mySubmittedCardId) && (
-                          <div className="modal-section storyteller-modal">
-                            <h2>✅ Card Submitted</h2>
-                            <p>Waiting for other players...</p>
-                            {(localSubmittedClue || roomState.currentClue) && (
-                              <p className="clue-reminder">
-                                Your clue:{" "}
-                                <strong>
-                                  "{localSubmittedClue || roomState.currentClue}
-                                  "
-                                </strong>
-                              </p>
-                            )}
-
-                            {/* Show the submitted card image prominently */}
-                            <div
-                              className="submitted-card-preview"
-                              style={{
-                                display: "flex",
-                                justifyContent: "center",
-                                margin: "1rem 0",
-                              }}
-                            >
-                              {(() => {
-                                const submittedCardId =
-                                  localSubmittedCardId ||
-                                  playerState?.mySubmittedCardId;
-                                const submittedCard = playerState?.hand.find(
-                                  (c) => c.id === submittedCardId
-                                );
-                                return submittedCard ? (
-                                  <img
-                                    src={submittedCard.imageData}
-                                    alt="Your submitted card"
-                                    style={{
-                                      maxWidth: "100%",
-                                      maxHeight: "40vh",
-                                      borderRadius: "12px",
-                                      boxShadow:
-                                        "0 8px 24px rgba(102, 126, 234, 0.4)",
-                                      border: "3px solid #667eea",
-                                    }}
-                                  />
-                                ) : null;
-                              })()}
-                            </div>
-
-                            <div className="modal-hand">
-                              <HandView
-                                hand={playerState?.hand || []}
-                                selectedCardId={
-                                  localSubmittedCardId ||
-                                  playerState?.mySubmittedCardId ||
-                                  null
-                                }
-                                onSelectCard={() => {}}
-                                lockedCardId={
-                                  localSubmittedCardId ||
-                                  playerState?.mySubmittedCardId ||
-                                  null
-                                }
-                              />
-                            </div>
-                          </div>
-                        )}
-                      {!isStoryteller && (
-                        <div className="modal-section waiting-modal">
-                          <h2>⏳ Waiting for Storyteller</h2>
-                          <p>
-                            The storyteller is choosing a card and providing a
-                            clue...
-                          </p>
-
-                          <div className="modal-hand">
-                            <HandView
-                              hand={playerState?.hand || []}
-                              selectedCardId={null}
-                              onSelectCard={() => {}}
-                            />
-                          </div>
-
-                          <p style={{ color: "#95a5a6", fontSize: "0.85rem" }}>
-                            Once they submit, you'll choose a card that matches
-                            their clue.
-                          </p>
-                        </div>
-                      )}
-                    </>
-                  )}
-
-                  {/* PLAYERS_CHOICE */}
-                  {roomState.phase === "PLAYERS_CHOICE" && (
-                    <>
-                      {!isStoryteller && !localSubmittedCardId && (
-                        <div className="modal-section player-choice-modal">
-                          <h2>✍️ Choose Your Card</h2>
-                          <p>Pick a card that matches the clue</p>
-                          <p className="clue-reminder">
-                            The clue: <strong>"{roomState.currentClue}"</strong>
-                          </p>
-
-                          <div className="modal-hand">
-                            <HandView
-                              hand={playerState?.hand || []}
-                              selectedCardId={selectedCardId}
-                              onSelectCard={setSelectedCardId}
-                            />
-                          </div>
-
-                          <button
-                            onClick={handlePlayerSubmit}
-                            disabled={!selectedCardId}
-                            className="btn-primary btn-large"
-                          >
-                            Submit Card
-                          </button>
-                        </div>
-                      )}
-                      {!isStoryteller && localSubmittedCardId && (
-                        <div className="modal-section waiting-modal">
-                          <h2>✅ Card Submitted</h2>
-                          <p>
-                            Waiting for other players to submit their cards...
-                          </p>
-                          <p className="clue-reminder">
-                            The clue: <strong>"{roomState.currentClue}"</strong>
-                          </p>
-
-                          <div className="modal-hand">
-                            <HandView
-                              hand={playerState?.hand || []}
-                              selectedCardId={localSubmittedCardId}
-                              onSelectCard={() => {}}
-                              lockedCardId={localSubmittedCardId}
-                            />
-                          </div>
-                        </div>
-                      )}
-                      {isStoryteller && (
-                        <div className="modal-section waiting-modal">
-                          <h2>⏳ Waiting for Players</h2>
-                          <p>
-                            Other players are choosing cards that match your
-                            clue...
-                          </p>
-                          <p className="clue-reminder">
-                            Your clue:{" "}
-                            <strong>"{roomState.currentClue}"</strong>
-                          </p>
-
-                          {/* Show the submitted card image prominently */}
-                          {playerState?.mySubmittedCardId && (
-                            <div
-                              className="submitted-card-preview"
-                              style={{
-                                display: "flex",
-                                justifyContent: "center",
-                                margin: "1rem 0",
-                              }}
-                            >
-                              {(() => {
-                                const submittedCard = playerState?.hand.find(
-                                  (c) => c.id === playerState.mySubmittedCardId
-                                );
-                                return submittedCard ? (
-                                  <img
-                                    src={submittedCard.imageData}
-                                    alt="Your submitted card"
-                                    style={{
-                                      maxWidth: "100%",
-                                      maxHeight: "35vh",
-                                      borderRadius: "12px",
-                                      boxShadow:
-                                        "0 8px 24px rgba(102, 126, 234, 0.4)",
-                                      border: "3px solid #667eea",
-                                    }}
-                                  />
-                                ) : null;
-                              })()}
-                            </div>
-                          )}
-
-                          <div className="modal-hand">
-                            <HandView
-                              hand={playerState?.hand || []}
-                              selectedCardId={
-                                playerState?.mySubmittedCardId || null
-                              }
-                              onSelectCard={() => {}}
-                              lockedCardId={
-                                playerState?.mySubmittedCardId || null
-                              }
-                            />
-                          </div>
-                        </div>
-                      )}
-                    </>
-                  )}
-
-                  {/* REVEAL - Show who drew and voted, admin continues */}
-                  {roomState.phase === "REVEAL" &&
-                    (() => {
-                      // Get storyteller card info for display
-                      const storytellerId = roomState.storytellerId;
-                      const storytellerCard = roomState.revealedCards.find(
-                        (card) => (card as any).playerId === storytellerId
-                      );
-                      const storytellerCardId = storytellerCard?.cardId;
-
-                      // Use server-calculated score deltas
-                      const scoreDeltas: { [playerId: string]: number } = {};
-                      roomState.lastScoreDeltas.forEach((delta) => {
-                        scoreDeltas[delta.playerId] = delta.delta;
-                      });
-
-                      return (
-                        <div className="modal-section reveal-modal">
-                          <h2>🎨 Results Revealed!</h2>
-                          <p className="clue-reminder">
-                            The clue: <strong>"{roomState.currentClue}"</strong>
-                          </p>
-                          <p style={{ color: "#95a5a6", fontSize: "0.9rem" }}>
-                            See who drew each card and who voted for them
-                          </p>
-
-                          <div className="modal-voting-cards">
-                            <VotingView
-                              revealedCards={roomState.revealedCards}
-                              selectedCardId={null}
-                              onSelectCard={() => {}}
-                              myCardId={
-                                playerState?.mySubmittedCardId || undefined
-                              }
-                              disabled={true}
-                              votes={roomState.votes}
-                              players={roomState.players}
-                              cardOwners={roomState.revealedCards.map(
-                                (card) => ({
-                                  cardId: card.cardId,
-                                  playerId: (card as any).playerId || "unknown",
-                                })
-                              )}
-                              storytellerCardId={storytellerCardId || null}
-                              showResults={true}
-                              scoreDeltas={scoreDeltas}
-                            />
-                          </div>
-
-                          {/* Non-admin waiting message */}
-                          {!isAdmin && (
-                            <p
-                              style={{
-                                marginTop: "1rem",
-                                color: "#95a5a6",
-                                fontStyle: "italic",
-                              }}
-                            >
-                              ⏳ Waiting for admin to continue...
-                            </p>
-                          )}
-
-                          {/* Admin instruction - continue button is on the board */}
-                          {isAdmin && (
-                            <p
-                              style={{
-                                marginTop: "1rem",
-                                color: "#4a90e2",
-                                fontStyle: "italic",
-                                fontWeight: "500",
-                              }}
-                            >
-                              💡 Close this popup to see the continue button
-                            </p>
-                          )}
-                        </div>
-                      );
-                    })()}
-
-                  {/* VOTING */}
-                  {roomState.phase === "VOTING" &&
-                    (() => {
-                      // Calculate if all eligible players have voted
-                      const eligiblePlayers = roomState.players.filter(
-                        (p) => p.id !== roomState.storytellerId
-                      );
-                      const allVotesIn =
-                        roomState.votes.length >= eligiblePlayers.length;
-                      const hasVoted = localVotedCardId !== null;
-                      const canVote =
-                        !isStoryteller && !isSpectator && !hasVoted;
-
-                      return (
-                        <div className="modal-section voting-modal">
-                          {canVote && (
-                            <h2>🗳️ Vote for the Storyteller's Card</h2>
-                          )}
-                          {hasVoted && !allVotesIn && (
-                            <h2>✅ Waiting for Others to Vote</h2>
-                          )}
-                          {allVotesIn && <h2>📊 All Votes Are In!</h2>}
-                          {isStoryteller && !allVotesIn && (
-                            <h2>👁️ Watching the Vote</h2>
-                          )}
-                          {isStoryteller && allVotesIn && (
-                            <h2>📊 All Votes Are In!</h2>
-                          )}
-                          {isSpectator && <h2>👁️ Spectating</h2>}
-
-                          <p className="clue-reminder">
-                            The clue: <strong>"{roomState.currentClue}"</strong>
-                          </p>
-
-                          {canVote && (
-                            <p className="hint">
-                              Click a card to vote (you cannot vote for your
-                              own)
-                            </p>
-                          )}
-
-                          <div className="modal-voting-cards">
-                            <VotingView
-                              revealedCards={roomState.revealedCards}
-                              selectedCardId={canVote ? selectedCardId : null}
-                              onSelectCard={
-                                canVote ? setSelectedCardId : () => {}
-                              }
-                              myCardId={
-                                playerState?.mySubmittedCardId || undefined
-                              }
-                              disabled={!canVote}
-                              showResults={false}
-                              lockedCardId={
-                                hasVoted ? localVotedCardId : undefined
-                              }
-                            />
-                          </div>
-
-                          {canVote && (
-                            <button
-                              onClick={handleVote}
-                              disabled={!selectedCardId}
-                              className="btn-primary btn-large"
-                            >
-                              Submit Vote
-                            </button>
-                          )}
-
-                          {hasVoted && !allVotesIn && (
-                            <p style={{ color: "#95a5a6", marginTop: "1rem" }}>
-                              Waiting for other players to vote...
-                            </p>
-                          )}
-                        </div>
-                      );
-                    })()}
-
-                  {/* GAME_END */}
-                  {roomState.phase === "GAME_END" && (
-                    <div className="modal-section game-end-modal">
-                      <div className="winner-crown">👑</div>
-                      <h2>Game Over!</h2>
-
-                      {(() => {
-                        const sortedPlayers = [...roomState.players].sort(
-                          (a, b) => b.score - a.score
-                        );
-                        const winner = sortedPlayers[0];
-                        const wonByTarget =
-                          roomState.winTarget !== null &&
-                          winner.score >= roomState.winTarget;
-
-                        return (
-                          <>
-                            {wonByTarget && (
-                              <p className="winner-text">
-                                {winner.name} wins with {winner.score} points!
-                              </p>
-                            )}
-
-                            <div className="final-scores-list">
-                              {sortedPlayers.map((player, index) => (
-                                <div
-                                  key={player.id}
-                                  className={`final-score-item ${
-                                    index === 0 ? "winner" : ""
-                                  }`}
-                                >
-                                  <span className="rank">{index + 1}.</span>
-                                  <span className="name">{player.name}</span>
-                                  <span className="score">
-                                    {player.score} pts
-                                  </span>
-                                </div>
-                              ))}
-                            </div>
-
-                            {isAdmin && (
-                              <div className="game-end-actions">
-                                <button
-                                  onClick={onResetGame}
-                                  className="btn-primary"
-                                >
-                                  Reset Game
-                                </button>
-                                <button
-                                  onClick={onNewDeck}
-                                  className="btn-secondary"
-                                >
-                                  New Deck
-                                </button>
-                              </div>
-                            )}
-                          </>
-                        );
-                      })()}
-                    </div>
-                  )}
-                </>
-              )}
-            </div>
-          </div>
-        </>
-      )}
+        return modalContent ? (
+          <Modal
+            isOpen={true}
+            onClose={() => setShowModal(false)}
+            header={modalContent.header}
+            footer={modalContent.footer}
+          >
+            {modalContent.content}
+          </Modal>
+        ) : null;
+      })()}
     </div>
   );
 }
