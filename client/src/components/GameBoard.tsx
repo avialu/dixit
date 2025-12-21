@@ -375,20 +375,58 @@ export function GameBoard({
                 key={player.id}
                 className={isAnimating ? "token-animating" : ""}
               >
-                <circle
-                  cx={position.x + offsetX}
-                  cy={position.y - 5 * scaleFactor}
-                  r={3.5 * scaleFactor}
-                  fill={getPlayerColor(player.id)}
-                  stroke="#fff"
-                  strokeWidth={0.5 * scaleFactor}
-                  className="player-token"
-                  style={{
-                    transition: isAnimating
-                      ? "cx 2s ease-in-out, cy 2s ease-in-out"
-                      : "none",
-                  }}
-                />
+                {player.tokenImage ? (
+                  /* Token with custom image */
+                  <>
+                    <defs>
+                      <pattern
+                        id={`token-img-${player.id}`}
+                        patternUnits="objectBoundingBox"
+                        width="1"
+                        height="1"
+                      >
+                        <image
+                          href={player.tokenImage}
+                          x="0"
+                          y="0"
+                          width="1"
+                          height="1"
+                          preserveAspectRatio="xMidYMid slice"
+                        />
+                      </pattern>
+                    </defs>
+                    <circle
+                      cx={position.x + offsetX}
+                      cy={position.y - 5 * scaleFactor}
+                      r={3.5 * scaleFactor}
+                      fill={`url(#token-img-${player.id})`}
+                      stroke="#fff"
+                      strokeWidth={0.5 * scaleFactor}
+                      className="player-token"
+                      style={{
+                        transition: isAnimating
+                          ? "cx 2s ease-in-out, cy 2s ease-in-out"
+                          : "none",
+                      }}
+                    />
+                  </>
+                ) : (
+                  /* Token with color fallback */
+                  <circle
+                    cx={position.x + offsetX}
+                    cy={position.y - 5 * scaleFactor}
+                    r={3.5 * scaleFactor}
+                    fill={getPlayerColor(player.id)}
+                    stroke="#fff"
+                    strokeWidth={0.5 * scaleFactor}
+                    className="player-token"
+                    style={{
+                      transition: isAnimating
+                        ? "cx 2s ease-in-out, cy 2s ease-in-out"
+                        : "none",
+                    }}
+                  />
+                )}
                 {roomState.storytellerId === player.id && (
                   <text
                     x={position.x + offsetX}

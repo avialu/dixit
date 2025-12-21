@@ -37,6 +37,7 @@ function App() {
                 onAdvanceRound={actions.advanceRound}
                 onResetGame={actions.resetGame}
                 onNewDeck={actions.newDeck}
+                onUploadTokenImage={actions.uploadTokenImage}
               />
             }
           />

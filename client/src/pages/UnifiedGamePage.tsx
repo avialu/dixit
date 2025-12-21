@@ -25,6 +25,7 @@ interface UnifiedGamePageProps {
   onAdvanceRound: () => void;
   onResetGame: () => void;
   onNewDeck: () => void;
+  onUploadTokenImage: (imageData: string | null) => void;
 }
 
 export function UnifiedGamePage({
@@ -47,6 +48,7 @@ export function UnifiedGamePage({
   onAdvanceRound: _onAdvanceRound,
   onResetGame,
   onNewDeck,
+  onUploadTokenImage,
 }: UnifiedGamePageProps) {
   const [name, setName] = useState("");
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
@@ -354,6 +356,17 @@ export function UnifiedGamePage({
             {roomState.phase === "REVEAL" && "🎨 Results"}
             {roomState.phase === "GAME_END" && "🏆 Results"}
           </button>
+
+          {/* Admin Start Game Button - During deck building */}
+          {isAdmin && !isInGame && (
+            <button
+              className="floating-action-button start-game-button"
+              onClick={onStartGame}
+              disabled={roomState.players.length < 3 || roomState.deckSize < 100}
+            >
+              🚀 Start Game
+            </button>
+          )}
         </>
       )}
 
@@ -408,7 +421,7 @@ export function UnifiedGamePage({
               onUploadImage: _onUploadImage,
               onDeleteImage: _onDeleteImage,
               onSetAllowPlayerUploads,
-              onStartGame,
+              onUploadTokenImage,
               handleLogout,
             });
           }
@@ -464,6 +477,15 @@ export function UnifiedGamePage({
               roomState,
               playerState,
               isAdmin,
+              onAdvanceRound: () => {
+                if (socket) {
+                  socket.emit("advanceRound");
+                } else {
+                  // Demo mode fallback
+                  _onAdvanceRound();
+                }
+                setShowModal(false);
+              },
             });
           }
           // GAME_END phase
@@ -483,6 +505,7 @@ export function UnifiedGamePage({
             onClose={() => setShowModal(false)}
             header={modalContent.header}
             footer={modalContent.footer}
+            opaqueBackdrop={!isInGame}
           >
             {modalContent.content}
           </Modal>

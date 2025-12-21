@@ -14,6 +14,7 @@ export interface Player {
   isConnected: boolean;
   score: number;
   handSize: number;
+  tokenImage: string | null;
 }
 
 export interface RoomState {
@@ -162,6 +163,10 @@ export function useGameState(socket: Socket | null) {
     socket?.emit('leave');
   };
 
+  const uploadTokenImage = (imageData: string | null) => {
+    socket?.emit('uploadTokenImage', { imageData });
+  };
+
   return {
     roomState,
     playerState,
@@ -186,6 +191,7 @@ export function useGameState(socket: Socket | null) {
       kickPlayer,
       promotePlayer,
       leave,
+      uploadTokenImage,
     },
   };
 }

@@ -443,6 +443,23 @@ npm start</pre>
       }
     });
 
+    socket.on("uploadTokenImage", (data) => {
+      try {
+        const clientId = socketToClient.get(socket.id);
+        if (!clientId) {
+          socket.emit("error", { message: "Please join the game first" });
+          return;
+        }
+
+        const { imageData } = data;
+        gameManager.setPlayerTokenImage(clientId, imageData);
+
+        broadcastRoomState();
+      } catch (error: any) {
+        socket.emit("error", { message: error.message });
+      }
+    });
+
     socket.on("adminKickPlayer", (data) => {
       try {
         const clientId = socketToClient.get(socket.id);

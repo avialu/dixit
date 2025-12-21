@@ -18,7 +18,7 @@ interface LobbyModalProps {
   onUploadImage: (imageData: string) => void;
   onDeleteImage: (imageId: string) => void;
   onSetAllowPlayerUploads: (allow: boolean) => void;
-  onStartGame: () => void;
+  onUploadTokenImage: (imageData: string | null) => void;
   handleLogout: () => void;
 }
 
@@ -58,6 +58,7 @@ interface RevealModalProps {
   roomState: RoomState;
   playerState: PlayerState | null;
   isAdmin: boolean;
+  onAdvanceRound: () => void;
 }
 
 interface GameEndModalProps {
@@ -83,9 +84,27 @@ export function LobbyModal(props: LobbyModalProps) {
     onUploadImage,
     onDeleteImage,
     onSetAllowPlayerUploads,
-    onStartGame,
+    onUploadTokenImage,
     handleLogout,
   } = props;
+
+  const handleTokenImageUpload = (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const imageData = e.target?.result as string;
+      onUploadTokenImage(imageData);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleRemoveTokenImage = () => {
+    onUploadTokenImage(null);
+  };
 
   const header = (
     <>
@@ -95,15 +114,6 @@ export function LobbyModal(props: LobbyModalProps) {
 
   const footer = (
     <>
-      {isAdmin && (
-        <button
-          onClick={onStartGame}
-          disabled={roomState.players.length < 3 || roomState.deckSize < 100}
-          className="btn-primary btn-large"
-        >
-          🚀 Start Game
-        </button>
-      )}
       <button onClick={handleLogout} className="btn-secondary">
         🚪 Logout & Return to Join Screen
       </button>
@@ -125,6 +135,62 @@ export function LobbyModal(props: LobbyModalProps) {
                 key={player.id}
                 className={`player-card ${isMe ? "you" : ""}`}
               >
+                {/* Token Image Display/Upload */}
+                <div className="player-token-preview">
+                  {player.tokenImage ? (
+                    <img
+                      src={player.tokenImage}
+                      alt={`${player.name}'s token`}
+                      className="token-image"
+                    />
+                  ) : (
+                    <div
+                      className="token-color-preview"
+                      style={{
+                        background: (() => {
+                          const colors = [
+                            "#f39c12",
+                            "#3498db",
+                            "#2ecc71",
+                            "#e74c3c",
+                            "#9b59b6",
+                            "#1abc9c",
+                          ];
+                          const index = roomState.players.findIndex(
+                            (p) => p.id === player.id
+                          );
+                          return colors[index % colors.length];
+                        })(),
+                      }}
+                    />
+                  )}
+                  {isMe && !isSpectator && (
+                    <div className="token-upload-actions">
+                      <label
+                        className="btn-icon-small"
+                        title="Upload token image"
+                      >
+                        📷
+                        <input
+                          type="file"
+                          accept="image/*"
+                          style={{ display: "none" }}
+                          onChange={handleTokenImageUpload}
+                        />
+                      </label>
+                      {player.tokenImage && (
+                        <button
+                          className="btn-icon-small"
+                          onClick={handleRemoveTokenImage}
+                          title="Remove token image"
+                        >
+                          ✕
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
+
                 {isEditing ? (
                   <div className="player-name-edit">
                     <input
@@ -229,14 +295,7 @@ export function StorytellerChoiceModal(props: StorytellerModalProps) {
 
   const header = (
     <>
-      <h2>
-        {isSubmitted ? "✅ Card Submitted" : "🎭 You are the Storyteller!"}
-      </h2>
-      {isSubmitted ? (
-        <p>Waiting for other players...</p>
-      ) : (
-        <p>Choose a card and provide a clue</p>
-      )}
+      <h2>{isSubmitted ? "✅ Submitted" : "🎭 Storyteller"}</h2>
     </>
   );
 
@@ -268,8 +327,9 @@ export function StorytellerChoiceModal(props: StorytellerModalProps) {
       <>
         {isSubmitted && (localSubmittedClue || roomState.currentClue) && (
           <p className="clue-reminder">
-            Your clue:{" "}
-            <strong>"{localSubmittedClue || roomState.currentClue}"</strong>
+            <strong style={{ fontWeight: 900, fontSize: "1.1em" }}>
+              "{localSubmittedClue || roomState.currentClue}"
+            </strong>
           </p>
         )}
 
@@ -333,14 +393,11 @@ export function PlayerChoiceModal(props: PlayerChoiceModalProps) {
 
   const header = (
     <>
-      <h2>{isSubmitted ? "✅ Card Submitted" : "✍️ Choose Your Card"}</h2>
-      {isSubmitted ? (
-        <p>Waiting for other players to submit their cards...</p>
-      ) : (
-        <p>Pick a card that matches the clue</p>
-      )}
+      <h2>{isSubmitted ? "✅ Submitted" : "✍️ Choose Card"}</h2>
       <p className="clue-reminder">
-        The clue: <strong>"{roomState.currentClue}"</strong>
+        <strong style={{ fontWeight: 900, fontSize: "1.1em" }}>
+          "{roomState.currentClue}"
+        </strong>
       </p>
     </>
   );
@@ -377,8 +434,7 @@ export function WaitingStorytellerModal(props: {
 }) {
   const header = (
     <>
-      <h2>⏳ Waiting for Storyteller</h2>
-      <p>The storyteller is choosing a card and providing a clue...</p>
+      <h2>⏳ Waiting</h2>
     </>
   );
 
@@ -396,9 +452,6 @@ export function WaitingStorytellerModal(props: {
             showDrawer={false}
           />
         </div>
-        <p style={{ color: "#95a5a6", fontSize: "0.85rem" }}>
-          Once they submit, you'll choose a card that matches their clue.
-        </p>
       </>
     ),
   };
@@ -412,10 +465,11 @@ export function WaitingPlayersModal(props: {
 
   const header = (
     <>
-      <h2>⏳ Waiting for Players</h2>
-      <p>Other players are choosing cards that match your clue...</p>
+      <h2>⏳ Waiting</h2>
       <p className="clue-reminder">
-        Your clue: <strong>"{roomState.currentClue}"</strong>
+        <strong style={{ fontWeight: 900, fontSize: "1.1em" }}>
+          "{roomState.currentClue}"
+        </strong>
       </p>
     </>
   );
@@ -482,26 +536,22 @@ export function VotingModal(props: VotingModalProps) {
   const canVote = !isStoryteller && !isSpectator && !hasVoted;
 
   const getHeaderTitle = () => {
-    if (canVote) return "🗳️ Vote for the Storyteller's Card";
-    if (hasVoted && !allVotesIn) return "✅ Waiting for Others to Vote";
-    if (allVotesIn) return "📊 All Votes Are In!";
-    if (isStoryteller && !allVotesIn) return "👁️ Watching the Vote";
-    if (isStoryteller && allVotesIn) return "📊 All Votes Are In!";
+    if (canVote) return "🗳️ Vote";
+    if (hasVoted && !allVotesIn) return "✅ Voted";
+    if (allVotesIn) return "📊 All Votes In";
+    if (isStoryteller) return "👁️ Watching";
     if (isSpectator) return "👁️ Spectating";
-    return "🗳️ Voting Phase";
+    return "🗳️ Vote";
   };
 
   const header = (
     <>
       <h2>{getHeaderTitle()}</h2>
       <p className="clue-reminder">
-        The clue: <strong>"{roomState.currentClue}"</strong>
+        <strong style={{ fontWeight: 900, fontSize: "1.1em" }}>
+          "{roomState.currentClue}"
+        </strong>
       </p>
-      {canVote && (
-        <p className="hint">
-          Click a card to vote (you cannot vote for your own)
-        </p>
-      )}
     </>
   );
 
@@ -514,9 +564,7 @@ export function VotingModal(props: VotingModalProps) {
       Submit Vote
     </button>
   ) : hasVoted && !allVotesIn ? (
-    <p style={{ color: "#95a5a6", margin: 0 }}>
-      Waiting for other players to vote...
-    </p>
+    <p style={{ color: "#95a5a6", margin: 0 }}>⏳ Waiting...</p>
   ) : null;
 
   return {
@@ -541,7 +589,7 @@ export function VotingModal(props: VotingModalProps) {
 }
 
 export function RevealModal(props: RevealModalProps) {
-  const { roomState, playerState, isAdmin } = props;
+  const { roomState, playerState, isAdmin, onAdvanceRound } = props;
 
   const storytellerId = roomState.storytellerId;
   const storytellerCard = roomState.revealedCards.find(
@@ -556,30 +604,22 @@ export function RevealModal(props: RevealModalProps) {
 
   const header = (
     <>
-      <h2>🎨 Results Revealed!</h2>
+      <h2>🎨 Results</h2>
       <p className="clue-reminder">
-        The clue: <strong>"{roomState.currentClue}"</strong>
-      </p>
-      <p style={{ color: "#95a5a6", fontSize: "0.9rem" }}>
-        See who drew each card and who voted for them
+        <strong style={{ fontWeight: 900, fontSize: "1.1em" }}>
+          "{roomState.currentClue}"
+        </strong>
       </p>
     </>
   );
 
   const footer = isAdmin ? (
-    <p
-      style={{
-        color: "#4a90e2",
-        fontStyle: "italic",
-        fontWeight: "500",
-        margin: 0,
-      }}
-    >
-      💡 Close this popup to see the continue button
-    </p>
+    <button onClick={onAdvanceRound} className="btn-continue">
+      ▶️ Continue
+    </button>
   ) : (
     <p style={{ color: "#95a5a6", fontStyle: "italic", margin: 0 }}>
-      ⏳ Waiting for admin to continue...
+      ⏳ Waiting...
     </p>
   );
 
@@ -622,13 +662,7 @@ export function GameEndModal(props: GameEndModalProps) {
 
   const header = (
     <>
-      <div className="winner-crown">👑</div>
-      <h2>Game Over!</h2>
-      {wonByTarget && (
-        <p className="winner-text">
-          {winner.name} wins with {winner.score} points!
-        </p>
-      )}
+      <h2>🏆 Game Over</h2>
     </>
   );
 
@@ -647,17 +681,23 @@ export function GameEndModal(props: GameEndModalProps) {
     header,
     footer,
     content: (
-      <div className="final-scores-list">
-        {sortedPlayers.map((player, index) => (
-          <div
-            key={player.id}
-            className={`final-score-item ${index === 0 ? "winner" : ""}`}
-          >
-            <span className="rank">{index + 1}.</span>
-            <span className="name">{player.name}</span>
-            <span className="score">{player.score} pts</span>
-          </div>
-        ))}
+      <div className="game-end-content">
+        <div className="winner-announcement">
+          <div className="winner-crown">👑</div>
+          {wonByTarget && <p className="winner-text">{winner.name} wins!</p>}
+        </div>
+        <div className="final-scores-list">
+          {sortedPlayers.map((player, index) => (
+            <div
+              key={player.id}
+              className={`final-score-item ${index === 0 ? "winner" : ""}`}
+            >
+              <span className="rank">{index + 1}.</span>
+              <span className="name">{player.name}</span>
+              <span className="score">{player.score} pts</span>
+            </div>
+          ))}
+        </div>
       </div>
     ),
   };

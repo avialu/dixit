@@ -166,12 +166,28 @@ export function CardView({
                   <div className="card-voters-top">
                     <div className="voters-label">Voted by:</div>
                     <div className="voters-list">
-                      {voterNames.map((name, idx) => (
-                        <span key={idx} className="voter-name">
-                          {name}
-                          {idx < voterNames.length - 1 && ", "}
-                        </span>
-                      ))}
+                      {voterNames.length <= 3 ? (
+                        // Show all voters if 3 or fewer
+                        voterNames.map((name, idx) => (
+                          <span key={idx} className="voter-name">
+                            {name}
+                            {idx < voterNames.length - 1 && ", "}
+                          </span>
+                        ))
+                      ) : (
+                        // Show first 2 voters + count for more
+                        <>
+                          {voterNames.slice(0, 2).map((name, idx) => (
+                            <span key={idx} className="voter-name">
+                              {name}
+                              {", "}
+                            </span>
+                          ))}
+                          <span className="voter-count">
+                            +{voterNames.length - 2} more
+                          </span>
+                        </>
+                      )}
                     </div>
                   </div>
                 )}

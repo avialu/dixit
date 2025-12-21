@@ -7,6 +7,7 @@ interface ModalProps {
   children: ReactNode;
   footer?: ReactNode;
   showCloseButton?: boolean;
+  opaqueBackdrop?: boolean;
 }
 
 /**
@@ -26,13 +27,18 @@ export function Modal({
   children,
   footer,
   showCloseButton = true,
+  opaqueBackdrop = false,
 }: ModalProps) {
   if (!isOpen) return null;
 
   return (
     <>
       {/* Backdrop */}
-      <div className="modal-backdrop" onClick={onClose} aria-hidden="true" />
+      <div
+        className={`modal-backdrop ${opaqueBackdrop ? "opaque" : ""}`}
+        onClick={onClose}
+        aria-hidden="true"
+      />
 
       {/* Modal Container */}
       <div

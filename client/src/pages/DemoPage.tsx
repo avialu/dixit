@@ -40,6 +40,7 @@ const generateMockRoomState = (
       isAdmin: true,
       isConnected: true,
       handSize: 6,
+      tokenImage: null,
     },
     {
       id: "2",
@@ -48,6 +49,7 @@ const generateMockRoomState = (
       isAdmin: false,
       isConnected: true,
       handSize: 6,
+      tokenImage: null,
     },
     {
       id: "3",
@@ -56,6 +58,7 @@ const generateMockRoomState = (
       isAdmin: false,
       isConnected: true,
       handSize: 6,
+      tokenImage: null,
     },
     {
       id: "4",
@@ -64,6 +67,7 @@ const generateMockRoomState = (
       isAdmin: false,
       isConnected: true,
       handSize: 6,
+      tokenImage: null,
     },
   ];
 
@@ -209,6 +213,7 @@ const generateMockRoomState = (
             isAdmin: true,
             isConnected: true,
             handSize: 0,
+            tokenImage: null,
           },
           {
             id: "2",
@@ -217,6 +222,7 @@ const generateMockRoomState = (
             isAdmin: false,
             isConnected: true,
             handSize: 0,
+            tokenImage: null,
           },
           {
             id: "3",
@@ -225,6 +231,7 @@ const generateMockRoomState = (
             isAdmin: false,
             isConnected: true,
             handSize: 0,
+            tokenImage: null,
           },
           {
             id: "4",
@@ -233,6 +240,7 @@ const generateMockRoomState = (
             isAdmin: false,
             isConnected: true,
             handSize: 0,
+            tokenImage: null,
           },
         ],
         currentClue: "",
@@ -578,6 +586,7 @@ export function DemoPage() {
       isAdmin: p.id === "1",
       isConnected: true,
       handSize: 6,
+      tokenImage: null,
     }));
 
     const port = window.location.port || "3000";
@@ -1154,140 +1163,190 @@ export function DemoPage() {
 
   return (
     <div className="demo-page">
-      {/* Mode Selector */}
+      {/* Minimized Combined Controls */}
       <div
-        className="demo-mode-selector"
+        className="demo-controls-mini"
         style={{
           position: "fixed",
-          top: "60px",
-          left: "20px",
+          top: "10px",
+          left: "10px",
           zIndex: 10000,
           display: "flex",
-          flexDirection: "column",
-          gap: "8px",
-          background: "rgba(26, 26, 46, 0.95)",
-          padding: "12px",
-          borderRadius: "12px",
-          boxShadow: "0 4px 20px rgba(0,0,0,0.3)",
+          gap: "4px",
+          background: "rgba(26, 26, 46, 0.85)",
+          padding: "4px",
+          borderRadius: "8px",
+          boxShadow: "0 2px 10px rgba(0,0,0,0.3)",
+          fontSize: "11px",
         }}
       >
+        {/* Mode Toggle */}
         <button
-          onClick={() => setDemoMode("component")}
+          onClick={() =>
+            setDemoMode(demoMode === "component" ? "flow" : "component")
+          }
           style={{
-            padding: "6px 12px",
-            borderRadius: "8px",
-            border: "2px solid",
-            borderColor: demoMode === "component" ? "#4a90e2" : "#555",
-            background: demoMode === "component" ? "#4a90e2" : "transparent",
+            padding: "4px 8px",
+            borderRadius: "6px",
+            border: "1px solid #4a90e2",
+            background: "#4a90e2",
             color: "#fff",
             cursor: "pointer",
-            fontWeight: demoMode === "component" ? "bold" : "normal",
-            transition: "all 0.2s",
-            fontSize: "13px",
+            fontWeight: "bold",
+            fontSize: "11px",
             whiteSpace: "nowrap",
           }}
+          title={
+            demoMode === "component"
+              ? "Switch to Flow Test"
+              : "Switch to Component View"
+          }
         >
-          📱 Component View
+          {demoMode === "component" ? "📱" : "🎮"}
         </button>
-        <button
-          onClick={() => setDemoMode("flow")}
-          style={{
-            padding: "6px 12px",
-            borderRadius: "8px",
-            border: "2px solid",
-            borderColor: demoMode === "flow" ? "#4a90e2" : "#555",
-            background: demoMode === "flow" ? "#4a90e2" : "transparent",
-            color: "#fff",
-            cursor: "pointer",
-            fontWeight: demoMode === "flow" ? "bold" : "normal",
-            transition: "all 0.2s",
-            fontSize: "13px",
-            whiteSpace: "nowrap",
-          }}
-        >
-          🎮 Flow Test
-        </button>
-      </div>
 
-      {demoMode === "component" ? (
-        <>
-          {/* Floating Navigation Bar */}
-          <div className="demo-floating-nav">
+        {demoMode === "component" && (
+          <>
+            {/* Phase Navigation */}
             <button
               onClick={prevPhase}
-              className="nav-btn"
-              title="Previous (← Arrow)"
+              style={{
+                padding: "4px 8px",
+                borderRadius: "6px",
+                border: "1px solid #555",
+                background: "rgba(74, 144, 226, 0.2)",
+                color: "#fff",
+                cursor: "pointer",
+                fontSize: "11px",
+              }}
+              title="Previous Phase"
             >
               ◀
             </button>
-            <div className="nav-phase-info">
-              <span className="nav-phase-name">
-                {currentPhase === "NOT_JOINED"
-                  ? "Join Screen"
-                  : currentPhase.replace(/_/g, " ")}
-              </span>
-              <span className="nav-phase-count">
-                {currentPhaseIndex + 1} / {allPhases.length}
-              </span>
-            </div>
+            <span
+              style={{
+                padding: "4px 6px",
+                color: "#fff",
+                fontSize: "10px",
+                whiteSpace: "nowrap",
+                display: "flex",
+                alignItems: "center",
+              }}
+            >
+              {currentPhaseIndex + 1}/{allPhases.length}
+            </span>
             <button
               onClick={nextPhase}
-              className="nav-btn"
-              title="Next (→ Arrow)"
+              style={{
+                padding: "4px 8px",
+                borderRadius: "6px",
+                border: "1px solid #555",
+                background: "rgba(74, 144, 226, 0.2)",
+                color: "#fff",
+                cursor: "pointer",
+                fontSize: "11px",
+              }}
+              title="Next Phase"
             >
               ▶
             </button>
-            <div className="nav-divider"></div>
+
+            {/* View Mode */}
             <button
-              onClick={() => setViewMode("player")}
-              className={`nav-btn ${viewMode === "player" ? "active" : ""}`}
-              title="Player Mode (press V to cycle)"
+              onClick={() =>
+                setViewMode(
+                  viewMode === "player"
+                    ? "admin"
+                    : viewMode === "admin"
+                    ? "spectator"
+                    : "player"
+                )
+              }
+              style={{
+                padding: "4px 8px",
+                borderRadius: "6px",
+                border: "1px solid #555",
+                background: "rgba(74, 144, 226, 0.2)",
+                color: "#fff",
+                cursor: "pointer",
+                fontSize: "11px",
+              }}
+              title="Cycle View Mode"
             >
-              🎮
+              {viewMode === "player"
+                ? "🎮"
+                : viewMode === "admin"
+                ? "👑"
+                : "📺"}
             </button>
-            <button
-              onClick={() => setViewMode("admin")}
-              className={`nav-btn ${viewMode === "admin" ? "active" : ""}`}
-              title="Admin Mode (press V to cycle)"
-            >
-              👑
-            </button>
-            <button
-              onClick={() => setViewMode("spectator")}
-              className={`nav-btn ${viewMode === "spectator" ? "active" : ""}`}
-              title="Spectator Mode (press V to cycle)"
-            >
-              📺
-            </button>
+
             {(currentPhase === "STORYTELLER_CHOICE" ||
               currentPhase === "PLAYERS_CHOICE" ||
               currentPhase === "VOTING") &&
               viewMode === "admin" && (
-                <>
-                  <div className="nav-divider"></div>
-                  <button
-                    onClick={() => setForcePlayerView(!forcePlayerView)}
-                    className={`nav-btn ${forcePlayerView ? "active" : ""}`}
-                    title="Toggle between Storyteller/Player view"
-                  >
-                    {forcePlayerView ? "👤 Player" : "🎭 Storyteller"}
-                  </button>
-                </>
-              )}
-            {currentPhase === "REVEAL" && (
-              <>
-                <div className="nav-divider"></div>
                 <button
-                  onClick={testAnimation}
-                  className="nav-btn test-animation-btn"
-                  title="Test scoring animation with random points"
+                  onClick={() => setForcePlayerView(!forcePlayerView)}
+                  style={{
+                    padding: "4px 8px",
+                    borderRadius: "6px",
+                    border: "1px solid #555",
+                    background: forcePlayerView
+                      ? "#4a90e2"
+                      : "rgba(74, 144, 226, 0.2)",
+                    color: "#fff",
+                    cursor: "pointer",
+                    fontSize: "11px",
+                  }}
+                  title="Toggle Storyteller/Player"
                 >
-                  🎲 Test Animation
+                  {forcePlayerView ? "👤" : "🎭"}
                 </button>
-              </>
-            )}
-          </div>
+              )}
 
+            {currentPhase === "REVEAL" && (
+              <button
+                onClick={testAnimation}
+                style={{
+                  padding: "4px 8px",
+                  borderRadius: "6px",
+                  border: "1px solid #555",
+                  background: "rgba(74, 144, 226, 0.2)",
+                  color: "#fff",
+                  cursor: "pointer",
+                  fontSize: "11px",
+                }}
+                title="Test Animation"
+              >
+                🎲
+              </button>
+            )}
+          </>
+        )}
+
+        {demoMode === "flow" && (
+          <span
+            style={{
+              padding: "4px 6px",
+              color: "#fff",
+              fontSize: "10px",
+              whiteSpace: "nowrap",
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
+            }}
+          >
+            <span>R{flowRound}</span>
+            <span>|</span>
+            <span>
+              {flowPlayerScores["1"]}/{flowPlayerScores["2"]}/
+              {flowPlayerScores["3"]}
+            </span>
+          </span>
+        )}
+      </div>
+
+      {demoMode === "component" ? (
+        <>
           {/* Game Screen */}
           <div className="demo-screen">
             <UnifiedGamePage
@@ -1310,47 +1369,13 @@ export function DemoPage() {
               onAdvanceRound={mockActions.advanceRound}
               onResetGame={mockActions.resetGame}
               onNewDeck={mockActions.newDeck}
+              onUploadTokenImage={() => console.log("Demo: upload token")}
             />
           </div>
         </>
       ) : (
         <>
           {/* Flow Test Mode */}
-          <div
-            className="flow-info-bar"
-            style={{
-              position: "fixed",
-              top: "80px",
-              left: "50%",
-              transform: "translateX(-50%)",
-              zIndex: 9999,
-              background: "rgba(26, 26, 46, 0.95)",
-              padding: "12px 24px",
-              borderRadius: "12px",
-              boxShadow: "0 4px 20px rgba(0,0,0,0.3)",
-              color: "#fff",
-              fontSize: "14px",
-              display: "flex",
-              gap: "20px",
-              alignItems: "center",
-            }}
-          >
-            <span>
-              <strong>Round:</strong> {flowRound}
-            </span>
-            <span>
-              <strong>Storyteller:</strong>{" "}
-              {flowPlayers[flowStorytellerIndex].name}
-            </span>
-            <span>
-              <strong>Phase:</strong> {flowPhase.replace(/_/g, " ")}
-            </span>
-            <span>
-              <strong>Scores:</strong> You: {flowPlayerScores["1"]} | Bob:{" "}
-              {flowPlayerScores["2"]} | Charlie: {flowPlayerScores["3"]}
-            </span>
-          </div>
-
           <div className="demo-screen">
             <UnifiedGamePage
               roomState={generateFlowRoomState()}
@@ -1380,6 +1405,7 @@ export function DemoPage() {
               onAdvanceRound={flowActions.advanceRound}
               onResetGame={flowActions.resetGame}
               onNewDeck={flowActions.newDeck}
+              onUploadTokenImage={() => console.log("Flow: upload token")}
             />
           </div>
         </>

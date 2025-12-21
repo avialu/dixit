@@ -161,6 +161,15 @@ export class GameManager {
     player.name = newName;
   }
 
+  setPlayerTokenImage(playerId: string, imageData: string | null): void {
+    const player = this.state.players.get(playerId);
+    if (!player) {
+      throw new Error("Player not found");
+    }
+
+    player.setTokenImage(imageData);
+  }
+
   unlockDeck(adminId: string): void {
     this.validateAdmin(adminId);
 
@@ -553,6 +562,7 @@ export class GameManager {
       isConnected: p.isConnected,
       score: p.score,
       handSize: p.hand.length,
+      tokenImage: p.tokenImage,
     }));
 
     const deckImages = this.deckManager.getAllCards().map((c) => ({

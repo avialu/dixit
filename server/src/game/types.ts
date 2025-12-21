@@ -22,6 +22,7 @@ export interface Player {
   isConnected: boolean;
   hand: Card[];
   score: number;
+  tokenImage: string | null;
   // Methods from Player class
   addCards(cards: Card[]): void;
   removeCard(cardId: string): Card | null;
@@ -29,6 +30,7 @@ export interface Player {
   addScore(points: number): void;
   disconnect(): void;
   reconnect(): void;
+  setTokenImage(imageData: string | null): void;
 }
 
 export interface SubmittedCard {
@@ -67,6 +69,7 @@ export interface RoomState {
     isConnected: boolean;
     score: number;
     handSize: number;
+    tokenImage: string | null;
   }[];
   allowPlayerUploads: boolean; // If true, players can upload images. Admin can always upload.
   deckSize: number;

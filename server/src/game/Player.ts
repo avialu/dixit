@@ -7,6 +7,7 @@ export class Player implements IPlayer {
   isConnected: boolean;
   hand: Card[];
   score: number;
+  tokenImage: string | null;
 
   constructor(id: string, name: string, isAdmin: boolean = false) {
     this.id = id;
@@ -15,6 +16,7 @@ export class Player implements IPlayer {
     this.isConnected = true;
     this.hand = [];
     this.score = 0;
+    this.tokenImage = null;
   }
 
   addCards(cards: Card[]): void {
@@ -43,6 +45,10 @@ export class Player implements IPlayer {
 
   reconnect(): void {
     this.isConnected = true;
+  }
+
+  setTokenImage(imageData: string | null): void {
+    this.tokenImage = imageData;
   }
 }
 
