@@ -18,7 +18,7 @@ export function GameBoard({ roomState }: GameBoardProps) {
     height: 0,
   });
 
-  const trackLength = 30; // 1 to 30 = 30 spaces
+  const trackLength = 30; // 0 to 29 = 30 spaces
 
   // Measure container on mount and after a brief delay (for layout settle)
   useEffect(() => {
@@ -303,7 +303,7 @@ export function GameBoard({ roomState }: GameBoardProps) {
 
           {/* Draw spaces */}
           {pathPositions.map((pos) => {
-            const scoreNumber = pos.index + 1; // Display 1-30 instead of 0-29
+            const scoreNumber = pos.index; // Display 0-29
             const isWinTarget = scoreNumber === roomState.winTarget;
 
             return (

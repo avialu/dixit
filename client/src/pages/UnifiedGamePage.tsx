@@ -490,7 +490,7 @@ export function UnifiedGamePage({
                     </>
                   )}
 
-                  {/* REVEAL - After voting, show who drew and who voted */}
+                  {/* REVEAL - Show who drew and voted, admin continues */}
                   {roomState.phase === "REVEAL" && (
                     <div className="modal-section reveal-modal">
                       <h2>🎨 Results Revealed!</h2>
@@ -524,6 +524,41 @@ export function UnifiedGamePage({
                           showResults={true}
                         />
                       </div>
+
+                      {/* Admin button to continue to scoring */}
+                      {isAdmin && (
+                        <button
+                          onClick={() => {
+                            if (socket) {
+                              socket.emit("advanceToScoring");
+                            }
+                          }}
+                          className="btn-primary btn-large"
+                          style={{ marginTop: "1rem" }}
+                        >
+                          ▶️ Continue to Scoring
+                        </button>
+                      )}
+
+                      {/* Non-admin waiting message */}
+                      {!isAdmin && (
+                        <p
+                          style={{
+                            marginTop: "1rem",
+                            color: "#95a5a6",
+                            fontStyle: "italic",
+                          }}
+                        >
+                          ⏳ Waiting for admin to continue...
+                        </p>
+                      )}
+
+                      <button
+                        onClick={() => setShowModal(false)}
+                        className="btn-secondary"
+                      >
+                        Close (View Board)
+                      </button>
                     </div>
                   )}
 
@@ -639,15 +674,32 @@ export function UnifiedGamePage({
                         })}
                       </div>
 
-                      <button
-                        onClick={() => {
-                          onAdvanceRound();
-                          setShowModal(false);
-                        }}
-                        className="btn-primary btn-large"
-                      >
-                        Next Round →
-                      </button>
+                      {/* Admin button to continue */}
+                      {isAdmin && (
+                        <button
+                          onClick={() => {
+                            onAdvanceRound();
+                            setShowModal(false);
+                          }}
+                          className="btn-primary btn-large"
+                        >
+                          Next Round →
+                        </button>
+                      )}
+
+                      {/* Non-admin waiting message */}
+                      {!isAdmin && (
+                        <p
+                          style={{
+                            marginTop: "1rem",
+                            color: "#95a5a6",
+                            fontStyle: "italic",
+                          }}
+                        >
+                          ⏳ Waiting for admin to continue...
+                        </p>
+                      )}
+
                       <button
                         onClick={() => setShowModal(false)}
                         className="btn-secondary"

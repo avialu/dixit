@@ -27,7 +27,7 @@ export class GameManager {
       deck: [],
       allowPlayerUploads: true, // Players can upload by default
       deckLocked: false,
-      winTarget: 30, // Default: 30 points to win
+      winTarget: 29, // Default: 29 points to win (0-29 scale)
       currentRound: 0,
       storytellerId: null,
       currentClue: null,
@@ -208,9 +208,7 @@ export class GameManager {
     // Load default images if needed
     const currentDeckSize = this.deckManager.getDeckSize();
     if (currentDeckSize < MIN_IMAGES_TO_START) {
-      console.log(
-        `Loading default images (current deck: ${currentDeckSize})`
-      );
+      console.log(`Loading default images (current deck: ${currentDeckSize})`);
       this.deckManager.loadDefaultImages();
     }
 
@@ -323,14 +321,7 @@ export class GameManager {
     });
 
     this.state.submittedCards = shuffled;
-    this.state.phase = GamePhase.REVEAL;
-
-    // Auto-transition to VOTING after a moment (clients handle timing)
-    setTimeout(() => {
-      if (this.state.phase === GamePhase.REVEAL) {
-        this.state.phase = GamePhase.VOTING;
-      }
-    }, 100);
+    this.state.phase = GamePhase.VOTING;
   }
 
   playerVote(playerId: string, cardId: string): void {
@@ -370,8 +361,19 @@ export class GameManager {
     // Check if all non-storytellers have voted
     const expectedVotes = this.state.players.size - 1; // minus storyteller
     if (this.state.votes.length === expectedVotes) {
-      this.transitionToScoring();
+      this.state.phase = GamePhase.REVEAL;
     }
+  }
+
+  // Admin manually advances from REVEAL to SCORING
+  advanceToScoring(adminId: string): void {
+    this.validateAdmin(adminId);
+
+    if (this.state.phase !== GamePhase.REVEAL) {
+      throw new Error("Can only advance to scoring from REVEAL phase");
+    }
+
+    this.transitionToScoring();
   }
 
   private transitionToScoring(): void {
@@ -401,7 +403,9 @@ export class GameManager {
     this.state.phase = GamePhase.SCORING;
   }
 
-  advanceToNextRound(): void {
+  advanceToNextRound(adminId: string): void {
+    this.validateAdmin(adminId);
+
     if (this.state.phase !== GamePhase.SCORING) {
       throw new Error("Not in scoring phase");
     }
@@ -472,7 +476,7 @@ export class GameManager {
 
     // Keep the uploaded images but reset to deck building
     this.state.deckLocked = false;
-    this.state.winTarget = 30; // Reset to default
+    this.state.winTarget = 29; // Reset to default
     this.state.phase = GamePhase.DECK_BUILDING;
   }
 
@@ -496,7 +500,7 @@ export class GameManager {
     this.state.lastScoreDeltas.clear();
     this.state.deckLocked = false;
     this.state.allowPlayerUploads = true;
-    this.state.winTarget = 30; // Reset to default
+    this.state.winTarget = 29; // Reset to default
     this.submittedCardsData.clear();
   }
 

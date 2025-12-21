@@ -309,14 +309,6 @@ npm start</pre>
         const currentPhase = gameManager.getCurrentPhase();
         if (currentPhase !== "PLAYERS_CHOICE") {
           io.emit("phaseChanged", { phase: currentPhase });
-
-          // Give a moment for REVEAL, then transition to VOTING
-          if (currentPhase === "REVEAL") {
-            setTimeout(() => {
-              io.emit("phaseChanged", { phase: gameManager.getCurrentPhase() });
-              broadcastRoomState();
-            }, 3000);
-          }
         }
       } catch (error: any) {
         socket.emit("error", { message: error.message });
@@ -339,10 +331,27 @@ npm start</pre>
 
         // Check if phase changed (all voted)
         const currentPhase = gameManager.getCurrentPhase();
-        if (currentPhase === "SCORING") {
+        if (currentPhase === "REVEAL") {
           io.emit("phaseChanged", { phase: currentPhase });
           broadcastRoomState();
         }
+      } catch (error: any) {
+        socket.emit("error", { message: error.message });
+      }
+    });
+
+    socket.on("advanceToScoring", () => {
+      try {
+        const clientId = socketToClient.get(socket.id);
+        if (!clientId) {
+          socket.emit("error", { message: "Please join the game first" });
+          return;
+        }
+
+        gameManager.advanceToScoring(clientId);
+
+        broadcastRoomState();
+        io.emit("phaseChanged", { phase: gameManager.getCurrentPhase() });
       } catch (error: any) {
         socket.emit("error", { message: error.message });
       }
@@ -356,7 +365,7 @@ npm start</pre>
           return;
         }
 
-        gameManager.advanceToNextRound();
+        gameManager.advanceToNextRound(clientId);
 
         // Send updated hands
         for (const [socketId, cId] of socketToClient.entries()) {

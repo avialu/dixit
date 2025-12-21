@@ -2,10 +2,9 @@ export enum GamePhase {
   DECK_BUILDING = "DECK_BUILDING",
   STORYTELLER_CHOICE = "STORYTELLER_CHOICE",
   PLAYERS_CHOICE = "PLAYERS_CHOICE",
-  REVEAL = "REVEAL",
   VOTING = "VOTING",
+  REVEAL = "REVEAL",
   SCORING = "SCORING",
-  ROUND_END = "ROUND_END",
   GAME_END = "GAME_END",
 }
 
@@ -50,7 +49,7 @@ export interface GameState {
   deck: Card[];
   allowPlayerUploads: boolean; // If true, players can upload images. Admin can always upload.
   deckLocked: boolean;
-  winTarget: number | null; // 30, 50, or null (unlimited)
+  winTarget: number | null; // 29, 49, or null (unlimited) - 0-based scoring
   currentRound: number;
   storytellerId: string | null;
   currentClue: string | null;
@@ -73,7 +72,7 @@ export interface RoomState {
   allowPlayerUploads: boolean; // If true, players can upload images. Admin can always upload.
   deckSize: number;
   deckLocked: boolean;
-  winTarget: number | null; // 30, 50, or null (unlimited)
+  winTarget: number | null; // 29, 49, or null (unlimited) - 0-based scoring
   deckImages: {
     id: string;
     uploadedBy: string;

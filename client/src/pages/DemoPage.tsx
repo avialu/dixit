@@ -27,7 +27,7 @@ const generateMockRoomState = (
       revealedCards: [],
       votes: [],
       lastScoreDeltas: [],
-      winTarget: 30,
+      winTarget: 29,
       serverUrl: currentUrl,
     };
   }
@@ -339,6 +339,27 @@ const allPhases = [
 ];
 
 export function DemoPage() {
+  // NEW: Flow test mode state
+  const [demoMode, setDemoMode] = useState<"component" | "flow">("component");
+  const [flowPhase, setFlowPhase] = useState<string>("STORYTELLER_CHOICE");
+  const [flowRound, setFlowRound] = useState(1);
+  const [flowStorytellerIndex, setFlowStorytellerIndex] = useState(0);
+  const [flowSubmittedCards, setFlowSubmittedCards] = useState<
+    Array<{ cardId: string; playerId: string; position?: number }>
+  >([]);
+  const [flowVotes, setFlowVotes] = useState<
+    Array<{ voterId: string; cardId: string }>
+  >([]);
+  const [flowCurrentClue, setFlowCurrentClue] = useState("");
+  const [flowPlayerScores, setFlowPlayerScores] = useState({
+    "1": 0,
+    "2": 0,
+    "3": 0,
+  });
+  const [flowLastDeltas, setFlowLastDeltas] = useState<
+    Array<{ playerId: string; delta: number }>
+  >([]);
+
   const [currentPhaseIndex, setCurrentPhaseIndex] = useState(0);
   const [viewMode, setViewMode] = useState<"player" | "admin" | "spectator">(
     "player"
@@ -354,7 +375,7 @@ export function DemoPage() {
 
   // Interactive demo state
   const [allowPlayerUploads, setAllowPlayerUploads] = useState(true);
-  const [winTarget, setWinTarget] = useState<number | null>(30);
+  const [winTarget, setWinTarget] = useState<number | null>(29);
   const [deckSize, setDeckSize] = useState(45);
   const [deckLocked, setDeckLocked] = useState(false);
   const [uploadedImages, setUploadedImages] = useState<
@@ -539,12 +560,12 @@ export function DemoPage() {
       "4": 0,
     };
 
-    // Calculate new scores
+    // Calculate new scores (cap at 29)
     const newScores = {
-      "1": Math.min(30, currentScores["1"] + deltas[0].delta),
-      "2": Math.min(30, currentScores["2"] + deltas[1].delta),
-      "3": Math.min(30, currentScores["3"] + deltas[2].delta),
-      "4": Math.min(30, currentScores["4"] + deltas[3].delta),
+      "1": Math.min(29, currentScores["1"] + deltas[0].delta),
+      "2": Math.min(29, currentScores["2"] + deltas[1].delta),
+      "3": Math.min(29, currentScores["3"] + deltas[2].delta),
+      "4": Math.min(29, currentScores["4"] + deltas[3].delta),
     };
 
     console.log("🎲 Test Animation - Round", animationRound + 1);
@@ -566,123 +587,666 @@ export function DemoPage() {
     );
   };
 
+  // NEW: Flow test functions
+  const flowPlayers = [
+    { id: "1", name: "You (Alice)", isStoryteller: false },
+    { id: "2", name: "Bob (AI)", isStoryteller: false },
+    { id: "3", name: "Charlie (AI)", isStoryteller: false },
+  ];
+
+  const getFlowStorytellerId = () => {
+    return flowPlayers[flowStorytellerIndex].id;
+  };
+
+  // Generate flow test room state
+  const generateFlowRoomState = (): RoomState => {
+    const storytellerId = getFlowStorytellerId();
+    const players = flowPlayers.map((p) => ({
+      id: p.id,
+      name: p.name,
+      score: flowPlayerScores[p.id as "1" | "2" | "3"],
+      isAdmin: p.id === "1",
+      isConnected: true,
+      handSize: 6,
+    }));
+
+    const port = window.location.port || "3000";
+    const currentUrl = `${window.location.protocol}//${window.location.hostname}:${port}`;
+
+    const baseState: RoomState = {
+      phase: flowPhase as any,
+      players,
+      allowPlayerUploads: true,
+      deckSize: 100,
+      deckLocked: true,
+      deckImages: [],
+      currentRound: flowRound,
+      storytellerId,
+      currentClue: flowCurrentClue,
+      revealedCards: [],
+      votes: [],
+      lastScoreDeltas: flowLastDeltas,
+      winTarget: 29,
+      serverUrl: detectedServerUrl || currentUrl,
+    };
+
+    // Phase-specific data
+    if (
+      flowPhase === "VOTING" ||
+      flowPhase === "REVEAL" ||
+      flowPhase === "SCORING"
+    ) {
+      // Generate revealed cards with actual image data
+      baseState.revealedCards = flowSubmittedCards.map((sc) => ({
+        cardId: sc.cardId,
+        imageData: `https://picsum.photos/seed/${sc.cardId}/400/600`,
+        position: sc.position || 0,
+        playerId: sc.playerId, // Include playerId for card ownership
+      })) as any;
+
+      // For REVEAL and SCORING, show votes
+      if (flowPhase === "REVEAL" || flowPhase === "SCORING") {
+        baseState.votes = flowVotes;
+      }
+    }
+
+    if (flowPhase === "SCORING") {
+      baseState.lastScoreDeltas = flowLastDeltas;
+    }
+
+    return baseState;
+  };
+
+  const generateFlowPlayerState = (): PlayerState => {
+    return {
+      playerId: "1",
+      hand: [
+        {
+          id: "h1",
+          imageData: "https://picsum.photos/seed/hand1/400/600",
+          uploadedBy: "1",
+        },
+        {
+          id: "h2",
+          imageData: "https://picsum.photos/seed/hand2/400/600",
+          uploadedBy: "1",
+        },
+        {
+          id: "h3",
+          imageData: "https://picsum.photos/seed/hand3/400/600",
+          uploadedBy: "1",
+        },
+        {
+          id: "h4",
+          imageData: "https://picsum.photos/seed/hand4/400/600",
+          uploadedBy: "1",
+        },
+        {
+          id: "h5",
+          imageData: "https://picsum.photos/seed/hand5/400/600",
+          uploadedBy: "1",
+        },
+        {
+          id: "h6",
+          imageData: "https://picsum.photos/seed/hand6/400/600",
+          uploadedBy: "1",
+        },
+      ],
+      mySubmittedCardId:
+        flowSubmittedCards.find((sc) => sc.playerId === "1")?.cardId || null,
+      myVote: flowVotes.find((v) => v.voterId === "1")?.cardId || null,
+    };
+  };
+
+  // Flow test action handlers
+  const flowActions = {
+    storytellerSubmit: (cardId: string, clue: string) => {
+      console.log("Flow: Storyteller submitted", cardId, clue);
+      setFlowCurrentClue(clue);
+      setFlowSubmittedCards([{ cardId, playerId: "1", position: 0 }]);
+
+      // AI players submit cards after a delay
+      setTimeout(() => {
+        const aiCards = [
+          { cardId: "ai-card-2", playerId: "2", position: 1 },
+          { cardId: "ai-card-3", playerId: "3", position: 2 },
+        ];
+        setFlowSubmittedCards((prev) => {
+          // Shuffle all cards
+          const allCards = [...prev, ...aiCards];
+          const shuffled = allCards.sort(() => Math.random() - 0.5);
+          return shuffled.map((card, idx) => ({ ...card, position: idx }));
+        });
+        setFlowPhase("VOTING");
+
+        // Since player 1 is the storyteller, AI players need to vote automatically
+        setTimeout(() => {
+          const storytellerCard = { cardId, playerId: "1" };
+          const allSubmittedCards = [
+            storytellerCard,
+            { cardId: "ai-card-2", playerId: "2" },
+            { cardId: "ai-card-3", playerId: "3" },
+          ];
+          const nonStorytellerCards = allSubmittedCards.filter(
+            (sc) => sc.playerId !== "1"
+          );
+
+          // AI players vote
+          const aiVotes: Array<{ voterId: string; cardId: string }> = [];
+
+          // AI player 2 votes
+          const shouldVoteCorrect2 = Math.random() > 0.5;
+          let choice2: string | undefined;
+          if (shouldVoteCorrect2) {
+            choice2 = cardId; // Vote for storyteller's card
+          } else if (nonStorytellerCards.length > 0) {
+            const randomCard =
+              nonStorytellerCards[
+                Math.floor(Math.random() * nonStorytellerCards.length)
+              ];
+            choice2 = randomCard?.cardId;
+          }
+          if (choice2) {
+            aiVotes.push({ voterId: "2", cardId: choice2 });
+          }
+
+          // AI player 3 votes
+          const shouldVoteCorrect3 = Math.random() > 0.5;
+          let choice3: string | undefined;
+          if (shouldVoteCorrect3) {
+            choice3 = cardId; // Vote for storyteller's card
+          } else if (nonStorytellerCards.length > 0) {
+            const randomCard =
+              nonStorytellerCards[
+                Math.floor(Math.random() * nonStorytellerCards.length)
+              ];
+            choice3 = randomCard?.cardId;
+          }
+          if (choice3) {
+            aiVotes.push({ voterId: "3", cardId: choice3 });
+          }
+
+          setFlowVotes(aiVotes);
+
+          // Go to REVEAL phase (admin must click to continue to SCORING)
+          setFlowPhase("REVEAL");
+        }, 2000);
+      }, 1500);
+
+      setFlowPhase("PLAYERS_CHOICE");
+    },
+
+    playerSubmitCard: (cardId: string) => {
+      console.log("Flow: Player submitted card", cardId);
+      setFlowSubmittedCards((prev) => [
+        ...prev,
+        { cardId, playerId: "1", position: prev.length },
+      ]);
+
+      // AI players submit after delay
+      setTimeout(() => {
+        const aiCards = [
+          {
+            cardId: "ai-card-2",
+            playerId: "2",
+            position: flowSubmittedCards.length + 1,
+          },
+          {
+            cardId: "ai-card-3",
+            playerId: "3",
+            position: flowSubmittedCards.length + 2,
+          },
+        ];
+        setFlowSubmittedCards((prev) => {
+          const allCards = [...prev, ...aiCards];
+          const shuffled = allCards.sort(() => Math.random() - 0.5);
+          return shuffled.map((card, idx) => ({ ...card, position: idx }));
+        });
+        setFlowPhase("VOTING");
+      }, 1500);
+    },
+
+    playerVote: (cardId: string) => {
+      console.log("Flow: Player voted for", cardId);
+
+      // Update votes with the player's vote
+      setFlowVotes((prev) => {
+        const newVotes = [...prev, { voterId: "1", cardId }];
+
+        // AI players vote after delay
+        setTimeout(() => {
+          const storytellerId = getFlowStorytellerId();
+          const storytellerCard = flowSubmittedCards.find(
+            (sc) => sc.playerId === storytellerId
+          );
+
+          // AI players randomly vote (sometimes correctly, sometimes not)
+          const aiVotes: Array<{ voterId: string; cardId: string }> = [];
+          const nonStorytellerCards = flowSubmittedCards.filter(
+            (sc) => sc.playerId !== storytellerId
+          );
+
+          // AI player 2 votes (if not storyteller)
+          if (storytellerId !== "2") {
+            // 50% chance to vote for storyteller's card, 50% for random other card
+            const shouldVoteForStoryteller = Math.random() > 0.5;
+            let cardChoice: string | undefined;
+
+            if (shouldVoteForStoryteller && storytellerCard?.cardId) {
+              cardChoice = storytellerCard.cardId;
+            } else if (nonStorytellerCards.length > 0) {
+              const randomCard =
+                nonStorytellerCards[
+                  Math.floor(Math.random() * nonStorytellerCards.length)
+                ];
+              // Don't vote for own card
+              if (randomCard.playerId !== "2") {
+                cardChoice = randomCard.cardId;
+              } else if (storytellerCard?.cardId) {
+                cardChoice = storytellerCard.cardId;
+              }
+            }
+
+            if (cardChoice) {
+              aiVotes.push({ voterId: "2", cardId: cardChoice });
+            }
+          }
+
+          // AI player 3 votes (if not storyteller)
+          if (storytellerId !== "3") {
+            // 50% chance to vote for storyteller's card, 50% for random other card
+            const shouldVoteForStoryteller = Math.random() > 0.5;
+            let cardChoice: string | undefined;
+
+            if (shouldVoteForStoryteller && storytellerCard?.cardId) {
+              cardChoice = storytellerCard.cardId;
+            } else if (nonStorytellerCards.length > 0) {
+              const randomCard =
+                nonStorytellerCards[
+                  Math.floor(Math.random() * nonStorytellerCards.length)
+                ];
+              // Don't vote for own card
+              if (randomCard.playerId !== "3") {
+                cardChoice = randomCard.cardId;
+              } else if (storytellerCard?.cardId) {
+                cardChoice = storytellerCard.cardId;
+              }
+            }
+
+            if (cardChoice) {
+              aiVotes.push({ voterId: "3", cardId: cardChoice });
+            }
+          }
+
+          // Update votes with AI votes and transition to REVEAL
+          setFlowVotes((currentVotes) => {
+            const allVotes = [...currentVotes, ...aiVotes];
+            return allVotes;
+          });
+
+          // Go to REVEAL phase (admin must click to continue to SCORING)
+          setFlowPhase("REVEAL");
+        }, 2000);
+
+        return newVotes;
+      });
+    },
+
+    advanceToScoring: () => {
+      console.log("Flow: Admin advancing to scoring");
+
+      // Calculate scoring with current votes
+      const storytellerId = getFlowStorytellerId();
+      const storytellerCard = flowSubmittedCards.find(
+        (sc) => sc.playerId === storytellerId
+      );
+
+      const storytellerCardId = storytellerCard?.cardId;
+      const votesForStoryteller = flowVotes.filter(
+        (v) => v.cardId === storytellerCardId
+      ).length;
+      const totalVoters = flowVotes.length;
+
+      const deltas: { [key: string]: number } = {
+        "1": 0,
+        "2": 0,
+        "3": 0,
+      };
+
+      // If everyone or no one found the card, storyteller gets 0
+      if (votesForStoryteller === 0 || votesForStoryteller === totalVoters) {
+        deltas[storytellerId] = 0;
+        // Others get 2 points
+        flowPlayers.forEach((p) => {
+          if (p.id !== storytellerId) {
+            deltas[p.id] = 2;
+          }
+        });
+      } else {
+        // Storyteller gets 3 points
+        deltas[storytellerId] = 3;
+        // Players who found it get 3 points
+        flowVotes.forEach((vote) => {
+          if (vote.cardId === storytellerCardId) {
+            deltas[vote.voterId] = 3;
+          }
+        });
+      }
+
+      // Players get 1 point for each vote on their card (not storyteller's)
+      flowSubmittedCards.forEach((sc) => {
+        if (sc.playerId !== storytellerId) {
+          const votesForCard = flowVotes.filter(
+            (v) => v.cardId === sc.cardId
+          ).length;
+          deltas[sc.playerId] = (deltas[sc.playerId] || 0) + votesForCard;
+        }
+      });
+
+      const deltaArray = Object.entries(deltas).map(([playerId, delta]) => ({
+        playerId,
+        delta,
+      }));
+
+      setFlowLastDeltas(deltaArray);
+      setFlowPlayerScores((prev) => ({
+        "1": prev["1"] + deltas["1"],
+        "2": prev["2"] + deltas["2"],
+        "3": prev["3"] + deltas["3"],
+      }));
+
+      setFlowPhase("SCORING");
+    },
+
+    advanceRound: () => {
+      console.log("Flow: Advancing to next round");
+
+      // Check for winner
+      const maxScore = Math.max(
+        flowPlayerScores["1"],
+        flowPlayerScores["2"],
+        flowPlayerScores["3"]
+      );
+      if (maxScore >= 29) {
+        setFlowPhase("GAME_END");
+        return;
+      }
+
+      // Rotate storyteller
+      setFlowStorytellerIndex((prev) => (prev + 1) % 3);
+      setFlowRound((prev) => prev + 1);
+      setFlowPhase("STORYTELLER_CHOICE");
+      setFlowSubmittedCards([]);
+      setFlowVotes([]);
+      setFlowCurrentClue("");
+      setFlowLastDeltas([]);
+    },
+
+    resetGame: () => {
+      console.log("Flow: Resetting game");
+      setFlowPhase("STORYTELLER_CHOICE");
+      setFlowRound(1);
+      setFlowStorytellerIndex(0);
+      setFlowSubmittedCards([]);
+      setFlowVotes([]);
+      setFlowCurrentClue("");
+      setFlowPlayerScores({ "1": 0, "2": 0, "3": 0 });
+      setFlowLastDeltas([]);
+    },
+
+    newDeck: () => {
+      console.log("Flow: New deck");
+      flowActions.resetGame();
+    },
+  };
+
   // Keyboard navigation
   useEffect(() => {
     const handleKeyPress = (e: KeyboardEvent) => {
-      if (e.key === "ArrowLeft") {
-        prevPhase();
-      } else if (e.key === "ArrowRight") {
-        nextPhase();
-      } else if (e.key === "v" || e.key === "V") {
-        // Cycle through modes: player -> admin -> spectator -> player
-        setViewMode((prev) => {
-          if (prev === "player") return "admin";
-          if (prev === "admin") return "spectator";
-          return "player";
-        });
+      // Only allow keyboard navigation in component mode
+      if (demoMode === "component") {
+        if (e.key === "ArrowLeft") {
+          prevPhase();
+        } else if (e.key === "ArrowRight") {
+          nextPhase();
+        } else if (e.key === "v" || e.key === "V") {
+          // Cycle through modes: player -> admin -> spectator -> player
+          setViewMode((prev) => {
+            if (prev === "player") return "admin";
+            if (prev === "admin") return "spectator";
+            return "player";
+          });
+        }
       }
     };
 
     window.addEventListener("keydown", handleKeyPress);
     return () => window.removeEventListener("keydown", handleKeyPress);
-  }, []);
+  }, [demoMode]);
 
   return (
     <div className="demo-page">
-      {/* Floating Navigation Bar */}
-      <div className="demo-floating-nav">
+      {/* Mode Selector */}
+      <div
+        className="demo-mode-selector"
+        style={{
+          position: "fixed",
+          top: "10px",
+          left: "50%",
+          transform: "translateX(-50%)",
+          zIndex: 10000,
+          display: "flex",
+          gap: "10px",
+          background: "rgba(26, 26, 46, 0.95)",
+          padding: "12px 20px",
+          borderRadius: "12px",
+          boxShadow: "0 4px 20px rgba(0,0,0,0.3)",
+        }}
+      >
         <button
-          onClick={prevPhase}
-          className="nav-btn"
-          title="Previous (← Arrow)"
+          onClick={() => setDemoMode("component")}
+          style={{
+            padding: "8px 16px",
+            borderRadius: "8px",
+            border: "2px solid",
+            borderColor: demoMode === "component" ? "#4a90e2" : "#555",
+            background: demoMode === "component" ? "#4a90e2" : "transparent",
+            color: "#fff",
+            cursor: "pointer",
+            fontWeight: demoMode === "component" ? "bold" : "normal",
+            transition: "all 0.2s",
+          }}
         >
-          ◀
-        </button>
-        <div className="nav-phase-info">
-          <span className="nav-phase-name">
-            {currentPhase === "NOT_JOINED"
-              ? "Join Screen"
-              : currentPhase.replace(/_/g, " ")}
-          </span>
-          <span className="nav-phase-count">
-            {currentPhaseIndex + 1} / {allPhases.length}
-          </span>
-        </div>
-        <button onClick={nextPhase} className="nav-btn" title="Next (→ Arrow)">
-          ▶
-        </button>
-        <div className="nav-divider"></div>
-        <button
-          onClick={() => setViewMode("player")}
-          className={`nav-btn ${viewMode === "player" ? "active" : ""}`}
-          title="Player Mode (press V to cycle)"
-        >
-          🎮
-        </button>
-        <button
-          onClick={() => setViewMode("admin")}
-          className={`nav-btn ${viewMode === "admin" ? "active" : ""}`}
-          title="Admin Mode (press V to cycle)"
-        >
-          👑
+          📱 Component View
         </button>
         <button
-          onClick={() => setViewMode("spectator")}
-          className={`nav-btn ${viewMode === "spectator" ? "active" : ""}`}
-          title="Spectator Mode (press V to cycle)"
+          onClick={() => setDemoMode("flow")}
+          style={{
+            padding: "8px 16px",
+            borderRadius: "8px",
+            border: "2px solid",
+            borderColor: demoMode === "flow" ? "#4a90e2" : "#555",
+            background: demoMode === "flow" ? "#4a90e2" : "transparent",
+            color: "#fff",
+            cursor: "pointer",
+            fontWeight: demoMode === "flow" ? "bold" : "normal",
+            transition: "all 0.2s",
+          }}
         >
-          📺
+          🎮 Flow Test (Play with AI)
         </button>
-        {(currentPhase === "STORYTELLER_CHOICE" ||
-          currentPhase === "PLAYERS_CHOICE") &&
-          viewMode === "admin" && (
-            <>
-              <div className="nav-divider"></div>
-              <button
-                onClick={() => setForcePlayerView(!forcePlayerView)}
-                className={`nav-btn ${forcePlayerView ? "active" : ""}`}
-                title="Toggle between Storyteller/Player view"
-              >
-                {forcePlayerView ? "👤 Player" : "🎭 Storyteller"}
-              </button>
-            </>
-          )}
-        {currentPhase === "SCORING" && (
-          <>
-            <div className="nav-divider"></div>
-            <button
-              onClick={testAnimation}
-              className="nav-btn test-animation-btn"
-              title="Test scoring animation with random points"
-            >
-              🎲 Test Animation
-            </button>
-          </>
-        )}
       </div>
 
-      {/* Game Screen */}
-      <div className="demo-screen">
-        <UnifiedGamePage
-          roomState={mockRoomState}
-          playerState={mockPlayerState}
-          playerId={currentPlayerId}
-          clientId="demo-client-123"
-          socket={null}
-          onJoin={mockActions.storytellerSubmit}
-          onUploadImage={mockActions.uploadImage}
-          onDeleteImage={mockActions.deleteImage}
-          onSetAllowPlayerUploads={mockActions.setAllowPlayerUploads}
-          onStartGame={mockActions.storytellerSubmit}
-          onChangeName={mockActions.storytellerSubmit}
-          onStorytellerSubmit={mockActions.storytellerSubmit}
-          onPlayerSubmitCard={mockActions.playerSubmitCard}
-          onPlayerVote={mockActions.playerVote}
-          onAdvanceRound={mockActions.advanceRound}
-          onResetGame={mockActions.resetGame}
-          onNewDeck={mockActions.newDeck}
-        />
-      </div>
+      {demoMode === "component" ? (
+        <>
+          {/* Floating Navigation Bar */}
+          <div className="demo-floating-nav">
+            <button
+              onClick={prevPhase}
+              className="nav-btn"
+              title="Previous (← Arrow)"
+            >
+              ◀
+            </button>
+            <div className="nav-phase-info">
+              <span className="nav-phase-name">
+                {currentPhase === "NOT_JOINED"
+                  ? "Join Screen"
+                  : currentPhase.replace(/_/g, " ")}
+              </span>
+              <span className="nav-phase-count">
+                {currentPhaseIndex + 1} / {allPhases.length}
+              </span>
+            </div>
+            <button
+              onClick={nextPhase}
+              className="nav-btn"
+              title="Next (→ Arrow)"
+            >
+              ▶
+            </button>
+            <div className="nav-divider"></div>
+            <button
+              onClick={() => setViewMode("player")}
+              className={`nav-btn ${viewMode === "player" ? "active" : ""}`}
+              title="Player Mode (press V to cycle)"
+            >
+              🎮
+            </button>
+            <button
+              onClick={() => setViewMode("admin")}
+              className={`nav-btn ${viewMode === "admin" ? "active" : ""}`}
+              title="Admin Mode (press V to cycle)"
+            >
+              👑
+            </button>
+            <button
+              onClick={() => setViewMode("spectator")}
+              className={`nav-btn ${viewMode === "spectator" ? "active" : ""}`}
+              title="Spectator Mode (press V to cycle)"
+            >
+              📺
+            </button>
+            {(currentPhase === "STORYTELLER_CHOICE" ||
+              currentPhase === "PLAYERS_CHOICE") &&
+              viewMode === "admin" && (
+                <>
+                  <div className="nav-divider"></div>
+                  <button
+                    onClick={() => setForcePlayerView(!forcePlayerView)}
+                    className={`nav-btn ${forcePlayerView ? "active" : ""}`}
+                    title="Toggle between Storyteller/Player view"
+                  >
+                    {forcePlayerView ? "👤 Player" : "🎭 Storyteller"}
+                  </button>
+                </>
+              )}
+            {currentPhase === "SCORING" && (
+              <>
+                <div className="nav-divider"></div>
+                <button
+                  onClick={testAnimation}
+                  className="nav-btn test-animation-btn"
+                  title="Test scoring animation with random points"
+                >
+                  🎲 Test Animation
+                </button>
+              </>
+            )}
+          </div>
+
+          {/* Game Screen */}
+          <div className="demo-screen">
+            <UnifiedGamePage
+              roomState={mockRoomState}
+              playerState={mockPlayerState}
+              playerId={currentPlayerId}
+              clientId="demo-client-123"
+              socket={null}
+              onJoin={mockActions.storytellerSubmit}
+              onUploadImage={mockActions.uploadImage}
+              onDeleteImage={mockActions.deleteImage}
+              onSetAllowPlayerUploads={mockActions.setAllowPlayerUploads}
+              onStartGame={mockActions.storytellerSubmit}
+              onChangeName={mockActions.storytellerSubmit}
+              onStorytellerSubmit={mockActions.storytellerSubmit}
+              onPlayerSubmitCard={mockActions.playerSubmitCard}
+              onPlayerVote={mockActions.playerVote}
+              onAdvanceRound={mockActions.advanceRound}
+              onResetGame={mockActions.resetGame}
+              onNewDeck={mockActions.newDeck}
+            />
+          </div>
+        </>
+      ) : (
+        <>
+          {/* Flow Test Mode */}
+          <div
+            className="flow-info-bar"
+            style={{
+              position: "fixed",
+              top: "80px",
+              left: "50%",
+              transform: "translateX(-50%)",
+              zIndex: 9999,
+              background: "rgba(26, 26, 46, 0.95)",
+              padding: "12px 24px",
+              borderRadius: "12px",
+              boxShadow: "0 4px 20px rgba(0,0,0,0.3)",
+              color: "#fff",
+              fontSize: "14px",
+              display: "flex",
+              gap: "20px",
+              alignItems: "center",
+            }}
+          >
+            <span>
+              <strong>Round:</strong> {flowRound}
+            </span>
+            <span>
+              <strong>Storyteller:</strong>{" "}
+              {flowPlayers[flowStorytellerIndex].name}
+            </span>
+            <span>
+              <strong>Phase:</strong> {flowPhase.replace(/_/g, " ")}
+            </span>
+            <span>
+              <strong>Scores:</strong> You: {flowPlayerScores["1"]} | Bob:{" "}
+              {flowPlayerScores["2"]} | Charlie: {flowPlayerScores["3"]}
+            </span>
+          </div>
+
+          <div className="demo-screen">
+            <UnifiedGamePage
+              roomState={generateFlowRoomState()}
+              playerState={generateFlowPlayerState()}
+              playerId="1"
+              clientId="flow-test-client"
+              socket={
+                {
+                  emit: (event: string) => {
+                    if (event === "advanceToScoring") {
+                      flowActions.advanceToScoring();
+                    }
+                  },
+                } as any
+              }
+              onJoin={() => {}}
+              onUploadImage={() => {}}
+              onDeleteImage={() => {}}
+              onSetAllowPlayerUploads={() => {}}
+              onStartGame={() => {}}
+              onChangeName={() => {}}
+              onStorytellerSubmit={flowActions.storytellerSubmit}
+              onPlayerSubmitCard={flowActions.playerSubmitCard}
+              onPlayerVote={flowActions.playerVote}
+              onAdvanceRound={flowActions.advanceRound}
+              onResetGame={flowActions.resetGame}
+              onNewDeck={flowActions.newDeck}
+            />
+          </div>
+        </>
+      )}
     </div>
   );
 }
