@@ -9,6 +9,7 @@ interface VotingViewProps {
   cardOwners?: { cardId: string; playerId: string }[]; // Who submitted each card
   storytellerCardId?: string | null; // Which card belongs to storyteller
   showResults?: boolean; // Show who submitted and who voted after all votes are in
+  lockedCardId?: string | null; // Card that was voted for (show lock)
 }
 
 export function VotingView({
@@ -22,6 +23,7 @@ export function VotingView({
   cardOwners,
   storytellerCardId,
   showResults,
+  lockedCardId,
 }: VotingViewProps) {
   // Sort by position
   const sorted = [...revealedCards].sort((a, b) => a.position - b.position);
@@ -64,6 +66,7 @@ export function VotingView({
       <div className="cards-grid">
         {sorted.map((card) => {
           const isMyCard = card.cardId === myCardId;
+          const isLocked = card.cardId === lockedCardId;
           const voteCount = getVoteCount(card.cardId);
           const voterNames = getVoterNames(card.cardId);
           const ownerName = getCardOwnerName(card.cardId);
@@ -73,8 +76,8 @@ export function VotingView({
           return (
             <div
               key={card.cardId}
-              className={`voting-card ${selectedCardId === card.cardId ? 'selected' : ''} ${disabled || isMyCard ? 'disabled' : ''} ${isStoryteller ? 'storyteller-card' : ''}`}
-              onClick={() => !disabled && !isMyCard && onSelectCard(card.cardId)}
+              className={`voting-card ${selectedCardId === card.cardId ? 'selected' : ''} ${isLocked ? 'locked' : ''} ${disabled || isMyCard ? 'disabled' : ''} ${isStoryteller ? 'storyteller-card' : ''}`}
+              onClick={() => !disabled && !isMyCard && !isLocked && onSelectCard(card.cardId)}
             >
               {/* Card info at top (shown after all votes) */}
               {showResults && (
@@ -116,6 +119,12 @@ export function VotingView({
               <div className="card-image-container">
                 <img src={card.imageData} alt={`Card ${card.position + 1}`} />
                 {isMyCard && <div className="my-card-badge">Your Card</div>}
+                {isLocked && (
+                  <div className="card-lock-indicator">
+                    <span className="lock-icon">🔒</span>
+                    <span className="lock-text">Your Vote</span>
+                  </div>
+                )}
               </div>
 
               {/* Vote count during voting */}

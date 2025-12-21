@@ -53,6 +53,13 @@ export function UnifiedGamePage({
   const [detectedServerUrl, setDetectedServerUrl] = useState<string | null>(
     null
   );
+  // Track locally submitted cards for locking UI
+  const [localSubmittedCardId, setLocalSubmittedCardId] = useState<
+    string | null
+  >(null);
+  const [localSubmittedClue, setLocalSubmittedClue] = useState<string>("");
+  // Track local vote for locking UI
+  const [localVotedCardId, setLocalVotedCardId] = useState<string | null>(null);
 
   // Detect demo mode (no socket connection)
   const isDemoMode = socket === null;
@@ -75,6 +82,23 @@ export function UnifiedGamePage({
     } else if (roomState?.phase === "SCORING") {
       // Close modal when entering scoring to show board animation
       setShowModal(false);
+    }
+  }, [roomState?.phase]);
+
+  // Reset local submission state when phase changes
+  useEffect(() => {
+    const phase = roomState?.phase;
+    // Clear local submissions when leaving STORYTELLER_CHOICE or PLAYERS_CHOICE
+    if (phase !== "STORYTELLER_CHOICE") {
+      setLocalSubmittedCardId(null);
+      setLocalSubmittedClue("");
+    }
+    if (phase !== "PLAYERS_CHOICE") {
+      setLocalSubmittedCardId(null);
+    }
+    // Clear local vote when leaving VOTING phase
+    if (phase !== "VOTING") {
+      setLocalVotedCardId(null);
     }
   }, [roomState?.phase]);
 
@@ -106,6 +130,9 @@ export function UnifiedGamePage({
   const handleStorytellerSubmit = () => {
     if (selectedCardId && clue.trim()) {
       onStorytellerSubmit(selectedCardId, clue.trim());
+      // Store locally for UI locking
+      setLocalSubmittedCardId(selectedCardId);
+      setLocalSubmittedClue(clue.trim());
       setSelectedCardId(null);
       setClue("");
       setShowModal(false);
@@ -115,6 +142,8 @@ export function UnifiedGamePage({
   const handlePlayerSubmit = () => {
     if (selectedCardId) {
       onPlayerSubmitCard(selectedCardId);
+      // Store locally for UI locking
+      setLocalSubmittedCardId(selectedCardId);
       setSelectedCardId(null);
       setShowModal(false);
     }
@@ -123,6 +152,8 @@ export function UnifiedGamePage({
   const handleVote = () => {
     if (selectedCardId) {
       onPlayerVote(selectedCardId);
+      // Store locally for UI locking
+      setLocalVotedCardId(selectedCardId);
       setSelectedCardId(null);
       // Keep modal open after voting
     }
@@ -311,7 +342,7 @@ export function UnifiedGamePage({
                   {/* STORYTELLER_CHOICE */}
                   {roomState.phase === "STORYTELLER_CHOICE" && (
                     <>
-                      {isStoryteller && (
+                      {isStoryteller && !localSubmittedCardId && (
                         <div className="modal-section storyteller-modal">
                           <h2>🎭 You are the Storyteller!</h2>
                           <p>Choose a card and provide a clue</p>
@@ -344,7 +375,25 @@ export function UnifiedGamePage({
                           </div>
                         </div>
                       )}
-                      {!isStoryteller && isDemoMode && showModal && (
+                      {isStoryteller && localSubmittedCardId && (
+                        <div className="modal-section storyteller-modal">
+                          <h2>✅ Card Submitted</h2>
+                          <p>Waiting for other players...</p>
+                          <p className="clue-reminder">
+                            Your clue: <strong>"{localSubmittedClue}"</strong>
+                          </p>
+
+                          <div className="modal-hand">
+                            <HandView
+                              hand={playerState?.hand || []}
+                              selectedCardId={localSubmittedCardId}
+                              onSelectCard={() => {}}
+                              lockedCardId={localSubmittedCardId}
+                            />
+                          </div>
+                        </div>
+                      )}
+                      {!isStoryteller && (
                         <div className="modal-section waiting-modal">
                           <h2>⏳ Waiting for Storyteller</h2>
                           <p>
@@ -372,31 +421,52 @@ export function UnifiedGamePage({
                   {/* PLAYERS_CHOICE */}
                   {roomState.phase === "PLAYERS_CHOICE" && (
                     <>
-                      {!isStoryteller &&
-                        (!playerState?.mySubmittedCardId ||
-                          (isDemoMode && showModal)) && (
-                          <div className="modal-section player-choice-modal">
-                            <h2>✍️ Choose Your Card</h2>
-                            <p>Pick a card that matches the clue</p>
+                      {!isStoryteller && !localSubmittedCardId && (
+                        <div className="modal-section player-choice-modal">
+                          <h2>✍️ Choose Your Card</h2>
+                          <p>Pick a card that matches the clue</p>
+                          <p className="clue-reminder">
+                            The clue: <strong>"{roomState.currentClue}"</strong>
+                          </p>
 
-                            <div className="modal-hand">
-                              <HandView
-                                hand={playerState?.hand || []}
-                                selectedCardId={selectedCardId}
-                                onSelectCard={setSelectedCardId}
-                              />
-                            </div>
-
-                            <button
-                              onClick={handlePlayerSubmit}
-                              disabled={!selectedCardId}
-                              className="btn-primary btn-large"
-                            >
-                              Submit Card
-                            </button>
+                          <div className="modal-hand">
+                            <HandView
+                              hand={playerState?.hand || []}
+                              selectedCardId={selectedCardId}
+                              onSelectCard={setSelectedCardId}
+                            />
                           </div>
-                        )}
-                      {isStoryteller && isDemoMode && showModal && (
+
+                          <button
+                            onClick={handlePlayerSubmit}
+                            disabled={!selectedCardId}
+                            className="btn-primary btn-large"
+                          >
+                            Submit Card
+                          </button>
+                        </div>
+                      )}
+                      {!isStoryteller && localSubmittedCardId && (
+                        <div className="modal-section waiting-modal">
+                          <h2>✅ Card Submitted</h2>
+                          <p>
+                            Waiting for other players to submit their cards...
+                          </p>
+                          <p className="clue-reminder">
+                            The clue: <strong>"{roomState.currentClue}"</strong>
+                          </p>
+
+                          <div className="modal-hand">
+                            <HandView
+                              hand={playerState?.hand || []}
+                              selectedCardId={localSubmittedCardId}
+                              onSelectCard={() => {}}
+                              lockedCardId={localSubmittedCardId}
+                            />
+                          </div>
+                        </div>
+                      )}
+                      {isStoryteller && (
                         <div className="modal-section waiting-modal">
                           <h2>⏳ Waiting for Players</h2>
                           <p>
@@ -407,6 +477,14 @@ export function UnifiedGamePage({
                             Your clue:{" "}
                             <strong>"{roomState.currentClue}"</strong>
                           </p>
+
+                          <div className="modal-hand">
+                            <HandView
+                              hand={playerState?.hand || []}
+                              selectedCardId={null}
+                              onSelectCard={() => {}}
+                            />
+                          </div>
                         </div>
                       )}
                     </>
@@ -458,7 +536,7 @@ export function UnifiedGamePage({
                       );
                       const allVotesIn =
                         roomState.votes.length >= eligiblePlayers.length;
-                      const hasVoted = playerState?.myVote !== null;
+                      const hasVoted = localVotedCardId !== null;
                       const canVote =
                         !isStoryteller && !isSpectator && !hasVoted;
 
@@ -493,13 +571,18 @@ export function UnifiedGamePage({
                           <div className="modal-voting-cards">
                             <VotingView
                               revealedCards={roomState.revealedCards}
-                              selectedCardId={selectedCardId}
-                              onSelectCard={setSelectedCardId}
+                              selectedCardId={canVote ? selectedCardId : null}
+                              onSelectCard={
+                                canVote ? setSelectedCardId : () => {}
+                              }
                               myCardId={
                                 playerState?.mySubmittedCardId || undefined
                               }
                               disabled={!canVote}
                               showResults={false}
+                              lockedCardId={
+                                hasVoted ? localVotedCardId : undefined
+                              }
                             />
                           </div>
 
