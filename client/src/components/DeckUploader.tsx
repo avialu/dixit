@@ -25,6 +25,7 @@ export function DeckUploader({
 
   const isAdmin = roomState.players.find(p => p.id === playerId)?.isAdmin || false;
   const myImages = roomState.deckImages.filter(img => img.uploadedBy === playerId);
+  // Spectators can upload if admin allows it, or if they're admin
   const canUpload = isAdmin || roomState.allowPlayerUploads;
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {

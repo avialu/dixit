@@ -75,10 +75,21 @@ export class GameManager {
   }
 
   leavePlayer(clientId: string): void {
-    // Actually remove the player from the game (for logout)
+    // Actually remove the player from the game (for manual logout)
     const player = this.state.players.get(clientId);
+
+    // Remove their uploaded images (works for both players and spectators)
+    const removedCount = this.deckManager.removePlayerImages(clientId);
+    if (removedCount > 0) {
+      const userName = player ? player.name : "Spectator";
+      console.log(
+        `Removed ${removedCount} images from ${userName} (${clientId}) who logged out`
+      );
+    }
+
     if (!player) {
-      // Player not found (could be spectator or already removed)
+      // Not a player (spectator or already removed), but images are removed above
+      console.log(`Spectator logged out: ${clientId}`);
       return;
     }
 
@@ -114,16 +125,16 @@ export class GameManager {
       throw new Error("Player not found");
     }
 
+    // Remove their uploaded images
+    const removedCount = this.deckManager.removePlayerImages(targetPlayerId);
+    if (removedCount > 0) {
+      console.log(
+        `Removed ${removedCount} images from kicked player ${targetPlayer.name}`
+      );
+    }
+
     // Remove the player completely
     this.state.players.delete(targetPlayerId);
-
-    // Remove their uploaded images
-    const cards = this.deckManager.getAllCards();
-    cards.forEach((card) => {
-      if (card.uploadedBy === targetPlayerId) {
-        this.deckManager.deleteImage(card.id, adminId);
-      }
-    });
   }
 
   changeName(playerId: string, newName: string): void {

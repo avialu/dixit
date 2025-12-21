@@ -240,7 +240,11 @@ npm start</pre>
         }
 
         const { imageId } = deleteImageSchema.parse(data);
-        gameManager.deleteImage(imageId, clientId);
+        const deleted = gameManager.deleteImage(imageId, clientId);
+
+        if (deleted) {
+          console.log(`Image deleted by ${clientId}: ${imageId}`);
+        }
 
         broadcastRoomState();
       } catch (error: any) {

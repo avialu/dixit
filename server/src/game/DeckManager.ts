@@ -145,6 +145,31 @@ export class DeckManager {
   }
 
   /**
+   * Remove all images uploaded by a specific player
+   * Used when a player leaves/disconnects
+   */
+  removePlayerImages(playerId: string): number {
+    const initialCount = this.deck.length;
+    
+    // Get all images from this player (for logging)
+    const playerImages = this.deck.filter(card => card.uploadedBy === playerId);
+    
+    // Log each image being removed
+    playerImages.forEach(card => {
+      console.log(`  → Deleting image ${card.id} (owner: ${playerId})`);
+    });
+    
+    // Remove the images
+    this.deck = this.deck.filter(card => card.uploadedBy !== playerId);
+    const removedCount = initialCount - this.deck.length;
+    
+    // Reset the player's image count
+    this.imageCountByPlayer.delete(playerId);
+    
+    return removedCount;
+  }
+
+  /**
    * Load default images into the deck
    * Used when there aren't enough uploaded images
    */

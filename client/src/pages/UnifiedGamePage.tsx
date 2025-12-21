@@ -154,6 +154,26 @@ export function UnifiedGamePage({
   };
 
   const handleLogout = () => {
+    // Count user's uploaded images
+    const myImages =
+      roomState?.deckImages.filter((img) => img.uploadedBy === playerId) || [];
+    const imageCount = myImages.length;
+
+    // Warning if user has uploaded images
+    if (imageCount > 0) {
+      const confirmed = window.confirm(
+        `⚠️ Warning: You have ${imageCount} uploaded image${
+          imageCount !== 1 ? "s" : ""
+        } in the deck.\n\n` +
+          `If you logout, these images will be permanently removed from the game.\n\n` +
+          `Are you sure you want to logout?`
+      );
+
+      if (!confirmed) {
+        return; // User cancelled logout
+      }
+    }
+
     // Emit leave event so server removes the player immediately
     onLeave();
     // Clear the stored clientId so they don't auto-rejoin
@@ -457,7 +477,7 @@ export function UnifiedGamePage({
 
                         <DeckUploader
                           roomState={roomState}
-                          playerId={isSpectator ? "spectator" : playerId}
+                          playerId={playerId}
                           onUpload={_onUploadImage}
                           onDelete={_onDeleteImage}
                           onSetAllowPlayerUploads={onSetAllowPlayerUploads}
