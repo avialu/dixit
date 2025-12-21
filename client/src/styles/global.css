@@ -261,7 +261,7 @@ select {
 }
 
 .toggle-checkbox::before {
-  content: '';
+  content: "";
   position: absolute;
   width: 20px;
   height: 20px;
@@ -530,8 +530,7 @@ select {
   border-radius: 16px;
   text-align: center;
   border: 3px solid rgba(74, 144, 226, 0.6);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6),
-              0 0 20px rgba(74, 144, 226, 0.3);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6), 0 0 20px rgba(74, 144, 226, 0.3);
   backdrop-filter: blur(10px);
 }
 
@@ -587,6 +586,15 @@ select {
   pointer-events: none;
 }
 
+.board-background-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  opacity: 0.4;
+  filter: blur(2px);
+}
+
 .board-sky {
   position: absolute;
   top: 0;
@@ -595,6 +603,7 @@ select {
   height: 40%;
   background: linear-gradient(180deg, #1a2a4a 0%, #3d5a80 100%);
   opacity: 0.3;
+  display: none; /* Hidden when using image */
 }
 
 .board-hills {
@@ -624,26 +633,32 @@ select {
     rgba(180, 142, 95, 0.15) 100%
   );
   border-radius: 24px;
-  padding: 1rem;
+  padding: 0.5rem;
   margin: 0;
   flex: 1;
   display: flex;
   align-items: center;
   justify-content: center;
-  overflow: hidden;
+  overflow: visible;
+  /* Fill all available space */
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  min-width: 0;
   box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.3), 0 8px 24px rgba(0, 0, 0, 0.4);
   border: 3px solid rgba(139, 111, 78, 0.4);
-  /* Allow it to shrink and grow */
-  min-height: 0;
 }
 
 .score-track-svg {
   width: 100%;
   height: 100%;
   max-height: 100%;
-  /* Contain within parent and maintain aspect ratio */
-  object-fit: contain;
-  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
+  /* Fill container completely */
+  display: block;
+  min-width: 100%;
+  min-height: 100%;
+  /* Ensure SVG scales to fill */
+  flex: 1;
 }
 
 .path-line {
@@ -699,10 +714,6 @@ select {
 .token-animating text {
   transition: cx 2s ease-in-out, cy 2s ease-in-out, x 2s ease-in-out,
     y 2s ease-in-out;
-}
-
-.player-token {
-  /* Token styling */
 }
 
 .player-token.scoring-animation {
@@ -773,12 +784,12 @@ select {
     gap: 0.5rem;
     padding: 0.75rem;
   }
-  
+
   .legend-item {
     padding: 0.4rem 0.6rem;
     font-size: 0.85rem;
   }
-  
+
   .legend-token {
     width: 1rem;
     height: 1rem;
@@ -2900,7 +2911,7 @@ select {
   .board-view {
     padding: 0;
   }
-  
+
   .board-view .board-card {
     /* Ensure cards are large and touchable on mobile */
     min-height: 350px;
@@ -3147,6 +3158,11 @@ select {
     gap: 0.25rem;
     overflow: hidden;
     /* Take full available height */
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
 
   /* QR Code on mobile - make it smaller and more compact */
   .board-qr-code-container {
@@ -3168,12 +3184,6 @@ select {
   .board-qr-code-container canvas {
     max-width: 160px;
     height: auto !important;
-  }
-}
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    min-height: 0;
   }
 
   /* Make status bar more compact on mobile to give board more space */
@@ -3205,12 +3215,13 @@ select {
     /* Take up available space */
     flex: 1;
     /* Ensure content stays visible */
-    overflow: hidden;
+    overflow: visible;
     display: flex;
     align-items: center;
     justify-content: center;
     /* Container takes available height */
     height: 100%;
+    width: 100%;
     min-height: 0;
   }
 
@@ -3224,7 +3235,7 @@ select {
     /* Preserve aspect ratio and fit within container */
     object-fit: contain;
   }
-  
+
   /* Larger stroke widths on mobile */
   .path-line {
     stroke-width: 2;
@@ -3311,8 +3322,9 @@ select {
 @media (max-width: 480px) {
   .score-track-container {
     padding: 0.25rem;
-    overflow: hidden;
+    overflow: visible;
     height: 100%;
+    width: 100%;
     flex: 1;
   }
 
