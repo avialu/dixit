@@ -303,11 +303,12 @@ export class GameManager {
     // Check if all players have submitted
     const expectedSubmissions = this.state.players.size;
     if (this.state.submittedCards.length === expectedSubmissions) {
-      this.transitionToReveal();
+      this.shuffleCardsForVoting();
     }
   }
 
-  private transitionToReveal(): void {
+  // Shuffle submitted cards for voting phase
+  private shuffleCardsForVoting(): void {
     // Shuffle submitted cards for reveal
     const shuffled = [...this.state.submittedCards];
     for (let i = shuffled.length - 1; i > 0; i--) {
@@ -361,22 +362,12 @@ export class GameManager {
     // Check if all non-storytellers have voted
     const expectedVotes = this.state.players.size - 1; // minus storyteller
     if (this.state.votes.length === expectedVotes) {
-      this.state.phase = GamePhase.REVEAL;
+      this.transitionToReveal();
     }
   }
 
-  // Admin manually advances from REVEAL to SCORING
-  advanceToScoring(adminId: string): void {
-    this.validateAdmin(adminId);
-
-    if (this.state.phase !== GamePhase.REVEAL) {
-      throw new Error("Can only advance to scoring from REVEAL phase");
-    }
-
-    this.transitionToScoring();
-  }
-
-  private transitionToScoring(): void {
+  // Calculate scores and transition to REVEAL phase
+  private transitionToReveal(): void {
     const storytellerCardId = this.state.submittedCards.find(
       (sc) => sc.playerId === this.state.storytellerId
     )!.cardId;
@@ -390,7 +381,7 @@ export class GameManager {
 
     const aggregated = ScoringEngine.aggregateScores(results);
 
-    // Apply scores
+    // Apply scores immediately when entering REVEAL
     this.state.lastScoreDeltas.clear();
     for (const [playerId, delta] of aggregated.entries()) {
       const player = this.state.players.get(playerId);
@@ -400,14 +391,15 @@ export class GameManager {
       }
     }
 
-    this.state.phase = GamePhase.SCORING;
+    this.state.phase = GamePhase.REVEAL;
   }
 
+  // Admin advances from REVEAL to next round (or game end)
   advanceToNextRound(adminId: string): void {
     this.validateAdmin(adminId);
 
-    if (this.state.phase !== GamePhase.SCORING) {
-      throw new Error("Not in scoring phase");
+    if (this.state.phase !== GamePhase.REVEAL) {
+      throw new Error("Can only advance from REVEAL phase");
     }
 
     // Check if any player reached win target
@@ -523,8 +515,7 @@ export class GameManager {
     // Reveal cards only in appropriate phases
     const revealedCards =
       this.state.phase === GamePhase.REVEAL ||
-      this.state.phase === GamePhase.VOTING ||
-      this.state.phase === GamePhase.SCORING
+      this.state.phase === GamePhase.VOTING
         ? this.state.submittedCards.map((sc) => {
             return {
               cardId: sc.cardId,
@@ -534,9 +525,9 @@ export class GameManager {
           })
         : [];
 
-    // During SCORING, reveal votes
+    // During REVEAL, reveal votes (scoring already calculated)
     const votes =
-      this.state.phase === GamePhase.SCORING
+      this.state.phase === GamePhase.REVEAL
         ? this.state.votes.map((v) => ({
             voterId: v.voterId,
             cardId: v.cardId,

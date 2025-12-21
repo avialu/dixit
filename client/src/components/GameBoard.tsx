@@ -4,9 +4,13 @@ import { QRCode } from "./QRCode";
 
 interface GameBoardProps {
   roomState: RoomState;
+  triggerAnimation?: boolean; // External trigger for animation
 }
 
-export function GameBoard({ roomState }: GameBoardProps) {
+export function GameBoard({
+  roomState,
+  triggerAnimation = false,
+}: GameBoardProps) {
   const [animatingScores, setAnimatingScores] = useState<{
     [playerId: string]: number;
   }>({});
@@ -41,12 +45,13 @@ export function GameBoard({ roomState }: GameBoardProps) {
     };
   }, []);
 
-  // Trigger animation when entering SCORING phase
+  // Trigger animation when entering REVEAL phase OR when triggerAnimation prop changes
   useEffect(() => {
     if (
-      roomState.phase === "SCORING" &&
+      roomState.phase === "REVEAL" &&
       roomState.lastScoreDeltas.length > 0 &&
-      lastAnimatedRound.current !== roomState.currentRound
+      lastAnimatedRound.current !== roomState.currentRound &&
+      triggerAnimation
     ) {
       lastAnimatedRound.current = roomState.currentRound;
 
@@ -103,6 +108,7 @@ export function GameBoard({ roomState }: GameBoardProps) {
     roomState.currentRound,
     roomState.lastScoreDeltas,
     roomState.players,
+    triggerAnimation,
   ]);
 
   // Calculate viewBox dynamically to match container aspect ratio exactly

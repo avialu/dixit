@@ -41,7 +41,7 @@ export function UnifiedGamePage({
   onStorytellerSubmit,
   onPlayerSubmitCard,
   onPlayerVote,
-  onAdvanceRound,
+  onAdvanceRound: _onAdvanceRound,
   onResetGame,
   onNewDeck,
 }: UnifiedGamePageProps) {
@@ -60,6 +60,8 @@ export function UnifiedGamePage({
   const [localSubmittedClue, setLocalSubmittedClue] = useState<string>("");
   // Track local vote for locking UI
   const [localVotedCardId, setLocalVotedCardId] = useState<string | null>(null);
+  // Track if we should trigger board animation (when closing REVEAL modal)
+  const [triggerBoardAnimation, setTriggerBoardAnimation] = useState(false);
 
   // Detect demo mode (no socket connection)
   const isDemoMode = socket === null;
@@ -74,14 +76,15 @@ export function UnifiedGamePage({
     }
   }, [isDemoMode]);
 
-  // Auto-open modal for REVEAL and VOTING phases, close for SCORING
+  // Auto-open modal for REVEAL and VOTING phases
   useEffect(() => {
     if (["REVEAL", "VOTING"].includes(roomState?.phase || "")) {
       setModalType("cards");
       setShowModal(true);
-    } else if (roomState?.phase === "SCORING") {
-      // Close modal when entering scoring to show board animation
-      setShowModal(false);
+    }
+    // Reset animation trigger when phase changes away from REVEAL
+    if (roomState?.phase !== "REVEAL") {
+      setTriggerBoardAnimation(false);
     }
   }, [roomState?.phase]);
 
@@ -223,10 +226,13 @@ export function UnifiedGamePage({
     <div className="unified-game-page game-state">
       {/* Board Background - Always Visible */}
       <div className="board-background">
-        <GameBoard roomState={roomState} />
+        <GameBoard
+          roomState={roomState}
+          triggerAnimation={triggerBoardAnimation}
+        />
 
-        {/* Revealed Cards Display (during REVEAL, VOTING, SCORING) */}
-        {["REVEAL", "VOTING", "SCORING"].includes(roomState.phase) &&
+        {/* Revealed Cards Display (during REVEAL and VOTING) */}
+        {["REVEAL", "VOTING"].includes(roomState.phase) &&
           roomState.revealedCards.length > 0 && (
             <div className="board-revealed-cards">
               <VotingView
@@ -235,7 +241,7 @@ export function UnifiedGamePage({
                 onSelectCard={() => {}}
                 disabled={true}
                 votes={
-                  roomState.phase === "SCORING" ? roomState.votes : undefined
+                  roomState.phase === "REVEAL" ? roomState.votes : undefined
                 }
               />
             </div>
@@ -256,7 +262,7 @@ export function UnifiedGamePage({
             {roomState.phase === "STORYTELLER_CHOICE" && "🎭 My Cards"}
             {roomState.phase === "PLAYERS_CHOICE" && "🃏 Choose Card"}
             {roomState.phase === "VOTING" && "🗳️ Vote"}
-            {roomState.phase === "SCORING" && "📊 Scores"}
+            {roomState.phase === "REVEAL" && "🎨 Results"}
             {roomState.phase === "GAME_END" && "🏆 Results"}
           </button>
         </>
@@ -491,119 +497,97 @@ export function UnifiedGamePage({
                   )}
 
                   {/* REVEAL - Show who drew and voted, admin continues */}
-                  {roomState.phase === "REVEAL" && (() => {
-                    // Calculate score deltas for display
-                    const storytellerId = roomState.storytellerId;
-                    const storytellerCard = roomState.revealedCards.find(
-                      (card) => (card as any).playerId === storytellerId
-                    );
-                    const storytellerCardId = storytellerCard?.cardId;
-                    
-                    const votesForStoryteller = roomState.votes.filter(
-                      (v) => v.cardId === storytellerCardId
-                    ).length;
-                    const totalVoters = roomState.votes.length;
+                  {roomState.phase === "REVEAL" &&
+                    (() => {
+                      // Get storyteller card info for display
+                      const storytellerId = roomState.storytellerId;
+                      const storytellerCard = roomState.revealedCards.find(
+                        (card) => (card as any).playerId === storytellerId
+                      );
+                      const storytellerCardId = storytellerCard?.cardId;
 
-                    const scoreDeltas: { [playerId: string]: number } = {};
-                    roomState.players.forEach(p => {
-                      scoreDeltas[p.id] = 0;
-                    });
-
-                    // Calculate scores based on Dixit rules
-                    if (votesForStoryteller === 0 || votesForStoryteller === totalVoters) {
-                      // Everyone or no one guessed - storyteller gets 0, others get 2
-                      roomState.players.forEach(p => {
-                        if (p.id !== storytellerId) {
-                          scoreDeltas[p.id] = 2;
-                        }
+                      // Use server-calculated score deltas
+                      const scoreDeltas: { [playerId: string]: number } = {};
+                      roomState.lastScoreDeltas.forEach((delta) => {
+                        scoreDeltas[delta.playerId] = delta.delta;
                       });
-                    } else {
-                      // Some players guessed correctly
-                      scoreDeltas[storytellerId!] = 3;
-                      roomState.votes.forEach(vote => {
-                        if (vote.cardId === storytellerCardId) {
-                          scoreDeltas[vote.voterId] = 3;
-                        }
-                      });
-                    }
 
-                    // Add bonus points for votes on own cards (not storyteller's)
-                    roomState.revealedCards.forEach(card => {
-                      const cardPlayerId = (card as any).playerId;
-                      if (cardPlayerId !== storytellerId) {
-                        const votesForCard = roomState.votes.filter(
-                          v => v.cardId === card.cardId
-                        ).length;
-                        scoreDeltas[cardPlayerId] = (scoreDeltas[cardPlayerId] || 0) + votesForCard;
-                      }
-                    });
+                      return (
+                        <div className="modal-section reveal-modal">
+                          <h2>🎨 Results Revealed!</h2>
+                          <p className="clue-reminder">
+                            The clue: <strong>"{roomState.currentClue}"</strong>
+                          </p>
+                          <p style={{ color: "#95a5a6", fontSize: "0.9rem" }}>
+                            See who drew each card and who voted for them
+                          </p>
 
-                    return (
-                    <div className="modal-section reveal-modal">
-                      <h2>🎨 Results Revealed!</h2>
-                      <p className="clue-reminder">
-                        The clue: <strong>"{roomState.currentClue}"</strong>
-                      </p>
-                      <p style={{ color: "#95a5a6", fontSize: "0.9rem" }}>
-                        See who drew each card and who voted for them
-                      </p>
+                          <div className="modal-voting-cards">
+                            <VotingView
+                              revealedCards={roomState.revealedCards}
+                              selectedCardId={null}
+                              onSelectCard={() => {}}
+                              myCardId={
+                                playerState?.mySubmittedCardId || undefined
+                              }
+                              disabled={true}
+                              votes={roomState.votes}
+                              players={roomState.players}
+                              cardOwners={roomState.revealedCards.map(
+                                (card) => ({
+                                  cardId: card.cardId,
+                                  playerId: (card as any).playerId || "unknown",
+                                })
+                              )}
+                              storytellerCardId={storytellerCardId || null}
+                              showResults={true}
+                              scoreDeltas={scoreDeltas}
+                            />
+                          </div>
 
-                      <div className="modal-voting-cards">
-                        <VotingView
-                          revealedCards={roomState.revealedCards}
-                          selectedCardId={null}
-                          onSelectCard={() => {}}
-                          myCardId={playerState?.mySubmittedCardId || undefined}
-                          disabled={true}
-                          votes={roomState.votes}
-                          players={roomState.players}
-                          cardOwners={roomState.revealedCards.map((card) => ({
-                            cardId: card.cardId,
-                            playerId: (card as any).playerId || "unknown",
-                          }))}
-                          storytellerCardId={storytellerCardId || null}
-                          showResults={true}
-                          scoreDeltas={scoreDeltas}
-                        />
-                      </div>
+                          {/* Admin button to continue to next round */}
+                          {isAdmin && (
+                            <button
+                              onClick={() => {
+                                if (socket) {
+                                  socket.emit("advanceRound");
+                                }
+                              }}
+                              className="btn-primary btn-large"
+                              style={{ marginTop: "1rem" }}
+                            >
+                              ▶️ Continue to Next Round
+                            </button>
+                          )}
 
-                      {/* Admin button to continue to scoring */}
-                      {isAdmin && (
-                        <button
-                          onClick={() => {
-                            if (socket) {
-                              socket.emit("advanceToScoring");
-                            }
-                          }}
-                          className="btn-primary btn-large"
-                          style={{ marginTop: "1rem" }}
-                        >
-                          ▶️ Continue to Scoring
-                        </button>
-                      )}
+                          {/* Non-admin waiting message */}
+                          {!isAdmin && (
+                            <p
+                              style={{
+                                marginTop: "1rem",
+                                color: "#95a5a6",
+                                fontStyle: "italic",
+                              }}
+                            >
+                              ⏳ Waiting for admin to continue...
+                            </p>
+                          )}
 
-                      {/* Non-admin waiting message */}
-                      {!isAdmin && (
-                        <p
-                          style={{
-                            marginTop: "1rem",
-                            color: "#95a5a6",
-                            fontStyle: "italic",
-                          }}
-                        >
-                          ⏳ Waiting for admin to continue...
-                        </p>
-                      )}
-
-                      <button
-                        onClick={() => setShowModal(false)}
-                        className="btn-secondary"
-                      >
-                        Close (View Board)
-                      </button>
-                    </div>
-                    );
-                  })()}
+                          <button
+                            onClick={() => {
+                              setShowModal(false);
+                              // Trigger board animation when closing reveal
+                              if (roomState.phase === "REVEAL") {
+                                setTriggerBoardAnimation(true);
+                              }
+                            }}
+                            className="btn-secondary"
+                          >
+                            Close (View Board)
+                          </button>
+                        </div>
+                      );
+                    })()}
 
                   {/* VOTING */}
                   {roomState.phase === "VOTING" &&
@@ -682,75 +666,6 @@ export function UnifiedGamePage({
                         </div>
                       );
                     })()}
-
-                  {/* SCORING */}
-                  {roomState.phase === "SCORING" && (
-                    <div className="modal-section scoring-modal">
-                      <h2>🏆 Round Results</h2>
-                      <p>Scores have been updated on the board!</p>
-
-                      <div className="score-deltas-grid">
-                        {roomState.lastScoreDeltas.map((delta) => {
-                          const player = roomState.players.find(
-                            (p) => p.id === delta.playerId
-                          );
-                          return (
-                            <div
-                              key={delta.playerId}
-                              className={`score-delta-item ${
-                                delta.delta > 0
-                                  ? "positive"
-                                  : delta.delta < 0
-                                  ? "negative"
-                                  : "neutral"
-                              }`}
-                            >
-                              <span className="player-name">
-                                {player?.name}:
-                              </span>
-                              <span className="delta-value">
-                                {delta.delta > 0 ? "+" : ""}
-                                {delta.delta} pts
-                              </span>
-                            </div>
-                          );
-                        })}
-                      </div>
-
-                      {/* Admin button to continue */}
-                      {isAdmin && (
-                        <button
-                          onClick={() => {
-                            onAdvanceRound();
-                            setShowModal(false);
-                          }}
-                          className="btn-primary btn-large"
-                        >
-                          Next Round →
-                        </button>
-                      )}
-
-                      {/* Non-admin waiting message */}
-                      {!isAdmin && (
-                        <p
-                          style={{
-                            marginTop: "1rem",
-                            color: "#95a5a6",
-                            fontStyle: "italic",
-                          }}
-                        >
-                          ⏳ Waiting for admin to continue...
-                        </p>
-                      )}
-
-                      <button
-                        onClick={() => setShowModal(false)}
-                        className="btn-secondary"
-                      >
-                        Close (View Board)
-                      </button>
-                    </div>
-                  )}
 
                   {/* GAME_END */}
                   {roomState.phase === "GAME_END" && (

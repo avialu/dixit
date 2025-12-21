@@ -4,7 +4,6 @@ export enum GamePhase {
   PLAYERS_CHOICE = "PLAYERS_CHOICE",
   VOTING = "VOTING",
   REVEAL = "REVEAL",
-  SCORING = "SCORING",
   GAME_END = "GAME_END",
 }
 

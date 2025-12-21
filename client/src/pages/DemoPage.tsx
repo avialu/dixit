@@ -143,55 +143,25 @@ const generateMockRoomState = (
       };
 
     case "REVEAL":
-      return {
-        ...baseState,
-        phase: "REVEAL",
-        revealedCards: [
-          {
-            cardId: "c1",
-            imageData: "https://picsum.photos/seed/card1/400/600",
-            position: 0,
-            playerId: "1", // Alice (storyteller)
-          } as any,
-          {
-            cardId: "c2",
-            imageData: "https://picsum.photos/seed/card2/400/600",
-            position: 1,
-            playerId: "2", // Bob
-          } as any,
-          {
-            cardId: "c3",
-            imageData: "https://picsum.photos/seed/card3/400/600",
-            position: 2,
-            playerId: "3", // Charlie
-          } as any,
-          {
-            cardId: "c4",
-            imageData: "https://picsum.photos/seed/card4/400/600",
-            position: 3,
-            playerId: "4", // Diana
-          } as any,
-        ],
-        votes: [
-          { voterId: "2", cardId: "c4" }, // Bob voted for Diana's card
-          { voterId: "3", cardId: "c4" }, // Charlie voted for Diana's card
-          { voterId: "4", cardId: "c2" }, // Diana voted for Bob's card
-          // This shows scoring: Alice (storyteller) +0, Bob +1, Charlie +0, Diana +2
-        ],
-      };
-
-    case "SCORING":
+      // Calculate correct scoring based on demo votes
+      // Storyteller: Alice (1) with card c1
+      // Votes: Bob->c4, Charlie->c4, Diana->c2
+      // Nobody voted for storyteller's card (c1), so:
+      // - Storyteller gets 0
+      // - Everyone else gets 2 base points
+      // - Diana got 2 votes on her card (c4) = +2 bonus
+      // - Bob got 1 vote on his card (c2) = +1 bonus
       const defaultDeltas = [
-        { playerId: "1", delta: 0 },
-        { playerId: "2", delta: 3 },
-        { playerId: "3", delta: 0 },
-        { playerId: "4", delta: 5 },
+        { playerId: "1", delta: 0 }, // Alice (storyteller) - nobody guessed
+        { playerId: "2", delta: 3 }, // Bob - 2 base + 1 vote on his card
+        { playerId: "3", delta: 2 }, // Charlie - 2 base + 0 votes
+        { playerId: "4", delta: 4 }, // Diana - 2 base + 2 votes on her card
       ];
       const deltas = customScoreDeltas || defaultDeltas;
 
       return {
         ...baseState,
-        phase: "SCORING",
+        phase: "REVEAL",
         players: basePlayers, // Use basePlayers which already has custom scores
         revealedCards: [
           {
@@ -333,8 +303,7 @@ const allPhases = [
   "STORYTELLER_CHOICE",
   "PLAYERS_CHOICE",
   "VOTING", // Vote on cards (hidden who drew)
-  "REVEAL", // Show who drew and who voted
-  "SCORING",
+  "REVEAL", // Show who drew and who voted + scoring
   "GAME_END",
 ];
 
@@ -427,10 +396,10 @@ export function DemoPage() {
     }
   }
 
-  // Override current round for animation testing in SCORING phase
+  // Override current round for animation testing in REVEAL phase
   if (
     mockRoomState &&
-    currentPhase === "SCORING" &&
+    currentPhase === "REVEAL" &&
     (customPlayerScores || customScoreDeltas)
   ) {
     mockRoomState.currentRound = 5 + animationRound;
@@ -456,15 +425,15 @@ export function DemoPage() {
       "STORYTELLER_CHOICE",
       "PLAYERS_CHOICE",
     ].includes(currentPhase);
-    const isAfterReveal = ["SCORING", "GAME_END"].includes(currentPhase);
+    const isAfterReveal = ["GAME_END"].includes(currentPhase);
 
     if (isBeforeVoting || isAfterReveal) {
       setDemoVotes([]);
       setDemoVotedCardId(null);
     }
 
-    // Reset animation test data when leaving SCORING phase
-    if (currentPhase !== "SCORING") {
+    // Reset animation test data when leaving REVEAL phase
+    if (currentPhase !== "REVEAL") {
       setCustomPlayerScores(undefined);
       setCustomScoreDeltas(undefined);
       setAnimationRound(0);
@@ -632,11 +601,7 @@ export function DemoPage() {
     };
 
     // Phase-specific data
-    if (
-      flowPhase === "VOTING" ||
-      flowPhase === "REVEAL" ||
-      flowPhase === "SCORING"
-    ) {
+    if (flowPhase === "VOTING" || flowPhase === "REVEAL") {
       // Generate revealed cards with actual image data
       baseState.revealedCards = flowSubmittedCards.map((sc) => ({
         cardId: sc.cardId,
@@ -645,14 +610,11 @@ export function DemoPage() {
         playerId: sc.playerId, // Include playerId for card ownership
       })) as any;
 
-      // For REVEAL and SCORING, show votes
-      if (flowPhase === "REVEAL" || flowPhase === "SCORING") {
+      // For REVEAL, show votes and score deltas
+      if (flowPhase === "REVEAL") {
         baseState.votes = flowVotes;
+        baseState.lastScoreDeltas = flowLastDeltas;
       }
-    }
-
-    if (flowPhase === "SCORING") {
-      baseState.lastScoreDeltas = flowLastDeltas;
     }
 
     return baseState;
@@ -733,9 +695,9 @@ export function DemoPage() {
 
           // AI players vote automatically
           setTimeout(() => {
-            const storytellerCard = { cardId, playerId: "1" };
+            const stCard = { cardId, playerId: "1" };
             const allSubmittedCards = [
-              storytellerCard,
+              stCard,
               { cardId: "ai-card-2", playerId: "2" },
               { cardId: "ai-card-3", playerId: "3" },
             ];
@@ -780,7 +742,71 @@ export function DemoPage() {
 
             setFlowVotes(aiVotes);
 
-            // Go to REVEAL phase (admin must click to continue to SCORING)
+            // Go to REVEAL phase and calculate scores immediately
+            const storytellerId = getFlowStorytellerId();
+            const storytellerCard = flowSubmittedCards.find(
+              (sc) => sc.playerId === storytellerId
+            );
+
+            const storytellerCardId = storytellerCard?.cardId;
+            const votesForStoryteller = aiVotes.filter(
+              (v) => v.cardId === storytellerCardId
+            ).length;
+            const totalVoters = aiVotes.length;
+
+            const deltas: { [key: string]: number } = {
+              "1": 0,
+              "2": 0,
+              "3": 0,
+            };
+
+            // If everyone or no one found the card, storyteller gets 0
+            if (
+              votesForStoryteller === 0 ||
+              votesForStoryteller === totalVoters
+            ) {
+              deltas[storytellerId] = 0;
+              // Others get 2 points
+              flowPlayers.forEach((p) => {
+                if (p.id !== storytellerId) {
+                  deltas[p.id] = 2;
+                }
+              });
+            } else {
+              // Storyteller gets 3 points
+              deltas[storytellerId] = 3;
+              // Players who found it get 3 points
+              aiVotes.forEach((vote) => {
+                if (vote.cardId === storytellerCardId) {
+                  deltas[vote.voterId] = 3;
+                }
+              });
+            }
+
+            // Players get 1 point for each vote on their card (not storyteller's)
+            flowSubmittedCards.forEach((sc) => {
+              if (sc.playerId !== storytellerId) {
+                const votesForCard = aiVotes.filter(
+                  (v) => v.cardId === sc.cardId
+                ).length;
+                deltas[sc.playerId] = (deltas[sc.playerId] || 0) + votesForCard;
+              }
+            });
+
+            const deltaArray = Object.entries(deltas).map(
+              ([playerId, delta]) => ({
+                playerId,
+                delta,
+              })
+            );
+
+            setFlowLastDeltas(deltaArray);
+            setFlowPlayerScores((prev) => ({
+              "1": prev["1"] + deltas["1"],
+              "2": prev["2"] + deltas["2"],
+              "3": prev["3"] + deltas["3"],
+            }));
+
             setFlowPhase("REVEAL");
           }, 2000);
         }, 1500);
@@ -910,81 +936,85 @@ export function DemoPage() {
           // Update votes with AI votes and transition to REVEAL
           setFlowVotes((currentVotes) => {
             const allVotes = [...currentVotes, ...aiVotes];
+
+            // Calculate scores immediately after all votes are in
+            setTimeout(() => {
+              const stId = getFlowStorytellerId();
+              const stCard = flowSubmittedCards.find(
+                (sc) => sc.playerId === stId
+              );
+
+              const stCardId = stCard?.cardId;
+              const votesForStoryteller = allVotes.filter(
+                (v: { cardId: string }) => v.cardId === stCardId
+              ).length;
+              const totalVoters = allVotes.length;
+
+              const deltas: { [key: string]: number } = {
+                "1": 0,
+                "2": 0,
+                "3": 0,
+              };
+
+              // If everyone or no one found the card, storyteller gets 0
+              if (
+                votesForStoryteller === 0 ||
+                votesForStoryteller === totalVoters
+              ) {
+                deltas[stId] = 0;
+                // Others get 2 points
+                flowPlayers.forEach((p) => {
+                  if (p.id !== stId) {
+                    deltas[p.id] = 2;
+                  }
+                });
+              } else {
+                // Storyteller gets 3 points
+                deltas[stId] = 3;
+                // Players who found it get 3 points
+                allVotes.forEach(
+                  (vote: { cardId: string; voterId: string }) => {
+                    if (vote.cardId === stCardId) {
+                      deltas[vote.voterId] = 3;
+                    }
+                  }
+                );
+              }
+
+              // Players get 1 point for each vote on their card (not storyteller's)
+              flowSubmittedCards.forEach((sc) => {
+                if (sc.playerId !== stId) {
+                  const votesForCard = allVotes.filter(
+                    (v: { cardId: string }) => v.cardId === sc.cardId
+                  ).length;
+                  deltas[sc.playerId] =
+                    (deltas[sc.playerId] || 0) + votesForCard;
+                }
+              });
+
+              const deltaArray = Object.entries(deltas).map(
+                ([playerId, delta]) => ({
+                  playerId,
+                  delta,
+                })
+              );
+
+              setFlowLastDeltas(deltaArray);
+              setFlowPlayerScores((prev) => ({
+                "1": prev["1"] + deltas["1"],
+                "2": prev["2"] + deltas["2"],
+                "3": prev["3"] + deltas["3"],
+              }));
+
+              setFlowPhase("REVEAL");
+            }, 0);
+
             return allVotes;
           });
-
-          // Go to REVEAL phase (admin must click to continue to SCORING)
-          setFlowPhase("REVEAL");
         }, 2000);
 
         return newVotes;
       });
-    },
-
-    advanceToScoring: () => {
-      console.log("Flow: Admin advancing to scoring");
-
-      // Calculate scoring with current votes
-      const storytellerId = getFlowStorytellerId();
-      const storytellerCard = flowSubmittedCards.find(
-        (sc) => sc.playerId === storytellerId
-      );
-
-      const storytellerCardId = storytellerCard?.cardId;
-      const votesForStoryteller = flowVotes.filter(
-        (v) => v.cardId === storytellerCardId
-      ).length;
-      const totalVoters = flowVotes.length;
-
-      const deltas: { [key: string]: number } = {
-        "1": 0,
-        "2": 0,
-        "3": 0,
-      };
-
-      // If everyone or no one found the card, storyteller gets 0
-      if (votesForStoryteller === 0 || votesForStoryteller === totalVoters) {
-        deltas[storytellerId] = 0;
-        // Others get 2 points
-        flowPlayers.forEach((p) => {
-          if (p.id !== storytellerId) {
-            deltas[p.id] = 2;
-          }
-        });
-      } else {
-        // Storyteller gets 3 points
-        deltas[storytellerId] = 3;
-        // Players who found it get 3 points
-        flowVotes.forEach((vote) => {
-          if (vote.cardId === storytellerCardId) {
-            deltas[vote.voterId] = 3;
-          }
-        });
-      }
-
-      // Players get 1 point for each vote on their card (not storyteller's)
-      flowSubmittedCards.forEach((sc) => {
-        if (sc.playerId !== storytellerId) {
-          const votesForCard = flowVotes.filter(
-            (v) => v.cardId === sc.cardId
-          ).length;
-          deltas[sc.playerId] = (deltas[sc.playerId] || 0) + votesForCard;
-        }
-      });
-
-      const deltaArray = Object.entries(deltas).map(([playerId, delta]) => ({
-        playerId,
-        delta,
-      }));
-
-      setFlowLastDeltas(deltaArray);
-      setFlowPlayerScores((prev) => ({
-        "1": prev["1"] + deltas["1"],
-        "2": prev["2"] + deltas["2"],
-        "3": prev["3"] + deltas["3"],
-      }));
-
-      setFlowPhase("SCORING");
     },
 
     advanceRound: () => {
@@ -1091,14 +1121,14 @@ export function DemoPage() {
         className="demo-mode-selector"
         style={{
           position: "fixed",
-          top: "10px",
-          left: "50%",
-          transform: "translateX(-50%)",
+          top: "60px",
+          left: "20px",
           zIndex: 10000,
           display: "flex",
-          gap: "10px",
+          flexDirection: "column",
+          gap: "8px",
           background: "rgba(26, 26, 46, 0.95)",
-          padding: "12px 20px",
+          padding: "12px",
           borderRadius: "12px",
           boxShadow: "0 4px 20px rgba(0,0,0,0.3)",
         }}
@@ -1106,7 +1136,7 @@ export function DemoPage() {
         <button
           onClick={() => setDemoMode("component")}
           style={{
-            padding: "8px 16px",
+            padding: "6px 12px",
             borderRadius: "8px",
             border: "2px solid",
             borderColor: demoMode === "component" ? "#4a90e2" : "#555",
@@ -1115,6 +1145,8 @@ export function DemoPage() {
             cursor: "pointer",
             fontWeight: demoMode === "component" ? "bold" : "normal",
             transition: "all 0.2s",
+            fontSize: "13px",
+            whiteSpace: "nowrap",
           }}
         >
           📱 Component View
@@ -1122,7 +1154,7 @@ export function DemoPage() {
         <button
           onClick={() => setDemoMode("flow")}
           style={{
-            padding: "8px 16px",
+            padding: "6px 12px",
             borderRadius: "8px",
             border: "2px solid",
             borderColor: demoMode === "flow" ? "#4a90e2" : "#555",
@@ -1131,9 +1163,11 @@ export function DemoPage() {
             cursor: "pointer",
             fontWeight: demoMode === "flow" ? "bold" : "normal",
             transition: "all 0.2s",
+            fontSize: "13px",
+            whiteSpace: "nowrap",
           }}
         >
-          🎮 Flow Test (Play with AI)
+          🎮 Flow Test
         </button>
       </div>
 
@@ -1202,7 +1236,7 @@ export function DemoPage() {
                   </button>
                 </>
               )}
-            {currentPhase === "SCORING" && (
+            {currentPhase === "REVEAL" && (
               <>
                 <div className="nav-divider"></div>
                 <button
@@ -1286,8 +1320,8 @@ export function DemoPage() {
               socket={
                 {
                   emit: (event: string) => {
-                    if (event === "advanceToScoring") {
-                      flowActions.advanceToScoring();
+                    if (event === "advanceRound") {
+                      flowActions.advanceRound();
                     }
                   },
                 } as any

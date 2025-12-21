@@ -340,23 +340,6 @@ npm start</pre>
       }
     });
 
-    socket.on("advanceToScoring", () => {
-      try {
-        const clientId = socketToClient.get(socket.id);
-        if (!clientId) {
-          socket.emit("error", { message: "Please join the game first" });
-          return;
-        }
-
-        gameManager.advanceToScoring(clientId);
-
-        broadcastRoomState();
-        io.emit("phaseChanged", { phase: gameManager.getCurrentPhase() });
-      } catch (error: any) {
-        socket.emit("error", { message: error.message });
-      }
-    });
-
     socket.on("advanceRound", () => {
       try {
         const clientId = socketToClient.get(socket.id);
