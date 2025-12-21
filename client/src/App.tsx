@@ -2,7 +2,6 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { useSocket } from "./hooks/useSocket";
 import { useGameState } from "./hooks/useGameState";
 import { UnifiedGamePage } from "./pages/UnifiedGamePage";
-import { BoardPage } from "./pages/BoardPage";
 import { DemoPage } from "./pages/DemoPage";
 
 function App() {
@@ -25,6 +24,8 @@ function App() {
                 clientId={clientId}
                 socket={socket}
                 onJoin={actions.join}
+                onJoinSpectator={actions.joinSpectator}
+                onLeave={actions.leave}
                 onUploadImage={actions.uploadImage}
                 onDeleteImage={actions.deleteImage}
                 onSetAllowPlayerUploads={actions.setAllowPlayerUploads}
@@ -39,8 +40,6 @@ function App() {
               />
             }
           />
-
-          <Route path="/board" element={<BoardPage roomState={roomState} />} />
 
           <Route path="/demo" element={<DemoPage />} />
         </Routes>

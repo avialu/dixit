@@ -158,6 +158,22 @@ npm start</pre>
       }
     });
 
+    socket.on("joinSpectator", (data) => {
+      try {
+        const { clientId } = data;
+
+        // Register the spectator's socket with their actual clientId
+        socketToClient.set(socket.id, clientId);
+
+        console.log(`Spectator joined (${clientId})`);
+
+        broadcastRoomState();
+        socket.emit("joinSuccess", { playerId: clientId });
+      } catch (error: any) {
+        socket.emit("error", { message: error.message });
+      }
+    });
+
     socket.on("adminSetAllowPlayerUploads", (data) => {
       try {
         const clientId = socketToClient.get(socket.id);
@@ -490,6 +506,23 @@ npm start</pre>
         gameManager.promoteToAdmin(clientId, targetPlayerId);
 
         broadcastRoomState();
+      } catch (error: any) {
+        socket.emit("error", { message: error.message });
+      }
+    });
+
+    socket.on("leave", () => {
+      try {
+        const clientId = socketToClient.get(socket.id);
+        if (clientId) {
+          console.log(`Player/Spectator leaving: ${clientId}`);
+
+          // Permanently remove player (leavePlayer will only remove if they're in players list)
+          gameManager.leavePlayer(clientId);
+          socketToClient.delete(socket.id);
+
+          broadcastRoomState();
+        }
       } catch (error: any) {
         socket.emit("error", { message: error.message });
       }

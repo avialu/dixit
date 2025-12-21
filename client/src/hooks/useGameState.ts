@@ -84,6 +84,16 @@ export function useGameState(socket: Socket | null) {
     socket.emit('join', { name, clientId });
   };
 
+  const joinSpectator = (clientId: string) => {
+    console.log('Emitting joinSpectator event:', { clientId, socketConnected: socket?.connected });
+    if (!socket?.connected) {
+      console.error('Socket not connected!');
+      setError('Not connected to server. Please refresh the page.');
+      return;
+    }
+    socket.emit('joinSpectator', { clientId });
+  };
+
   const setAllowPlayerUploads = (allow: boolean) => {
     socket?.emit('adminSetAllowPlayerUploads', { allow });
   };
@@ -148,12 +158,17 @@ export function useGameState(socket: Socket | null) {
     socket?.emit('adminPromotePlayer', { targetPlayerId });
   };
 
+  const leave = () => {
+    socket?.emit('leave');
+  };
+
   return {
     roomState,
     playerState,
     error,
     actions: {
       join,
+      joinSpectator,
       setAllowPlayerUploads,
       setWinTarget,
       uploadImage,
@@ -170,6 +185,7 @@ export function useGameState(socket: Socket | null) {
       changeName,
       kickPlayer,
       promotePlayer,
+      leave,
     },
   };
 }

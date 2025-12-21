@@ -13,6 +13,8 @@ interface UnifiedGamePageProps {
   clientId: string;
   socket: any;
   onJoin: (name: string, clientId: string) => void;
+  onJoinSpectator: (clientId: string) => void;
+  onLeave: () => void;
   onUploadImage: (imageData: string) => void;
   onDeleteImage: (imageId: string) => void;
   onSetAllowPlayerUploads: (allow: boolean) => void;
@@ -33,6 +35,8 @@ export function UnifiedGamePage({
   clientId,
   socket,
   onJoin,
+  onJoinSpectator,
+  onLeave,
   onUploadImage: _onUploadImage,
   onDeleteImage: _onDeleteImage,
   onSetAllowPlayerUploads,
@@ -62,6 +66,11 @@ export function UnifiedGamePage({
   const [localVotedCardId, setLocalVotedCardId] = useState<string | null>(null);
   // Track if we should trigger board animation (when closing REVEAL modal)
   const [triggerBoardAnimation, setTriggerBoardAnimation] = useState(false);
+  // Track if user chose to be a spectator
+  const [isUserSpectator, setIsUserSpectator] = useState(false);
+  // Track name editing state - which player ID is being edited
+  const [editingPlayerId, setEditingPlayerId] = useState<string | null>(null);
+  const [newName, setNewName] = useState("");
 
   // Detect demo mode (no socket connection)
   const isDemoMode = socket === null;
@@ -105,7 +114,7 @@ export function UnifiedGamePage({
     }
   }, [roomState?.phase]);
 
-  const isSpectator = playerId === "spectator";
+  const isSpectator = isUserSpectator;
   const isJoined =
     roomState &&
     (isSpectator || roomState.players.some((p) => p.id === playerId));
@@ -123,11 +132,71 @@ export function UnifiedGamePage({
   const isAdmin = myPlayer?.isAdmin || false;
   const isStoryteller = roomState?.storytellerId === playerId;
 
+  // Auto-join spectators when they connect
+  useEffect(() => {
+    if (!isDemoMode && isSpectator && socket?.connected && !isJoined) {
+      // Auto-join spectator
+      socket.emit("joinSpectator", { clientId });
+      console.log("Auto-joining as spectator");
+    }
+  }, [isDemoMode, isSpectator, socket, isJoined, clientId]);
+
   const handleJoin = (e: React.FormEvent) => {
     e.preventDefault();
     if (name.trim()) {
       onJoin(name.trim(), clientId);
     }
+  };
+
+  const handleSpectatorJoin = () => {
+    setIsUserSpectator(true);
+    onJoinSpectator(clientId);
+  };
+
+  const handleLogout = () => {
+    // Emit leave event so server removes the player immediately
+    onLeave();
+    // Clear the stored clientId so they don't auto-rejoin
+    localStorage.removeItem("dixit-clientId");
+    // Reset spectator state
+    setIsUserSpectator(false);
+    // Small delay to ensure leave event is processed before reload
+    setTimeout(() => {
+      window.location.reload();
+    }, 100);
+  };
+
+  const handleStartEditName = (playerId: string, currentName: string) => {
+    setEditingPlayerId(playerId);
+    setNewName(currentName);
+  };
+
+  const handleSaveName = () => {
+    if (!newName.trim() || !editingPlayerId) return;
+
+    // Check if name is unique (case-insensitive)
+    const nameTaken = roomState?.players.some(
+      (p) =>
+        p.id !== editingPlayerId &&
+        p.name.toLowerCase() === newName.trim().toLowerCase()
+    );
+
+    if (nameTaken) {
+      alert("This name is already taken. Please choose a different name.");
+      return;
+    }
+
+    if (newName.trim() !== myPlayer?.name) {
+      console.log("Changing name to:", newName.trim());
+      _onChangeName(newName.trim());
+    }
+    setEditingPlayerId(null);
+    setNewName("");
+  };
+
+  const handleCancelEditName = () => {
+    setEditingPlayerId(null);
+    setNewName("");
   };
 
   const handleStorytellerSubmit = () => {
@@ -203,7 +272,7 @@ export function UnifiedGamePage({
               <p className="spectator-hint">Just want to watch?</p>
               <button
                 type="button"
-                onClick={() => (window.location.href = "/board")}
+                onClick={handleSpectatorJoin}
                 className="btn-secondary btn-large"
               >
                 👀 Join as Spectator
@@ -248,7 +317,7 @@ export function UnifiedGamePage({
           )}
       </div>
 
-      {/* Floating Action Buttons - Only for Players (not spectators) */}
+      {/* Floating Action Buttons - For Players (not spectators) */}
       {isJoined && !isSpectator && (
         <>
           {/* Cards Button - All Players */}
@@ -268,6 +337,18 @@ export function UnifiedGamePage({
         </>
       )}
 
+      {/* Floating Action Buttons - For Spectators (only in deck building) */}
+      {isJoined && isSpectator && !isInGame && (
+        <button
+          className={`floating-action-button cards-button ${
+            showModal && modalType === "cards" ? "hidden" : ""
+          }`}
+          onClick={openCards}
+        >
+          👥 Players
+        </button>
+      )}
+
       {/* Modal Popup - Shows when player needs to act */}
       {showModal && (
         <>
@@ -284,49 +365,118 @@ export function UnifiedGamePage({
               {/* CARDS MODAL - Game Actions */}
               {modalType === "cards" && (
                 <>
-                  {/* LOBBY - Before game starts, show player list */}
+                  {/* LOBBY - Before game starts, show player list (for both players and spectators) */}
                   {!isInGame && (
                     <div className="modal-section lobby-modal">
                       <h2>👥 Players ({roomState.players.length})</h2>
+
                       <div className="players-grid">
-                        {roomState.players.map((player) => (
-                          <div
-                            key={player.id}
-                            className={`player-card ${
-                              player.id === playerId ? "you" : ""
-                            }`}
-                          >
-                            <div className="player-info">
-                              <span className="player-name">{player.name}</span>
-                              {player.id === playerId && (
-                                <span className="you-badge">(You)</span>
-                              )}
-                              {player.isAdmin && (
-                                <span className="admin-badge">👑</span>
+                        {roomState.players.map((player) => {
+                          const isMe = player.id === playerId;
+                          const isEditing = editingPlayerId === player.id;
+
+                          return (
+                            <div
+                              key={player.id}
+                              className={`player-card ${isMe ? "you" : ""}`}
+                            >
+                              {isEditing ? (
+                                // Inline edit mode
+                                <div className="player-name-edit">
+                                  <input
+                                    type="text"
+                                    value={newName}
+                                    onChange={(e) => setNewName(e.target.value)}
+                                    placeholder="Enter new name"
+                                    maxLength={50}
+                                    autoFocus
+                                    className="name-input-inline"
+                                    onKeyDown={(e) => {
+                                      if (e.key === "Enter") handleSaveName();
+                                      if (e.key === "Escape")
+                                        handleCancelEditName();
+                                    }}
+                                  />
+                                  <div className="name-edit-actions">
+                                    <button
+                                      onClick={handleSaveName}
+                                      disabled={!newName.trim()}
+                                      className="btn-icon btn-save"
+                                      title="Save"
+                                    >
+                                      ✓
+                                    </button>
+                                    <button
+                                      onClick={handleCancelEditName}
+                                      className="btn-icon btn-cancel"
+                                      title="Cancel"
+                                    >
+                                      ✕
+                                    </button>
+                                  </div>
+                                </div>
+                              ) : (
+                                // Normal display mode
+                                <div className="player-info">
+                                  <span
+                                    className={`player-name ${
+                                      isMe && !isSpectator ? "editable" : ""
+                                    }`}
+                                    onClick={() =>
+                                      isMe && !isSpectator
+                                        ? handleStartEditName(
+                                            player.id,
+                                            player.name
+                                          )
+                                        : null
+                                    }
+                                    title={
+                                      isMe && !isSpectator
+                                        ? "Click to edit your name"
+                                        : ""
+                                    }
+                                  >
+                                    {player.name}
+                                  </span>
+                                  {isMe && (
+                                    <span className="you-badge">(You)</span>
+                                  )}
+                                  {player.isAdmin && (
+                                    <span className="admin-badge">👑</span>
+                                  )}
+                                </div>
                               )}
                             </div>
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
 
-                      {/* Image Upload Section - Available to everyone */}
+                      {/* Image Upload Section - Available to everyone (including spectators) */}
                       <div style={{ marginTop: "2rem" }}>
                         <h2>🖼️ Deck Images</h2>
 
                         <DeckUploader
                           roomState={roomState}
-                          playerId={playerId}
+                          playerId={isSpectator ? "spectator" : playerId}
                           onUpload={_onUploadImage}
                           onDelete={_onDeleteImage}
                           onSetAllowPlayerUploads={onSetAllowPlayerUploads}
                         />
                       </div>
 
-                      <p style={{ color: "#95a5a6", marginTop: "1rem" }}>
-                        {isAdmin
-                          ? "Upload images and start when ready!"
-                          : "⏳ Waiting for admin to start the game..."}
-                      </p>
+                      {!isSpectator && (
+                        <p style={{ color: "#95a5a6", marginTop: "1rem" }}>
+                          {isAdmin
+                            ? "Upload images and start when ready!"
+                            : "⏳ Waiting for admin to start the game..."}
+                        </p>
+                      )}
+                      {isSpectator && (
+                        <p style={{ color: "#95a5a6", marginTop: "1rem" }}>
+                          👁️ Spectating - You can upload images to help build
+                          the deck!
+                        </p>
+                      )}
 
                       {/* Admin Start Button */}
                       {isAdmin && (
@@ -342,6 +492,15 @@ export function UnifiedGamePage({
                           🚀 Start Game
                         </button>
                       )}
+
+                      {/* Logout Button - For all users */}
+                      <button
+                        onClick={handleLogout}
+                        className="btn-secondary"
+                        style={{ marginTop: "1rem", width: "100%" }}
+                      >
+                        🚪 Logout & Return to Join Screen
+                      </button>
                     </div>
                   )}
 

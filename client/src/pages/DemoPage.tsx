@@ -1259,6 +1259,8 @@ export function DemoPage() {
               clientId="demo-client-123"
               socket={null}
               onJoin={mockActions.storytellerSubmit}
+              onJoinSpectator={() => console.log("Demo: spectator join")}
+              onLeave={() => console.log("Demo: leave")}
               onUploadImage={mockActions.uploadImage}
               onDeleteImage={mockActions.deleteImage}
               onSetAllowPlayerUploads={mockActions.setAllowPlayerUploads}
@@ -1327,6 +1329,8 @@ export function DemoPage() {
                 } as any
               }
               onJoin={() => {}}
+              onJoinSpectator={() => {}}
+              onLeave={() => {}}
               onUploadImage={() => {}}
               onDeleteImage={() => {}}
               onSetAllowPlayerUploads={() => {}}

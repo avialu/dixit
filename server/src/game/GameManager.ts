@@ -48,6 +48,13 @@ export class GameManager {
       return player;
     }
 
+    // Check if name is already taken by another player
+    for (const [id, p] of this.state.players.entries()) {
+      if (p.name.toLowerCase() === name.toLowerCase()) {
+        throw new Error("Name is already taken");
+      }
+    }
+
     const isFirstPlayer = this.state.players.size === 0;
     const player = new Player(clientId, name, isFirstPlayer);
     this.state.players.set(clientId, player);
@@ -65,6 +72,28 @@ export class GameManager {
     if (player) {
       player.disconnect();
     }
+  }
+
+  leavePlayer(clientId: string): void {
+    // Actually remove the player from the game (for logout)
+    const player = this.state.players.get(clientId);
+    if (!player) {
+      // Player not found (could be spectator or already removed)
+      return;
+    }
+
+    // Return their cards to the deck if game hasn't started
+    if (
+      this.state.phase === GamePhase.DECK_BUILDING &&
+      player.hand.length > 0
+    ) {
+      player.hand = [];
+    }
+
+    // Remove from players map
+    this.state.players.delete(clientId);
+
+    console.log(`Player permanently removed: ${clientId} (${player.name})`);
   }
 
   kickPlayer(adminId: string, targetPlayerId: string): void {
@@ -110,6 +139,9 @@ export class GameManager {
       }
     }
 
+    console.log(
+      `Changing player ${playerId} name from "${player.name}" to "${newName}"`
+    );
     player.name = newName;
   }
 

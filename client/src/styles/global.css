@@ -1693,6 +1693,147 @@ select {
   font-style: italic;
 }
 
+/* Spectator Join Screen */
+.spectator-join-section {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  text-align: center;
+}
+
+.spectator-welcome h2 {
+  color: #4a90e2;
+  font-size: 1.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.spectator-welcome > p {
+  color: #95a5a6;
+  font-size: 1rem;
+  margin-bottom: 1rem;
+}
+
+.spectator-features {
+  list-style: none;
+  padding: 0;
+  margin: 1rem 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.spectator-features li {
+  color: #ecf0f1;
+  font-size: 0.95rem;
+  text-align: left;
+  padding: 0.5rem 1rem;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+  border-left: 3px solid #4a90e2;
+}
+
+.spectator-back {
+  padding-top: 1rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.spectator-back button {
+  width: 100%;
+}
+
+/* Name Edit Section */
+.edit-name-section {
+  margin-bottom: 1rem;
+  padding: 1rem;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.name-edit-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+/* Inline Name Editing */
+.player-name.editable {
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+}
+
+.player-name.editable:hover {
+  background: rgba(74, 144, 226, 0.2);
+  text-decoration: underline;
+}
+
+.player-name-edit {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+}
+
+.name-input-inline {
+  flex: 1;
+  padding: 0.4rem 0.6rem;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(74, 144, 226, 0.5);
+  border-radius: 4px;
+  color: #ecf0f1;
+  font-size: 0.9rem;
+}
+
+.name-input-inline:focus {
+  outline: none;
+  border-color: #4a90e2;
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.name-edit-actions {
+  display: flex;
+  gap: 0.25rem;
+}
+
+.btn-icon {
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.btn-save {
+  background: #27ae60;
+  color: white;
+}
+
+.btn-save:hover:not(:disabled) {
+  background: #229954;
+}
+
+.btn-save:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-cancel {
+  background: #e74c3c;
+  color: white;
+}
+
+.btn-cancel:hover {
+  background: #c0392b;
+}
+
 .qr-code-section {
   margin-top: 2rem;
   padding-top: 2rem;
