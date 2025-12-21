@@ -48,9 +48,10 @@ export class GameManager {
       return player;
     }
 
-    // Check if name is already taken by another player
+    // Check if name is already taken by another CONNECTED player
+    // Allow taking names of disconnected players (for reconnection scenarios)
     for (const [id, p] of this.state.players.entries()) {
-      if (p.name.toLowerCase() === name.toLowerCase()) {
+      if (p.name.toLowerCase() === name.toLowerCase() && p.isConnected) {
         throw new Error("Name is already taken");
       }
     }
@@ -98,6 +99,10 @@ export class GameManager {
       this.state.phase === GamePhase.DECK_BUILDING &&
       player.hand.length > 0
     ) {
+      console.log(
+        `Returning ${player.hand.length} cards from ${player.name} back to deck`
+      );
+      this.deckManager.returnCards(player.hand);
       player.hand = [];
     }
 
@@ -564,6 +569,7 @@ export class GameManager {
               cardId: sc.cardId,
               imageData: this.submittedCardsData.get(sc.cardId) || "",
               position: sc.position || 0,
+              playerId: sc.playerId, // Include playerId so client knows who submitted each card
             };
           })
         : [];

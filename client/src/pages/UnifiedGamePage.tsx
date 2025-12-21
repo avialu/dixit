@@ -85,18 +85,6 @@ export function UnifiedGamePage({
     }
   }, [isDemoMode]);
 
-  // Auto-open modal for REVEAL and VOTING phases
-  useEffect(() => {
-    if (["REVEAL", "VOTING"].includes(roomState?.phase || "")) {
-      setModalType("cards");
-      setShowModal(true);
-    }
-    // Reset animation trigger when phase changes away from REVEAL
-    if (roomState?.phase !== "REVEAL") {
-      setTriggerBoardAnimation(false);
-    }
-  }, [roomState?.phase]);
-
   // Reset local submission state when phase changes
   useEffect(() => {
     const phase = roomState?.phase;
@@ -125,12 +113,41 @@ export function UnifiedGamePage({
       "PLAYERS_CHOICE",
       "VOTING",
       "REVEAL",
-      "SCORING",
       "GAME_END",
     ].includes(roomState.phase);
   const myPlayer = roomState?.players.find((p) => p.id === playerId);
   const isAdmin = myPlayer?.isAdmin || false;
   const isStoryteller = roomState?.storytellerId === playerId;
+
+  // Auto-open modal for game phases where player needs to take action
+  useEffect(() => {
+    const phase = roomState?.phase;
+    let shouldAutoOpen = false;
+
+    if (phase === "STORYTELLER_CHOICE" && isStoryteller) {
+      // Only open for storyteller
+      shouldAutoOpen = true;
+    } else if (phase === "PLAYERS_CHOICE" && !isStoryteller && !isSpectator) {
+      // Only open for non-storyteller players
+      shouldAutoOpen = true;
+    } else if (phase === "VOTING" && !isStoryteller && !isSpectator) {
+      // Only open for non-storyteller players (who need to vote)
+      shouldAutoOpen = true;
+    } else if (phase === "REVEAL") {
+      // Open for everyone
+      shouldAutoOpen = true;
+    }
+
+    if (shouldAutoOpen) {
+      setModalType("cards");
+      setShowModal(true);
+    }
+
+    // Reset animation trigger when phase changes away from REVEAL
+    if (phase !== "REVEAL") {
+      setTriggerBoardAnimation(false);
+    }
+  }, [roomState?.phase, isStoryteller, isSpectator]);
 
   // Auto-join spectators when they connect
   useEffect(() => {
@@ -369,6 +386,23 @@ export function UnifiedGamePage({
         </button>
       )}
 
+      {/* Admin Continue Button - During REVEAL phase on board */}
+      {isJoined && isAdmin && roomState.phase === "REVEAL" && !showModal && (
+        <button
+          className="floating-action-button continue-button"
+          onClick={() => {
+            if (socket) {
+              socket.emit("advanceRound");
+            } else {
+              // Demo mode fallback
+              _onAdvanceRound();
+            }
+          }}
+        >
+          ▶️ Continue
+        </button>
+      )}
+
       {/* Modal Popup - Shows when player needs to act */}
       {showModal && (
         <>
@@ -560,24 +594,73 @@ export function UnifiedGamePage({
                           </div>
                         </div>
                       )}
-                      {isStoryteller && localSubmittedCardId && (
-                        <div className="modal-section storyteller-modal">
-                          <h2>✅ Card Submitted</h2>
-                          <p>Waiting for other players...</p>
-                          <p className="clue-reminder">
-                            Your clue: <strong>"{localSubmittedClue}"</strong>
-                          </p>
+                      {isStoryteller &&
+                        (localSubmittedCardId ||
+                          playerState?.mySubmittedCardId) && (
+                          <div className="modal-section storyteller-modal">
+                            <h2>✅ Card Submitted</h2>
+                            <p>Waiting for other players...</p>
+                            {(localSubmittedClue || roomState.currentClue) && (
+                              <p className="clue-reminder">
+                                Your clue:{" "}
+                                <strong>
+                                  "{localSubmittedClue || roomState.currentClue}
+                                  "
+                                </strong>
+                              </p>
+                            )}
 
-                          <div className="modal-hand">
-                            <HandView
-                              hand={playerState?.hand || []}
-                              selectedCardId={localSubmittedCardId}
-                              onSelectCard={() => {}}
-                              lockedCardId={localSubmittedCardId}
-                            />
+                            {/* Show the submitted card image prominently */}
+                            <div
+                              className="submitted-card-preview"
+                              style={{
+                                display: "flex",
+                                justifyContent: "center",
+                                margin: "1rem 0",
+                              }}
+                            >
+                              {(() => {
+                                const submittedCardId =
+                                  localSubmittedCardId ||
+                                  playerState?.mySubmittedCardId;
+                                const submittedCard = playerState?.hand.find(
+                                  (c) => c.id === submittedCardId
+                                );
+                                return submittedCard ? (
+                                  <img
+                                    src={submittedCard.imageData}
+                                    alt="Your submitted card"
+                                    style={{
+                                      maxWidth: "100%",
+                                      maxHeight: "40vh",
+                                      borderRadius: "12px",
+                                      boxShadow:
+                                        "0 8px 24px rgba(102, 126, 234, 0.4)",
+                                      border: "3px solid #667eea",
+                                    }}
+                                  />
+                                ) : null;
+                              })()}
+                            </div>
+
+                            <div className="modal-hand">
+                              <HandView
+                                hand={playerState?.hand || []}
+                                selectedCardId={
+                                  localSubmittedCardId ||
+                                  playerState?.mySubmittedCardId ||
+                                  null
+                                }
+                                onSelectCard={() => {}}
+                                lockedCardId={
+                                  localSubmittedCardId ||
+                                  playerState?.mySubmittedCardId ||
+                                  null
+                                }
+                              />
+                            </div>
                           </div>
-                        </div>
-                      )}
+                        )}
                       {!isStoryteller && (
                         <div className="modal-section waiting-modal">
                           <h2>⏳ Waiting for Storyteller</h2>
@@ -663,11 +746,48 @@ export function UnifiedGamePage({
                             <strong>"{roomState.currentClue}"</strong>
                           </p>
 
+                          {/* Show the submitted card image prominently */}
+                          {playerState?.mySubmittedCardId && (
+                            <div
+                              className="submitted-card-preview"
+                              style={{
+                                display: "flex",
+                                justifyContent: "center",
+                                margin: "1rem 0",
+                              }}
+                            >
+                              {(() => {
+                                const submittedCard = playerState?.hand.find(
+                                  (c) => c.id === playerState.mySubmittedCardId
+                                );
+                                return submittedCard ? (
+                                  <img
+                                    src={submittedCard.imageData}
+                                    alt="Your submitted card"
+                                    style={{
+                                      maxWidth: "100%",
+                                      maxHeight: "35vh",
+                                      borderRadius: "12px",
+                                      boxShadow:
+                                        "0 8px 24px rgba(102, 126, 234, 0.4)",
+                                      border: "3px solid #667eea",
+                                    }}
+                                  />
+                                ) : null;
+                              })()}
+                            </div>
+                          )}
+
                           <div className="modal-hand">
                             <HandView
                               hand={playerState?.hand || []}
-                              selectedCardId={null}
+                              selectedCardId={
+                                playerState?.mySubmittedCardId || null
+                              }
                               onSelectCard={() => {}}
+                              lockedCardId={
+                                playerState?.mySubmittedCardId || null
+                              }
                             />
                           </div>
                         </div>
@@ -724,21 +844,6 @@ export function UnifiedGamePage({
                             />
                           </div>
 
-                          {/* Admin button to continue to next round */}
-                          {isAdmin && (
-                            <button
-                              onClick={() => {
-                                if (socket) {
-                                  socket.emit("advanceRound");
-                                }
-                              }}
-                              className="btn-primary btn-large"
-                              style={{ marginTop: "1rem" }}
-                            >
-                              ▶️ Continue to Next Round
-                            </button>
-                          )}
-
                           {/* Non-admin waiting message */}
                           {!isAdmin && (
                             <p
@@ -752,18 +857,19 @@ export function UnifiedGamePage({
                             </p>
                           )}
 
-                          <button
-                            onClick={() => {
-                              setShowModal(false);
-                              // Trigger board animation when closing reveal
-                              if (roomState.phase === "REVEAL") {
-                                setTriggerBoardAnimation(true);
-                              }
-                            }}
-                            className="btn-secondary"
-                          >
-                            Close (View Board)
-                          </button>
+                          {/* Admin instruction - continue button is on the board */}
+                          {isAdmin && (
+                            <p
+                              style={{
+                                marginTop: "1rem",
+                                color: "#4a90e2",
+                                fontStyle: "italic",
+                                fontWeight: "500",
+                              }}
+                            >
+                              💡 Close this popup to see the continue button
+                            </p>
+                          )}
                         </div>
                       );
                     })()}

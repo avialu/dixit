@@ -122,6 +122,15 @@ export class DeckManager {
     return drawn;
   }
 
+  /**
+   * Return cards to the deck
+   * Used when a player leaves before the game starts
+   */
+  returnCards(cards: Card[]): void {
+    this.deck.push(...cards);
+    console.log(`Returned ${cards.length} cards to deck (deck now has ${this.deck.length} cards)`);
+  }
+
   shuffle(): void {
     // Fisher-Yates shuffle
     for (let i = this.deck.length - 1; i > 0; i--) {

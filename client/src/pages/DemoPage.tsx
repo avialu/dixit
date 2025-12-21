@@ -686,9 +686,28 @@ export function DemoPage() {
             { cardId: "ai-card-3", playerId: "3", position: 2 },
           ];
           setFlowSubmittedCards((prev) => {
-            // Shuffle all cards
+            // Shuffle all cards using a deterministic shuffle based on card IDs
             const allCards = [...prev, ...aiCards];
-            const shuffled = allCards.sort(() => Math.random() - 0.5);
+            // Create a deterministic seed from card IDs
+            const seed = allCards
+              .map((c) => c.cardId)
+              .sort()
+              .join("");
+            const deterministicRandom = (idx: number) => {
+              // Simple hash function for deterministic "random" ordering
+              let hash = 0;
+              const str = seed + idx;
+              for (let i = 0; i < str.length; i++) {
+                hash = (hash << 5) - hash + str.charCodeAt(i);
+                hash = hash & hash;
+              }
+              return Math.abs(hash);
+            };
+            const shuffled = allCards.sort((a, b) => {
+              const hashA = deterministicRandom(allCards.indexOf(a));
+              const hashB = deterministicRandom(allCards.indexOf(b));
+              return hashA - hashB;
+            });
             return shuffled.map((card, idx) => ({ ...card, position: idx }));
           });
           setFlowPhase("VOTING");
@@ -854,7 +873,26 @@ export function DemoPage() {
 
         setFlowSubmittedCards((prev) => {
           const allCards = [...prev, ...aiCards];
-          const shuffled = allCards.sort(() => Math.random() - 0.5);
+          // Create a deterministic seed from card IDs
+          const seed = allCards
+            .map((c) => c.cardId)
+            .sort()
+            .join("");
+          const deterministicRandom = (idx: number) => {
+            // Simple hash function for deterministic "random" ordering
+            let hash = 0;
+            const str = seed + idx;
+            for (let i = 0; i < str.length; i++) {
+              hash = (hash << 5) - hash + str.charCodeAt(i);
+              hash = hash & hash;
+            }
+            return Math.abs(hash);
+          };
+          const shuffled = allCards.sort((a, b) => {
+            const hashA = deterministicRandom(allCards.indexOf(a));
+            const hashB = deterministicRandom(allCards.indexOf(b));
+            return hashA - hashB;
+          });
           return shuffled.map((card, idx) => ({ ...card, position: idx }));
         });
         setFlowPhase("VOTING");

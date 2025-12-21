@@ -1,6 +1,6 @@
-import { useState, useRef } from 'react';
-import { resizeAndCompressImages } from '../utils/imageResize';
-import { RoomState } from '../hooks/useGameState';
+import { useState, useRef } from "react";
+import { resizeAndCompressImages } from "../utils/imageResize";
+import { RoomState } from "../hooks/useGameState";
 
 interface DeckUploaderProps {
   roomState: RoomState;
@@ -18,14 +18,21 @@ export function DeckUploader({
   onSetAllowPlayerUploads,
 }: DeckUploaderProps) {
   const [uploading, setUploading] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState('');
-  const [uploadStats, setUploadStats] = useState({ completed: 0, total: 0, failed: 0 });
+  const [uploadProgress, setUploadProgress] = useState("");
+  const [uploadStats, setUploadStats] = useState({
+    completed: 0,
+    total: 0,
+    failed: 0,
+  });
   const fileInputRef = useRef<HTMLInputElement>(null);
   const folderInputRef = useRef<HTMLInputElement>(null);
 
-  const isAdmin = roomState.players.find(p => p.id === playerId)?.isAdmin || false;
-  const myImages = roomState.deckImages.filter(img => img.uploadedBy === playerId);
-  // Spectators can upload if admin allows it, or if they're admin
+  const myPlayer = roomState.players.find((p) => p.id === playerId);
+  const isAdmin = myPlayer?.isAdmin || false;
+  const myImages = roomState.deckImages.filter(
+    (img) => img.uploadedBy === playerId
+  );
+  // Admins can always upload. Players and spectators can upload if admin allows it.
   const canUpload = isAdmin || roomState.allowPlayerUploads;
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -34,11 +41,11 @@ export function DeckUploader({
 
     const fileArray = Array.from(files);
     const remainingSlots = 200 - myImages.length;
-    
+
     if (fileArray.length > remainingSlots) {
       const proceed = confirm(
         `You can only upload ${remainingSlots} more images. ` +
-        `The first ${remainingSlots} images will be processed.`
+          `The first ${remainingSlots} images will be processed.`
       );
       if (!proceed) return;
       fileArray.splice(remainingSlots);
@@ -53,7 +60,7 @@ export function DeckUploader({
         fileArray,
         (completed, total, fileName) => {
           setUploadProgress(`${fileName} (${completed}/${total})`);
-          setUploadStats(prev => ({ ...prev, completed }));
+          setUploadStats((prev) => ({ ...prev, completed }));
         }
       );
 
@@ -68,29 +75,29 @@ export function DeckUploader({
         }
       }
 
-      setUploadStats(prev => ({ ...prev, failed: failedCount }));
+      setUploadStats((prev) => ({ ...prev, failed: failedCount }));
 
       // Show summary if there were any failures
       if (failedCount > 0) {
         alert(
           `Uploaded ${results.length - failedCount} images successfully.\n` +
-          `${failedCount} images failed to process.`
+            `${failedCount} images failed to process.`
         );
       }
     } catch (err) {
-      console.error('Upload error:', err);
-      alert('An error occurred during upload. Please try again.');
+      console.error("Upload error:", err);
+      alert("An error occurred during upload. Please try again.");
     } finally {
       setUploading(false);
-      setUploadProgress('');
+      setUploadProgress("");
       setUploadStats({ completed: 0, total: 0, failed: 0 });
-      
+
       // Reset both inputs
       if (fileInputRef.current) {
-        fileInputRef.current.value = '';
+        fileInputRef.current.value = "";
       }
       if (folderInputRef.current) {
-        folderInputRef.current.value = '';
+        folderInputRef.current.value = "";
       }
     }
   };
@@ -112,9 +119,7 @@ export function DeckUploader({
               onChange={(e) => onSetAllowPlayerUploads(e.target.checked)}
               className="toggle-checkbox"
             />
-            <span className="toggle-text">
-              Allow players to upload images
-            </span>
+            <span className="toggle-text">Allow players to upload images</span>
           </label>
           <p className="toggle-hint">
             {roomState.allowPlayerUploads
@@ -133,10 +138,10 @@ export function DeckUploader({
           multiple
           onChange={handleFileSelect}
           disabled={uploading || myImages.length >= 200 || !canUpload}
-          style={{ display: 'none' }}
+          style={{ display: "none" }}
           id={`file-input-${playerId}`}
         />
-        
+
         {/* Folder input */}
         <input
           ref={folderInputRef}
@@ -147,10 +152,10 @@ export function DeckUploader({
           directory=""
           onChange={handleFileSelect}
           disabled={uploading || myImages.length >= 200 || !canUpload}
-          style={{ display: 'none' }}
+          style={{ display: "none" }}
           id={`folder-input-${playerId}`}
         />
-        
+
         <div className="upload-buttons">
           <button
             onClick={() => fileInputRef.current?.click()}
@@ -158,16 +163,16 @@ export function DeckUploader({
             className="btn-primary"
             title="Select one or multiple image files"
           >
-            {uploading ? '⏳ Uploading...' : '📁 Upload Images'}
+            {uploading ? "⏳ Uploading..." : "📁 Upload Images"}
           </button>
-          
+
           <button
             onClick={() => folderInputRef.current?.click()}
             disabled={uploading || myImages.length >= 200 || !canUpload}
             className="btn-primary"
             title="Select an entire folder of images"
           >
-            {uploading ? '⏳ Uploading...' : '📂 Upload Folder'}
+            {uploading ? "⏳ Uploading..." : "📂 Upload Folder"}
           </button>
         </div>
 
@@ -181,9 +186,13 @@ export function DeckUploader({
           <div className="upload-progress">
             <div className="progress-text">{uploadProgress}</div>
             <div className="progress-bar-container">
-              <div 
-                className="progress-bar" 
-                style={{ width: `${(uploadStats.completed / uploadStats.total) * 100}%` }}
+              <div
+                className="progress-bar"
+                style={{
+                  width: `${
+                    (uploadStats.completed / uploadStats.total) * 100
+                  }%`,
+                }}
               />
             </div>
             <div className="progress-stats">
@@ -198,10 +207,7 @@ export function DeckUploader({
         {myImages.map((img) => (
           <div key={img.id} className="deck-image-item">
             <span className="image-id">{img.id.slice(0, 8)}</span>
-            <button
-              onClick={() => onDelete(img.id)}
-              className="btn-delete"
-            >
+            <button onClick={() => onDelete(img.id)} className="btn-delete">
               ×
             </button>
           </div>

@@ -2283,6 +2283,27 @@ select {
   bottom: 2rem;
 }
 
+.floating-action-button.continue-button {
+  bottom: 8rem;
+  background: linear-gradient(135deg, #27ae60 0%, #2ecc71 100%);
+  box-shadow: 0 8px 24px rgba(39, 174, 96, 0.4);
+  animation: pulse-glow-green 2s ease-in-out infinite;
+}
+
+.floating-action-button.continue-button:hover {
+  box-shadow: 0 12px 32px rgba(39, 174, 96, 0.6);
+}
+
+@keyframes pulse-glow-green {
+  0%,
+  100% {
+    box-shadow: 0 8px 24px rgba(39, 174, 96, 0.4);
+  }
+  50% {
+    box-shadow: 0 8px 32px rgba(39, 174, 96, 0.7);
+  }
+}
+
 @keyframes pulse-glow {
   0%,
   100% {
@@ -2342,7 +2363,7 @@ select {
 .modal-section {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: 0.75rem; /* Consistent gap throughout */
   align-items: center;
   overflow-y: auto;
   overflow-x: hidden;
@@ -2353,18 +2374,26 @@ select {
   box-sizing: border-box;
 }
 
+/* STANDARDIZED MODAL HEADER - Fixed size across all modals */
 .modal-section h2 {
   margin: 0;
-  font-size: 1.5rem;
+  font-size: 1.25rem;
   color: #fff;
   text-align: center;
+  flex-shrink: 0; /* Never shrink */
+  height: 2rem; /* Fixed header height */
+  line-height: 2rem;
+  width: 100%;
 }
 
+/* STANDARDIZED MODAL TEXT - Fixed size across all modals */
 .modal-section p {
   margin: 0;
   color: #95a5a6;
   text-align: center;
-  font-size: 0.95rem;
+  font-size: 0.85rem;
+  flex-shrink: 0; /* Never shrink */
+  line-height: 1.4;
 }
 
 .modal-section .hint {
@@ -2454,23 +2483,48 @@ select {
   color: #95a5a6;
 }
 
+/* STANDARDIZED IMAGE CONTAINER - Same size for all card displays */
 .modal-hand {
   width: 100%;
   max-width: 100%;
-  max-height: 45vh;
+  flex: 1 1 auto; /* Take remaining space */
+  min-height: 0; /* Allow flexbox to shrink if needed */
   overflow-y: auto;
   overflow-x: hidden;
-  flex-shrink: 1;
   box-sizing: border-box;
 }
 
+/* STANDARDIZED SUBMITTED CARD PREVIEW - Same size as modal-hand */
+.submitted-card-preview {
+  width: 100%;
+  flex: 1 1 auto; /* Take remaining space, same as modal-hand */
+  min-height: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+.submitted-card-preview img {
+  max-width: 95%;
+  max-height: 100%; /* Fill available space */
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(102, 126, 234, 0.4);
+  border: 3px solid #667eea;
+}
+
+/* STANDARDIZED VOTING CARDS - Same size as modal-hand */
 .modal-voting-cards {
   width: 100%;
   max-width: 100%;
-  max-height: 45vh;
+  flex: 1 1 auto; /* Take remaining space, same as modal-hand */
+  min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
-  flex-shrink: 1;
   box-sizing: border-box;
 }
 
@@ -2682,18 +2736,11 @@ select {
   box-sizing: border-box;
 }
 
-.voting-view .cards-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 1.5rem;
-  padding: 1rem 0;
-  width: 100%;
-  max-width: 100%;
-  box-sizing: border-box;
-}
+/* Voting view uses default .cards-grid styles - no override needed */
 
 .voting-card {
   position: relative;
+  aspect-ratio: 3/4; /* Same as .card for consistent height */
   border-radius: 12px;
   overflow: hidden;
   background: #2a2a3e;
@@ -2736,9 +2783,9 @@ select {
 .card-header {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
-  padding: 0.75rem;
-  min-height: 90px;
-  max-height: 90px;
+  padding: 0.5rem; /* Reduced from 0.75rem */
+  min-height: 60px; /* Reduced from 90px */
+  max-height: 70px; /* Reduced from 90px */
   overflow: hidden;
   display: flex;
   flex-direction: column;
@@ -2747,32 +2794,32 @@ select {
 
 .card-owner {
   font-weight: 700;
-  font-size: 1rem;
+  font-size: 0.85rem; /* Reduced from 1rem */
   text-align: center;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.25rem; /* Reduced from 0.5rem */
   flex-shrink: 0;
 }
 
 .storyteller-badge {
-  font-size: 1.1rem;
+  font-size: 0.95rem; /* Reduced from 1.1rem */
 }
 
 .owner-points {
   background: rgba(46, 204, 113, 0.9);
   color: white;
-  padding: 0.25rem 0.5rem;
+  padding: 0.2rem 0.4rem; /* Reduced from 0.25rem 0.5rem */
   border-radius: 12px;
-  font-size: 0.85rem;
+  font-size: 0.75rem; /* Reduced from 0.85rem */
   font-weight: 700;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
 .card-voters-top {
-  font-size: 0.85rem;
+  font-size: 0.75rem; /* Reduced from 0.85rem */
   text-align: center;
   flex-shrink: 0;
 }
@@ -3564,24 +3611,25 @@ select {
     stroke-width: 2;
   }
 
-  /* Increase touch target size for voting cards on mobile */
-  .voting-view .cards-grid {
-    grid-template-columns: 1fr;
-    gap: 1rem;
-    width: 100%;
-    max-width: 100%;
+  /* Keep voting cards in grid layout on mobile (uses default .cards-grid) */
+  .voting-view {
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    max-height: none; /* Remove height constraint */
   }
 
+  /* Voting cards use same aspect ratio as regular cards */
   .voting-card {
-    min-height: 400px;
     width: 100%;
     max-width: 100%;
     box-sizing: border-box;
   }
 
   .card-header {
-    min-height: 100px;
-    max-height: 120px;
+    min-height: 50px; /* Reduced from 80px */
+    max-height: 60px; /* Reduced from 100px */
   }
 
   /* Make modal popup full screen on mobile */
@@ -3620,16 +3668,34 @@ select {
     box-sizing: border-box;
     border: none;
     overflow: hidden;
+    /* Make modal almost completely transparent on mobile to see board behind */
+    background: rgba(26, 26, 46, 0.05);
+    backdrop-filter: blur(0.5px);
+    -webkit-backdrop-filter: blur(0.5px);
   }
 
   .modal-section {
-    flex: 1;
+    flex: 1 1 auto;
     min-height: 0;
+    display: flex;
+    flex-direction: column;
     overflow-y: auto;
     overflow-x: hidden;
     -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
     width: 100%;
     max-width: 100%;
+    height: auto; /* Allow content to expand */
+  }
+
+  /* STANDARDIZED MOBILE: All image containers use same space */
+  .modal-hand {
+    flex: 1 1 auto;
+    min-height: 0;
+  }
+
+  .modal-voting-cards {
+    flex: 1 1 auto;
+    min-height: 0;
   }
 
   .modal-close-button {
@@ -3652,6 +3718,12 @@ select {
 
   .floating-action-button.settings-button {
     bottom: 5rem;
+  }
+
+  .floating-action-button.continue-button {
+    bottom: 5rem;
+    padding: 1rem 1.5rem;
+    font-size: 1rem;
   }
 
   .game-header {
@@ -3682,6 +3754,18 @@ select {
     gap: 0.75rem;
     width: 100%;
     max-width: 100%;
+  }
+
+  /* STANDARDIZED MOBILE: Submitted card preview same as other containers */
+  .submitted-card-preview {
+    flex: 1 1 auto;
+    min-height: 0;
+    padding: 0;
+  }
+
+  .submitted-card-preview img {
+    max-width: 95%;
+    max-height: 100%;
   }
 
   /* Ensure player overlay doesn't overflow */
@@ -3903,6 +3987,12 @@ select {
 
   .floating-action-button.settings-button {
     bottom: 4rem;
+  }
+
+  .floating-action-button.continue-button {
+    bottom: 4rem;
+    padding: 0.75rem 1rem;
+    font-size: 0.9rem;
   }
 
   /* Compact clue display */

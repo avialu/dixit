@@ -36,8 +36,16 @@ export function VotingView({
 
   const getCardOwnerName = (cardId: string) => {
     const owner = cardOwners?.find(o => o.cardId === cardId);
-    const player = players?.find(p => p.id === owner?.playerId);
-    return player?.name || "Unknown";
+    if (!owner?.playerId) {
+      console.warn(`No owner found for card ${cardId}`, { cardOwners });
+      return "Unknown";
+    }
+    const player = players?.find(p => p.id === owner.playerId);
+    if (!player) {
+      console.warn(`No player found for playerId ${owner.playerId}`, { players });
+      return "Unknown";
+    }
+    return player.name;
   };
 
   const getCardOwnerPoints = (cardId: string) => {
