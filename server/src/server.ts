@@ -161,7 +161,10 @@ npm start</pre>
     socket.on("adminSetAllowPlayerUploads", (data) => {
       try {
         const clientId = socketToClient.get(socket.id);
-        if (!clientId) throw new Error("Not authenticated");
+        if (!clientId) {
+          socket.emit("error", { message: "Please join the game first" });
+          return;
+        }
 
         const { allow } = data;
         if (typeof allow !== "boolean") {
@@ -179,7 +182,10 @@ npm start</pre>
     socket.on("adminSetWinTarget", (data) => {
       try {
         const clientId = socketToClient.get(socket.id);
-        if (!clientId) throw new Error("Not authenticated");
+        if (!clientId) {
+          socket.emit("error", { message: "Please join the game first" });
+          return;
+        }
 
         const { target } = adminSetWinTargetSchema.parse(data);
         gameManager.setWinTarget(target, clientId);
@@ -193,7 +199,10 @@ npm start</pre>
     socket.on("uploadImage", (data) => {
       try {
         const clientId = socketToClient.get(socket.id);
-        if (!clientId) throw new Error("Not authenticated");
+        if (!clientId) {
+          socket.emit("error", { message: "Please join the game first" });
+          return;
+        }
 
         const { imageData } = uploadImageSchema.parse(data);
         const card = gameManager.uploadImage(imageData, clientId);
@@ -209,7 +218,10 @@ npm start</pre>
     socket.on("deleteImage", (data) => {
       try {
         const clientId = socketToClient.get(socket.id);
-        if (!clientId) throw new Error("Not authenticated");
+        if (!clientId) {
+          socket.emit("error", { message: "Please join the game first" });
+          return;
+        }
 
         const { imageId } = deleteImageSchema.parse(data);
         gameManager.deleteImage(imageId, clientId);
@@ -223,7 +235,10 @@ npm start</pre>
     socket.on("lockDeck", () => {
       try {
         const clientId = socketToClient.get(socket.id);
-        if (!clientId) throw new Error("Not authenticated");
+        if (!clientId) {
+          socket.emit("error", { message: "Please join the game first" });
+          return;
+        }
 
         gameManager.lockDeck(clientId);
         broadcastRoomState();
@@ -235,7 +250,10 @@ npm start</pre>
     socket.on("startGame", () => {
       try {
         const clientId = socketToClient.get(socket.id);
-        if (!clientId) throw new Error("Not authenticated");
+        if (!clientId) {
+          socket.emit("error", { message: "Please join the game first" });
+          return;
+        }
 
         gameManager.startGame(clientId);
 
@@ -255,7 +273,10 @@ npm start</pre>
     socket.on("storytellerSubmit", (data) => {
       try {
         const clientId = socketToClient.get(socket.id);
-        if (!clientId) throw new Error("Not authenticated");
+        if (!clientId) {
+          socket.emit("error", { message: "Please join the game first" });
+          return;
+        }
 
         const { cardId, clue } = storytellerSubmitSchema.parse(data);
 
@@ -272,7 +293,10 @@ npm start</pre>
     socket.on("playerSubmitCard", (data) => {
       try {
         const clientId = socketToClient.get(socket.id);
-        if (!clientId) throw new Error("Not authenticated");
+        if (!clientId) {
+          socket.emit("error", { message: "Please join the game first" });
+          return;
+        }
 
         const { cardId } = playerSubmitCardSchema.parse(data);
 
@@ -302,7 +326,10 @@ npm start</pre>
     socket.on("playerVote", (data) => {
       try {
         const clientId = socketToClient.get(socket.id);
-        if (!clientId) throw new Error("Not authenticated");
+        if (!clientId) {
+          socket.emit("error", { message: "Please join the game first" });
+          return;
+        }
 
         const { cardId } = playerVoteSchema.parse(data);
         gameManager.playerVote(clientId, cardId);
@@ -324,7 +351,10 @@ npm start</pre>
     socket.on("advanceRound", () => {
       try {
         const clientId = socketToClient.get(socket.id);
-        if (!clientId) throw new Error("Not authenticated");
+        if (!clientId) {
+          socket.emit("error", { message: "Please join the game first" });
+          return;
+        }
 
         gameManager.advanceToNextRound();
 
@@ -343,7 +373,10 @@ npm start</pre>
     socket.on("adminResetGame", () => {
       try {
         const clientId = socketToClient.get(socket.id);
-        if (!clientId) throw new Error("Not authenticated");
+        if (!clientId) {
+          socket.emit("error", { message: "Please join the game first" });
+          return;
+        }
 
         gameManager.resetGame(clientId);
 
@@ -362,7 +395,10 @@ npm start</pre>
     socket.on("adminNewDeck", () => {
       try {
         const clientId = socketToClient.get(socket.id);
-        if (!clientId) throw new Error("Not authenticated");
+        if (!clientId) {
+          socket.emit("error", { message: "Please join the game first" });
+          return;
+        }
 
         gameManager.newDeck(clientId);
 
@@ -381,7 +417,10 @@ npm start</pre>
     socket.on("changeName", (data) => {
       try {
         const clientId = socketToClient.get(socket.id);
-        if (!clientId) throw new Error("Not authenticated");
+        if (!clientId) {
+          socket.emit("error", { message: "Please join the game first" });
+          return;
+        }
 
         const { newName } = changeNameSchema.parse(data);
         gameManager.changeName(clientId, newName);
@@ -395,7 +434,10 @@ npm start</pre>
     socket.on("adminKickPlayer", (data) => {
       try {
         const clientId = socketToClient.get(socket.id);
-        if (!clientId) throw new Error("Not authenticated");
+        if (!clientId) {
+          socket.emit("error", { message: "Please join the game first" });
+          return;
+        }
 
         const { targetPlayerId } = kickPlayerSchema.parse(data);
 
@@ -431,7 +473,10 @@ npm start</pre>
     socket.on("adminUnlockDeck", () => {
       try {
         const clientId = socketToClient.get(socket.id);
-        if (!clientId) throw new Error("Not authenticated");
+        if (!clientId) {
+          socket.emit("error", { message: "Please join the game first" });
+          return;
+        }
 
         gameManager.unlockDeck(clientId);
 
@@ -444,7 +489,10 @@ npm start</pre>
     socket.on("adminPromotePlayer", (data) => {
       try {
         const clientId = socketToClient.get(socket.id);
-        if (!clientId) throw new Error("Not authenticated");
+        if (!clientId) {
+          socket.emit("error", { message: "Please join the game first" });
+          return;
+        }
 
         const { targetPlayerId } = promotePlayerSchema.parse(data);
         gameManager.promoteToAdmin(clientId, targetPlayerId);

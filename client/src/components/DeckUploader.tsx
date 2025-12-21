@@ -8,7 +8,6 @@ interface DeckUploaderProps {
   onUpload: (imageData: string) => void;
   onDelete: (imageId: string) => void;
   onSetAllowPlayerUploads: (allow: boolean) => void;
-  onLock: () => void;
 }
 
 export function DeckUploader({
@@ -17,12 +16,12 @@ export function DeckUploader({
   onUpload,
   onDelete,
   onSetAllowPlayerUploads,
-  onLock,
 }: DeckUploaderProps) {
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState('');
   const [uploadStats, setUploadStats] = useState({ completed: 0, total: 0, failed: 0 });
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const folderInputRef = useRef<HTMLInputElement>(null);
 
   const isAdmin = roomState.players.find(p => p.id === playerId)?.isAdmin || false;
   const myImages = roomState.deckImages.filter(img => img.uploadedBy === playerId);
@@ -85,8 +84,12 @@ export function DeckUploader({
       setUploadProgress('');
       setUploadStats({ completed: 0, total: 0, failed: 0 });
       
+      // Reset both inputs
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
+      }
+      if (folderInputRef.current) {
+        folderInputRef.current.value = '';
       }
     }
   };
@@ -96,11 +99,11 @@ export function DeckUploader({
       <div className="deck-info">
         <h3>Deck: {roomState.deckSize} images</h3>
         <p>My images: {myImages.length}/200</p>
-        {roomState.deckLocked && <p className="locked">🔒 Deck Locked</p>}
       </div>
 
-      {isAdmin && !roomState.deckLocked && (
-        <div className="deck-controls">
+      {/* Admin Toggle - Only visible to admin */}
+      {isAdmin && (
+        <div className="deck-controls" style={{ marginBottom: "1rem" }}>
           <label className="toggle-label">
             <input
               type="checkbox"
@@ -113,83 +116,93 @@ export function DeckUploader({
             </span>
           </label>
           <p className="toggle-hint">
-            {roomState.allowPlayerUploads 
-              ? "✅ Players can upload images (admin can always upload)" 
-              : "🔒 Only you (admin) can upload images"}
+            {roomState.allowPlayerUploads
+              ? "✅ Players can upload images (you can always upload)"
+              : "🔒 Only you can upload images"}
           </p>
         </div>
       )}
 
-      {!roomState.deckLocked && (
-        <div className="upload-section">
-          {/* Single input that handles files, folders, and multiple selections */}
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*"
-            multiple
-            // @ts-ignore - webkitdirectory is not in TS types but widely supported
-            webkitdirectory=""
-            directory=""
-            onChange={handleFileSelect}
+      <div className="upload-section">
+        {/* File input for multiple images */}
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          multiple
+          onChange={handleFileSelect}
+          disabled={uploading || myImages.length >= 200 || !canUpload}
+          style={{ display: 'none' }}
+          id={`file-input-${playerId}`}
+        />
+        
+        {/* Folder input */}
+        <input
+          ref={folderInputRef}
+          type="file"
+          accept="image/*"
+          // @ts-ignore - webkitdirectory is not in TS types but widely supported
+          webkitdirectory=""
+          directory=""
+          onChange={handleFileSelect}
+          disabled={uploading || myImages.length >= 200 || !canUpload}
+          style={{ display: 'none' }}
+          id={`folder-input-${playerId}`}
+        />
+        
+        <div className="upload-buttons">
+          <button
+            onClick={() => fileInputRef.current?.click()}
             disabled={uploading || myImages.length >= 200 || !canUpload}
-            style={{ display: 'none' }}
-            id={`file-input-${playerId}`}
-          />
+            className="btn-primary"
+            title="Select one or multiple image files"
+          >
+            {uploading ? '⏳ Uploading...' : '📁 Upload Images'}
+          </button>
           
-          <div className="upload-buttons">
-            <button
-              onClick={() => fileInputRef.current?.click()}
-              disabled={uploading || myImages.length >= 200 || !canUpload}
-              className="btn-primary"
-              title="Upload images, select multiple files, or choose a folder"
-            >
-              {uploading ? '⏳ Uploading...' : '📤 Upload Images'}
-            </button>
-
-            {isAdmin && (
-              <button onClick={onLock} className="btn-secondary">
-                Lock Deck
-              </button>
-            )}
-          </div>
-
-          {!canUpload && (
-            <p className="upload-disabled-message">
-              🔒 Only the host can upload images
-            </p>
-          )}
-
-          {uploading && uploadProgress && (
-            <div className="upload-progress">
-              <div className="progress-text">{uploadProgress}</div>
-              <div className="progress-bar-container">
-                <div 
-                  className="progress-bar" 
-                  style={{ width: `${(uploadStats.completed / uploadStats.total) * 100}%` }}
-                />
-              </div>
-              <div className="progress-stats">
-                {uploadStats.completed} of {uploadStats.total} processed
-                {uploadStats.failed > 0 && ` (${uploadStats.failed} failed)`}
-              </div>
-            </div>
-          )}
+          <button
+            onClick={() => folderInputRef.current?.click()}
+            disabled={uploading || myImages.length >= 200 || !canUpload}
+            className="btn-primary"
+            title="Select an entire folder of images"
+          >
+            {uploading ? '⏳ Uploading...' : '📂 Upload Folder'}
+          </button>
         </div>
-      )}
+
+        {!canUpload && !isAdmin && (
+          <p className="upload-disabled-message">
+            🔒 Only the host can upload images
+          </p>
+        )}
+
+        {uploading && uploadProgress && (
+          <div className="upload-progress">
+            <div className="progress-text">{uploadProgress}</div>
+            <div className="progress-bar-container">
+              <div 
+                className="progress-bar" 
+                style={{ width: `${(uploadStats.completed / uploadStats.total) * 100}%` }}
+              />
+            </div>
+            <div className="progress-stats">
+              {uploadStats.completed} of {uploadStats.total} processed
+              {uploadStats.failed > 0 && ` (${uploadStats.failed} failed)`}
+            </div>
+          </div>
+        )}
+      </div>
 
       <div className="deck-images">
         {myImages.map((img) => (
           <div key={img.id} className="deck-image-item">
             <span className="image-id">{img.id.slice(0, 8)}</span>
-            {!roomState.deckLocked && (
-              <button
-                onClick={() => onDelete(img.id)}
-                className="btn-delete"
-              >
-                ×
-              </button>
-            )}
+            <button
+              onClick={() => onDelete(img.id)}
+              className="btn-delete"
+            >
+              ×
+            </button>
           </div>
         ))}
       </div>

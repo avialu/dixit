@@ -28,19 +28,14 @@ function App() {
                 onUploadImage={actions.uploadImage}
                 onDeleteImage={actions.deleteImage}
                 onSetAllowPlayerUploads={actions.setAllowPlayerUploads}
-                onLockDeck={actions.lockDeck}
-                onUnlockDeck={actions.unlockDeck}
                 onStartGame={actions.startGame}
                 onChangeName={actions.changeName}
-                onKickPlayer={actions.kickPlayer}
-                onPromotePlayer={actions.promotePlayer}
                 onStorytellerSubmit={actions.storytellerSubmit}
                 onPlayerSubmitCard={actions.playerSubmitCard}
                 onPlayerVote={actions.playerVote}
                 onAdvanceRound={actions.advanceRound}
                 onResetGame={actions.resetGame}
                 onNewDeck={actions.newDeck}
-                onSetWinTarget={actions.setWinTarget}
               />
             }
           />

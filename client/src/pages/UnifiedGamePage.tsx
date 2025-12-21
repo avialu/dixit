@@ -16,19 +16,14 @@ interface UnifiedGamePageProps {
   onUploadImage: (imageData: string) => void;
   onDeleteImage: (imageId: string) => void;
   onSetAllowPlayerUploads: (allow: boolean) => void;
-  onLockDeck: () => void;
-  onUnlockDeck: () => void;
   onStartGame: () => void;
   onChangeName: (newName: string) => void;
-  onKickPlayer: (playerId: string) => void;
-  onPromotePlayer: (playerId: string) => void;
   onStorytellerSubmit: (cardId: string, clue: string) => void;
   onPlayerSubmitCard: (cardId: string) => void;
   onPlayerVote: (cardId: string) => void;
   onAdvanceRound: () => void;
   onResetGame: () => void;
   onNewDeck: () => void;
-  onSetWinTarget: (target: number | null) => void;
 }
 
 export function UnifiedGamePage({
@@ -41,19 +36,14 @@ export function UnifiedGamePage({
   onUploadImage: _onUploadImage,
   onDeleteImage: _onDeleteImage,
   onSetAllowPlayerUploads,
-  onLockDeck,
-  onUnlockDeck,
   onStartGame,
   onChangeName: _onChangeName,
-  onKickPlayer,
-  onPromotePlayer,
   onStorytellerSubmit,
   onPlayerSubmitCard,
   onPlayerVote,
   onAdvanceRound,
   onResetGame,
   onNewDeck,
-  onSetWinTarget,
 }: UnifiedGamePageProps) {
   const [name, setName] = useState("");
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
@@ -136,11 +126,6 @@ export function UnifiedGamePage({
       setSelectedCardId(null);
       // Keep modal open after voting
     }
-  };
-
-  const openSettings = () => {
-    setModalType("settings");
-    setShowModal(true);
   };
 
   const openCards = () => {
@@ -229,18 +214,6 @@ export function UnifiedGamePage({
       {/* Floating Action Buttons - Only for Players (not spectators) */}
       {isJoined && !isSpectator && (
         <>
-          {/* Settings Button - Admin Only */}
-          {isAdmin && (
-            <button
-              className={`floating-action-button settings-button ${
-                showModal && modalType === "settings" ? "hidden" : ""
-              }`}
-              onClick={openSettings}
-            >
-              ⚙️ Settings
-            </button>
-          )}
-
           {/* Cards Button - All Players */}
           <button
             className={`floating-action-button cards-button ${
@@ -271,146 +244,6 @@ export function UnifiedGamePage({
               ✕
             </button>
             <div className="modal-content">
-              {/* SETTINGS MODAL - Player List and Admin Controls */}
-              {modalType === "settings" && (
-                <div className="modal-section lobby-modal">
-                  <h2>👥 Players ({roomState.players.length})</h2>
-
-                  <div className="players-grid">
-                    {roomState.players.map((player) => (
-                      <div
-                        key={player.id}
-                        className={`player-card ${
-                          player.id === playerId ? "you" : ""
-                        }`}
-                      >
-                        <div className="player-info">
-                          <span className="player-name">{player.name}</span>
-                          {player.id === playerId && (
-                            <span className="you-badge">(You)</span>
-                          )}
-                          {player.isAdmin && (
-                            <span className="admin-badge">👑</span>
-                          )}
-                        </div>
-                        {isAdmin && player.id !== playerId && (
-                          <div className="player-actions">
-                            <button
-                              onClick={() => onKickPlayer(player.id)}
-                              className="btn-danger btn-small"
-                            >
-                              Kick
-                            </button>
-                            {!player.isAdmin && (
-                              <button
-                                onClick={() => onPromotePlayer(player.id)}
-                                className="btn-secondary btn-small"
-                              >
-                                Promote
-                              </button>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-
-                  {/* Admin Controls */}
-                  {isAdmin && (
-                    <>
-                      <h2 style={{ marginTop: "2rem" }}>⚙️ Game Settings</h2>
-
-                      <div className="setting-group">
-                        <label className="toggle-label">
-                          <input
-                            type="checkbox"
-                            checked={roomState.allowPlayerUploads}
-                            onChange={(e) =>
-                              onSetAllowPlayerUploads(e.target.checked)
-                            }
-                            disabled={roomState.deckLocked}
-                            className="toggle-checkbox"
-                          />
-                          <span className="toggle-text">
-                            Allow players to upload images
-                          </span>
-                        </label>
-                        <p className="toggle-hint">
-                          {roomState.allowPlayerUploads
-                            ? "✅ Players can upload images (you can always upload)"
-                            : "🔒 Only you can upload images"}
-                        </p>
-                      </div>
-
-                      <div className="setting-group">
-                        <label>Win Target:</label>
-                        <select
-                          value={roomState.winTarget || "null"}
-                          onChange={(e) =>
-                            onSetWinTarget(
-                              e.target.value === "null"
-                                ? null
-                                : parseInt(e.target.value)
-                            )
-                          }
-                        >
-                          <option value="30">30 Points</option>
-                          <option value="50">50 Points</option>
-                          <option value="null">Unlimited</option>
-                        </select>
-                      </div>
-
-                      <div className="deck-info">
-                        <p>📦 Deck Size: {roomState.deckSize} images</p>
-                        {roomState.deckSize < 100 && (
-                          <p className="warning">
-                            ⚠️ Need 100 images to start (default images will be
-                            added if needed)
-                          </p>
-                        )}
-                      </div>
-
-                      <div className="action-buttons">
-                        <button
-                          onClick={onStartGame}
-                          disabled={
-                            roomState.players.length < 3 ||
-                            roomState.deckSize < 100
-                          }
-                          className="btn-primary btn-large"
-                        >
-                          🚀 Start Game
-                        </button>
-                        {roomState.deckLocked ? (
-                          <button
-                            onClick={onUnlockDeck}
-                            className="btn-secondary"
-                          >
-                            Unlock Deck
-                          </button>
-                        ) : (
-                          <button
-                            onClick={onLockDeck}
-                            className="btn-secondary"
-                          >
-                            Lock Deck
-                          </button>
-                        )}
-                      </div>
-                    </>
-                  )}
-
-                  {!isAdmin && (
-                    <div
-                      className="waiting-message"
-                      style={{ marginTop: "2rem" }}
-                    >
-                      <p>⏳ Waiting for admin to start the game...</p>
-                    </div>
-                  )}
-                </div>
-              )}
-
               {/* CARDS MODAL - Game Actions */}
               {modalType === "cards" && (
                 <>
@@ -442,27 +275,36 @@ export function UnifiedGamePage({
                       {/* Image Upload Section - Available to everyone */}
                       <div style={{ marginTop: "2rem" }}>
                         <h2>🖼️ Deck Images</h2>
+
                         <DeckUploader
                           roomState={roomState}
                           playerId={playerId}
                           onUpload={_onUploadImage}
                           onDelete={_onDeleteImage}
                           onSetAllowPlayerUploads={onSetAllowPlayerUploads}
-                          onLock={onLockDeck}
                         />
-                      </div>
-
-                      <div className="qr-code-modal-section">
-                        <p className="qr-hint">Scan to join</p>
-                        <QRCode url={roomState.serverUrl} size={150} />
-                        <p className="qr-url">{roomState.serverUrl}</p>
                       </div>
 
                       <p style={{ color: "#95a5a6", marginTop: "1rem" }}>
                         {isAdmin
-                          ? "Use the ⚙️ Settings button to configure the game"
+                          ? "Upload images and start when ready!"
                           : "⏳ Waiting for admin to start the game..."}
                       </p>
+
+                      {/* Admin Start Button */}
+                      {isAdmin && (
+                        <button
+                          onClick={onStartGame}
+                          disabled={
+                            roomState.players.length < 3 ||
+                            roomState.deckSize < 100
+                          }
+                          className="btn-primary btn-large"
+                          style={{ marginTop: "1rem", width: "100%" }}
+                        >
+                          🚀 Start Game
+                        </button>
+                      )}
                     </div>
                   )}
 

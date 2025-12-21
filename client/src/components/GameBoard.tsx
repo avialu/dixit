@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { RoomState } from "../hooks/useGameState";
+import { QRCode } from "./QRCode";
 
 interface GameBoardProps {
   roomState: RoomState;
@@ -9,8 +10,20 @@ export function GameBoard({ roomState }: GameBoardProps) {
   const [animatingScores, setAnimatingScores] = useState<{ [playerId: string]: number }>({});
   const [isAnimating, setIsAnimating] = useState(false);
   const lastAnimatedRound = useRef<number>(-1);
+  const [isMobile, setIsMobile] = useState(false);
   
   const trackLength = 31; // 0 to 30 = 31 spaces
+  
+  // Detect mobile screen size
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth <= 768);
+    };
+    
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
   
   // Trigger animation when entering SCORING phase
   useEffect(() => {
@@ -64,7 +77,13 @@ export function GameBoard({ roomState }: GameBoardProps) {
   // Generate path positions in a winding pattern
   const generatePathPositions = (length: number) => {
     const positions: { x: number; y: number; index: number }[] = [];
-    const cols = 8;
+    // Use fewer columns on mobile for taller, narrower board
+    const cols = isMobile ? 5 : 8; // 5 columns on mobile (wider), 8 on desktop
+    // Wider spacing
+    const xSpacing = isMobile ? 14 : 12;
+    const ySpacing = 12;
+    const xOffset = isMobile ? 7 : 5;
+    const yOffset = 10;
 
     for (let i = 0; i < length; i++) {
       const row = Math.floor(i / cols);
@@ -74,8 +93,8 @@ export function GameBoard({ roomState }: GameBoardProps) {
       const actualCol = row % 2 === 0 ? col : cols - 1 - col;
 
       positions.push({
-        x: actualCol * 12 + 5,
-        y: row * 12 + 10,
+        x: actualCol * xSpacing + xOffset,
+        y: row * ySpacing + yOffset,
         index: i,
       });
     }
@@ -84,6 +103,10 @@ export function GameBoard({ roomState }: GameBoardProps) {
   };
 
   const pathPositions = generatePathPositions(trackLength);
+  
+  // Calculate viewBox based on mobile/desktop - wider dimensions
+  const viewBoxWidth = isMobile ? 80 : 110;
+  const viewBoxHeight = isMobile ? 90 : 70;
 
   // Get player color
   const getPlayerColor = (playerId: string) => {
@@ -172,6 +195,17 @@ export function GameBoard({ roomState }: GameBoardProps) {
         </div>
       </div>
 
+      {/* QR Code during DECK_BUILDING phase */}
+      {roomState.phase === "DECK_BUILDING" && (
+        <div className="board-qr-code-section">
+          <div className="board-qr-code-container">
+            <p className="board-qr-hint">Scan to join on mobile</p>
+            <QRCode url={roomState.serverUrl} size={180} />
+            <p className="board-qr-url">{roomState.serverUrl}</p>
+          </div>
+        </div>
+      )}
+
       {/* Decorative background */}
       <div className="board-scenic-background">
         <div className="board-sky"></div>
@@ -180,7 +214,7 @@ export function GameBoard({ roomState }: GameBoardProps) {
 
       {/* Score track */}
       <div className="score-track-container">
-        <svg viewBox="0 0 110 70" preserveAspectRatio="xMidYMid meet" className="score-track-svg">
+        <svg viewBox={`0 0 ${viewBoxWidth} ${viewBoxHeight}`} preserveAspectRatio="xMidYMid meet" className="score-track-svg">
           {/* Draw path connections */}
           {pathPositions.slice(0, -1).map((pos, i) => {
             const nextPos = pathPositions[i + 1];
@@ -273,24 +307,6 @@ export function GameBoard({ roomState }: GameBoardProps) {
                     }}
                   >
                     📖
-                  </text>
-                )}
-                {/* Show current score during SCORING phase */}
-                {roomState.phase === "SCORING" && (
-                  <text
-                    x={position.x + offsetX}
-                    y={position.y - 8}
-                    fontSize="2"
-                    fontWeight="bold"
-                    textAnchor="middle"
-                    fill="#fff"
-                    stroke="#000"
-                    strokeWidth="0.2"
-                    style={{
-                      transition: isAnimating ? 'x 2s ease-in-out, y 2s ease-in-out' : 'none'
-                    }}
-                  >
-                    {displayScore}
                   </text>
                 )}
                 {isMoving && delta.delta > 0 && (

@@ -673,19 +673,14 @@ export function DemoPage() {
           onUploadImage={mockActions.uploadImage}
           onDeleteImage={mockActions.deleteImage}
           onSetAllowPlayerUploads={mockActions.setAllowPlayerUploads}
-          onLockDeck={mockActions.lockDeck}
-          onUnlockDeck={mockActions.unlockDeck}
           onStartGame={mockActions.storytellerSubmit}
           onChangeName={mockActions.storytellerSubmit}
-          onKickPlayer={mockActions.storytellerSubmit}
-          onPromotePlayer={mockActions.storytellerSubmit}
           onStorytellerSubmit={mockActions.storytellerSubmit}
           onPlayerSubmitCard={mockActions.playerSubmitCard}
           onPlayerVote={mockActions.playerVote}
           onAdvanceRound={mockActions.advanceRound}
           onResetGame={mockActions.resetGame}
           onNewDeck={mockActions.newDeck}
-          onSetWinTarget={mockActions.setWinTarget}
         />
       </div>
     </div>
