@@ -10,6 +10,7 @@ interface VotingViewProps {
   storytellerCardId?: string | null; // Which card belongs to storyteller
   showResults?: boolean; // Show who submitted and who voted after all votes are in
   lockedCardId?: string | null; // Card that was voted for (show lock)
+  scoreDeltas?: { [playerId: string]: number }; // Points earned by each player this round
 }
 
 export function VotingView({
@@ -24,6 +25,7 @@ export function VotingView({
   storytellerCardId,
   showResults,
   lockedCardId,
+  scoreDeltas,
 }: VotingViewProps) {
   // Sort by position
   const sorted = [...revealedCards].sort((a, b) => a.position - b.position);
@@ -39,14 +41,22 @@ export function VotingView({
   };
 
   const getCardOwnerPoints = (cardId: string) => {
+    // If we have scoreDeltas passed in, use those (accurate Dixit scoring)
+    if (scoreDeltas) {
+      const owner = cardOwners?.find(o => o.cardId === cardId);
+      if (owner?.playerId) {
+        return scoreDeltas[owner.playerId] || 0;
+      }
+      return 0;
+    }
+    
+    // Fallback to simple vote count (deprecated)
     const isStoryteller = isStorytellerCard(cardId);
     const voteCount = getVoteCount(cardId);
     
     if (isStoryteller) {
-      // Storyteller scoring is complex, just show vote count
       return voteCount > 0 ? voteCount : 0;
     } else {
-      // Non-storytellers get +1 per vote
       return voteCount;
     }
   };
@@ -86,8 +96,16 @@ export function VotingView({
                   <div className="card-owner">
                     {isStoryteller && <span className="storyteller-badge">🎭 </span>}
                     {ownerName}
-                    {ownerPoints > 0 && (
-                      <span className="owner-points">+{ownerPoints}</span>
+                    {scoreDeltas && (
+                      <span 
+                        className="owner-points"
+                        style={{
+                          background: ownerPoints > 0 ? "rgba(46, 204, 113, 0.9)" : "rgba(149, 165, 166, 0.5)",
+                          color: "white"
+                        }}
+                      >
+                        +{ownerPoints}
+                      </span>
                     )}
                   </div>
                   

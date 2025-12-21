@@ -491,7 +491,54 @@ export function UnifiedGamePage({
                   )}
 
                   {/* REVEAL - Show who drew and voted, admin continues */}
-                  {roomState.phase === "REVEAL" && (
+                  {roomState.phase === "REVEAL" && (() => {
+                    // Calculate score deltas for display
+                    const storytellerId = roomState.storytellerId;
+                    const storytellerCard = roomState.revealedCards.find(
+                      (card) => (card as any).playerId === storytellerId
+                    );
+                    const storytellerCardId = storytellerCard?.cardId;
+                    
+                    const votesForStoryteller = roomState.votes.filter(
+                      (v) => v.cardId === storytellerCardId
+                    ).length;
+                    const totalVoters = roomState.votes.length;
+
+                    const scoreDeltas: { [playerId: string]: number } = {};
+                    roomState.players.forEach(p => {
+                      scoreDeltas[p.id] = 0;
+                    });
+
+                    // Calculate scores based on Dixit rules
+                    if (votesForStoryteller === 0 || votesForStoryteller === totalVoters) {
+                      // Everyone or no one guessed - storyteller gets 0, others get 2
+                      roomState.players.forEach(p => {
+                        if (p.id !== storytellerId) {
+                          scoreDeltas[p.id] = 2;
+                        }
+                      });
+                    } else {
+                      // Some players guessed correctly
+                      scoreDeltas[storytellerId!] = 3;
+                      roomState.votes.forEach(vote => {
+                        if (vote.cardId === storytellerCardId) {
+                          scoreDeltas[vote.voterId] = 3;
+                        }
+                      });
+                    }
+
+                    // Add bonus points for votes on own cards (not storyteller's)
+                    roomState.revealedCards.forEach(card => {
+                      const cardPlayerId = (card as any).playerId;
+                      if (cardPlayerId !== storytellerId) {
+                        const votesForCard = roomState.votes.filter(
+                          v => v.cardId === card.cardId
+                        ).length;
+                        scoreDeltas[cardPlayerId] = (scoreDeltas[cardPlayerId] || 0) + votesForCard;
+                      }
+                    });
+
+                    return (
                     <div className="modal-section reveal-modal">
                       <h2>🎨 Results Revealed!</h2>
                       <p className="clue-reminder">
@@ -514,14 +561,9 @@ export function UnifiedGamePage({
                             cardId: card.cardId,
                             playerId: (card as any).playerId || "unknown",
                           }))}
-                          storytellerCardId={
-                            roomState.revealedCards.find(
-                              (card) =>
-                                (card as any).playerId ===
-                                roomState.storytellerId
-                            )?.cardId || null
-                          }
+                          storytellerCardId={storytellerCardId || null}
                           showResults={true}
+                          scoreDeltas={scoreDeltas}
                         />
                       </div>
 
@@ -560,7 +602,8 @@ export function UnifiedGamePage({
                         Close (View Board)
                       </button>
                     </div>
-                  )}
+                    );
+                  })()}
 
                   {/* VOTING */}
                   {roomState.phase === "VOTING" &&

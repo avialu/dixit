@@ -477,7 +477,8 @@ export function DemoPage() {
   const shouldShowAsPlayer =
     forcePlayerView &&
     (currentPhase === "STORYTELLER_CHOICE" ||
-      currentPhase === "PLAYERS_CHOICE");
+      currentPhase === "PLAYERS_CHOICE" ||
+      currentPhase === "VOTING");
 
   const currentPlayerId =
     viewMode === "spectator"
@@ -701,102 +702,130 @@ export function DemoPage() {
   // Flow test action handlers
   const flowActions = {
     storytellerSubmit: (cardId: string, clue: string) => {
-      console.log("Flow: Storyteller submitted", cardId, clue);
+      const storytellerId = getFlowStorytellerId();
+      console.log(
+        "Flow: Storyteller",
+        storytellerId,
+        "submitted",
+        cardId,
+        clue
+      );
       setFlowCurrentClue(clue);
-      setFlowSubmittedCards([{ cardId, playerId: "1", position: 0 }]);
-
-      // AI players submit cards after a delay
-      setTimeout(() => {
-        const aiCards = [
-          { cardId: "ai-card-2", playerId: "2", position: 1 },
-          { cardId: "ai-card-3", playerId: "3", position: 2 },
-        ];
-        setFlowSubmittedCards((prev) => {
-          // Shuffle all cards
-          const allCards = [...prev, ...aiCards];
-          const shuffled = allCards.sort(() => Math.random() - 0.5);
-          return shuffled.map((card, idx) => ({ ...card, position: idx }));
-        });
-        setFlowPhase("VOTING");
-
-        // Since player 1 is the storyteller, AI players need to vote automatically
-        setTimeout(() => {
-          const storytellerCard = { cardId, playerId: "1" };
-          const allSubmittedCards = [
-            storytellerCard,
-            { cardId: "ai-card-2", playerId: "2" },
-            { cardId: "ai-card-3", playerId: "3" },
-          ];
-          const nonStorytellerCards = allSubmittedCards.filter(
-            (sc) => sc.playerId !== "1"
-          );
-
-          // AI players vote
-          const aiVotes: Array<{ voterId: string; cardId: string }> = [];
-
-          // AI player 2 votes
-          const shouldVoteCorrect2 = Math.random() > 0.5;
-          let choice2: string | undefined;
-          if (shouldVoteCorrect2) {
-            choice2 = cardId; // Vote for storyteller's card
-          } else if (nonStorytellerCards.length > 0) {
-            const randomCard =
-              nonStorytellerCards[
-                Math.floor(Math.random() * nonStorytellerCards.length)
-              ];
-            choice2 = randomCard?.cardId;
-          }
-          if (choice2) {
-            aiVotes.push({ voterId: "2", cardId: choice2 });
-          }
-
-          // AI player 3 votes
-          const shouldVoteCorrect3 = Math.random() > 0.5;
-          let choice3: string | undefined;
-          if (shouldVoteCorrect3) {
-            choice3 = cardId; // Vote for storyteller's card
-          } else if (nonStorytellerCards.length > 0) {
-            const randomCard =
-              nonStorytellerCards[
-                Math.floor(Math.random() * nonStorytellerCards.length)
-              ];
-            choice3 = randomCard?.cardId;
-          }
-          if (choice3) {
-            aiVotes.push({ voterId: "3", cardId: choice3 });
-          }
-
-          setFlowVotes(aiVotes);
-
-          // Go to REVEAL phase (admin must click to continue to SCORING)
-          setFlowPhase("REVEAL");
-        }, 2000);
-      }, 1500);
-
+      setFlowSubmittedCards([{ cardId, playerId: storytellerId, position: 0 }]);
       setFlowPhase("PLAYERS_CHOICE");
+
+      // If player 1 is the storyteller, AI players need to submit cards
+      // If AI is the storyteller, player 1 needs to submit their card manually
+      if (storytellerId === "1") {
+        // Player 1 is storyteller - AI players submit cards after a delay
+        setTimeout(() => {
+          const aiCards = [
+            { cardId: "ai-card-2", playerId: "2", position: 1 },
+            { cardId: "ai-card-3", playerId: "3", position: 2 },
+          ];
+          setFlowSubmittedCards((prev) => {
+            // Shuffle all cards
+            const allCards = [...prev, ...aiCards];
+            const shuffled = allCards.sort(() => Math.random() - 0.5);
+            return shuffled.map((card, idx) => ({ ...card, position: idx }));
+          });
+          setFlowPhase("VOTING");
+
+          // AI players vote automatically
+          setTimeout(() => {
+            const storytellerCard = { cardId, playerId: "1" };
+            const allSubmittedCards = [
+              storytellerCard,
+              { cardId: "ai-card-2", playerId: "2" },
+              { cardId: "ai-card-3", playerId: "3" },
+            ];
+            const nonStorytellerCards = allSubmittedCards.filter(
+              (sc) => sc.playerId !== "1"
+            );
+
+            // AI players vote
+            const aiVotes: Array<{ voterId: string; cardId: string }> = [];
+
+            // AI player 2 votes
+            const shouldVoteCorrect2 = Math.random() > 0.5;
+            let choice2: string | undefined;
+            if (shouldVoteCorrect2) {
+              choice2 = cardId; // Vote for storyteller's card
+            } else if (nonStorytellerCards.length > 0) {
+              const randomCard =
+                nonStorytellerCards[
+                  Math.floor(Math.random() * nonStorytellerCards.length)
+                ];
+              choice2 = randomCard?.cardId;
+            }
+            if (choice2) {
+              aiVotes.push({ voterId: "2", cardId: choice2 });
+            }
+
+            // AI player 3 votes
+            const shouldVoteCorrect3 = Math.random() > 0.5;
+            let choice3: string | undefined;
+            if (shouldVoteCorrect3) {
+              choice3 = cardId; // Vote for storyteller's card
+            } else if (nonStorytellerCards.length > 0) {
+              const randomCard =
+                nonStorytellerCards[
+                  Math.floor(Math.random() * nonStorytellerCards.length)
+                ];
+              choice3 = randomCard?.cardId;
+            }
+            if (choice3) {
+              aiVotes.push({ voterId: "3", cardId: choice3 });
+            }
+
+            setFlowVotes(aiVotes);
+
+            // Go to REVEAL phase (admin must click to continue to SCORING)
+            setFlowPhase("REVEAL");
+          }, 2000);
+        }, 1500);
+      } else {
+        // AI is storyteller - player 1 will manually submit card
+        // AI players (not storyteller) will auto-submit after player 1 submits
+        // This is handled in playerSubmitCard
+      }
     },
 
     playerSubmitCard: (cardId: string) => {
       console.log("Flow: Player submitted card", cardId);
+      const storytellerId = getFlowStorytellerId();
+
       setFlowSubmittedCards((prev) => [
         ...prev,
         { cardId, playerId: "1", position: prev.length },
       ]);
 
-      // AI players submit after delay
+      // AI players (who are NOT the storyteller) submit after delay
       setTimeout(() => {
-        const aiCards = [
-          {
+        const aiCards: Array<{
+          cardId: string;
+          playerId: string;
+          position: number;
+        }> = [];
+
+        // Only add AI player 2's card if they're not the storyteller
+        if (storytellerId !== "2") {
+          aiCards.push({
             cardId: "ai-card-2",
             playerId: "2",
-            position: flowSubmittedCards.length + 1,
-          },
-          {
+            position: flowSubmittedCards.length + aiCards.length + 1,
+          });
+        }
+
+        // Only add AI player 3's card if they're not the storyteller
+        if (storytellerId !== "3") {
+          aiCards.push({
             cardId: "ai-card-3",
             playerId: "3",
-            position: flowSubmittedCards.length + 2,
-          },
-        ];
+            position: flowSubmittedCards.length + aiCards.length + 1,
+          });
+        }
+
         setFlowSubmittedCards((prev) => {
           const allCards = [...prev, ...aiCards];
           const shuffled = allCards.sort(() => Math.random() - 0.5);
@@ -1024,6 +1053,37 @@ export function DemoPage() {
     return () => window.removeEventListener("keydown", handleKeyPress);
   }, [demoMode]);
 
+  // AUTO AI STORYTELLER: When player 1 is NOT the storyteller, AI automatically submits
+  useEffect(() => {
+    if (demoMode === "flow" && flowPhase === "STORYTELLER_CHOICE") {
+      const storytellerId = getFlowStorytellerId();
+
+      // If AI is the storyteller (not player 1), automatically submit after delay
+      if (storytellerId !== "1") {
+        console.log(
+          `AI Storyteller ${storytellerId} choosing card and clue...`
+        );
+
+        setTimeout(() => {
+          // AI picks a random card and clue
+          const aiClues = [
+            "Mystery and wonder",
+            "A dream come true",
+            "Lost in time",
+            "Pure happiness",
+            "Dark and stormy",
+            "Adventure awaits",
+          ];
+          const randomClue =
+            aiClues[Math.floor(Math.random() * aiClues.length)];
+          const aiCardId = `ai-storyteller-card-${storytellerId}`;
+
+          flowActions.storytellerSubmit(aiCardId, randomClue);
+        }, 2000); // 2 second delay for AI to "think"
+      }
+    }
+  }, [demoMode, flowPhase, flowStorytellerIndex]);
+
   return (
     <div className="demo-page">
       {/* Mode Selector */}
@@ -1128,7 +1188,8 @@ export function DemoPage() {
               📺
             </button>
             {(currentPhase === "STORYTELLER_CHOICE" ||
-              currentPhase === "PLAYERS_CHOICE") &&
+              currentPhase === "PLAYERS_CHOICE" ||
+              currentPhase === "VOTING") &&
               viewMode === "admin" && (
                 <>
                   <div className="nav-divider"></div>
