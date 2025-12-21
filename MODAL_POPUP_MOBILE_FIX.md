@@ -402,3 +402,4 @@ git checkout HEAD client/src/styles/global.css
 **Status**: ✅ Fixed with dvh + full-screen approach  
 **Test Device**: Test on your actual phone to verify!
 
+

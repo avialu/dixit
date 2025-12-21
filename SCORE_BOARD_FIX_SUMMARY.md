@@ -102,3 +102,4 @@ Open the game on your phone and you should immediately see:
 
 **That's it! The score board is now mobile-friendly!** 🎉
 
+

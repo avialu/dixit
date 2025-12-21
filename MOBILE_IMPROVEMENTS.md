@@ -80,3 +80,4 @@ All changes use standard CSS media queries and properties compatible with:
 - Add haptic feedback for card selection (requires JS changes)
 - Consider progressive web app (PWA) features for full-screen mode
 
+

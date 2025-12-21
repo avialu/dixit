@@ -463,3 +463,4 @@ removePlayerImages(playerId: string): number
 | Can admin claim orphaned images? | ❌ Not yet (future) |
 | Warning before image removal? | ✅ Yes (on logout only) |
 
+

@@ -174,3 +174,4 @@ Made the score track MUCH larger on mobile using CSS transforms and viewport-bas
 ## Files Modified
 - `client/src/styles/global.css` - Mobile responsive styles for score board
 
+

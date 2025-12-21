@@ -87,3 +87,4 @@ const viewBoxHeight = isMobile ? 90 : 70;
 
 The board now has a better width on both platforms while still fitting the container perfectly! 🎉
 
+

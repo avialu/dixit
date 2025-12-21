@@ -228,3 +228,4 @@ Prevents any overflow from scaled content or transform effects from creating unw
 
 The board automatically adapts to any container size while keeping all elements properly proportioned and visible!
 
+

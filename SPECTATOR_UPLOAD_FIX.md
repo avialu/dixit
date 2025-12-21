@@ -371,3 +371,4 @@ removePlayerImages(playerId: string): number
 **Images removed on kick?** ✅ Yes (always)  
 **Admin images removable?** ✅ Yes (same rules)
 
+

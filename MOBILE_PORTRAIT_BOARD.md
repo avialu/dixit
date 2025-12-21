@@ -232,3 +232,4 @@ const viewBoxHeight = isMobile ? 110 : 70;
 ✅ Original wide board layout (unchanged)
 ✅ All existing functionality preserved
 
+

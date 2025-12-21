@@ -165,3 +165,4 @@
 
 **Result**: The game board now displays properly on mobile with all player tokens visible and a cleaner interface during the scoring phase! 🎉
 
+
