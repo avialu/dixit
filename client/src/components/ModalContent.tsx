@@ -2,7 +2,7 @@ import { RoomState, PlayerState } from "../hooks/useGameState";
 import { CardView } from "../components/CardView";
 import { DeckUploader } from "../components/DeckUploader";
 import { ProfileImageUpload } from "../components/ProfileImageUpload";
-import { Button, Badge, PlayerToken, getPlayerColor, Input } from "./ui";
+import { Button, Badge, PlayerToken, getPlayerColor, Input, Icon, IconSize } from "./ui";
 
 // Types for modal content props
 interface LobbyModalProps {
@@ -96,14 +96,16 @@ export function LobbyModal(props: LobbyModalProps) {
 
   const header = (
     <>
-      <h2>👥 Players ({roomState.players.length})</h2>
+      <h2>
+        <Icon.People size={IconSize.large} /> Players ({roomState.players.length})
+      </h2>
     </>
   );
 
   const footer = (
     <>
       <Button variant="secondary" onClick={handleLogout}>
-        🚪 Logout & Return to Join Screen
+        <Icon.Logout size={IconSize.medium} /> Logout & Return to Join Screen
       </Button>
     </>
   );
@@ -167,7 +169,7 @@ export function LobbyModal(props: LobbyModalProps) {
                         className="btn-save"
                         title="Save"
                       >
-                        ✓
+                        <Icon.Checkmark size={IconSize.small} />
                       </Button>
                       <Button
                         variant="icon"
@@ -206,7 +208,9 @@ export function LobbyModal(props: LobbyModalProps) {
         </div>
 
         <div style={{ marginTop: "2rem" }}>
-          <h2>🖼️ Deck Images</h2>
+          <h2>
+            <Icon.Images size={IconSize.large} /> Deck Images
+          </h2>
           <DeckUploader
             roomState={roomState}
             playerId={playerId}
@@ -225,7 +229,7 @@ export function LobbyModal(props: LobbyModalProps) {
         )}
         {isSpectator && (
           <p style={{ color: "#95a5a6", marginTop: "1rem" }}>
-            👁️ Spectating - You can upload images to help build the deck!
+            <Icon.Eye size={IconSize.medium} /> Spectating - You can upload images to help build the deck!
           </p>
         )}
       </>
@@ -250,7 +254,25 @@ export function StorytellerChoiceModal(props: StorytellerModalProps) {
 
   const header = (
     <>
-      <h2>{isSubmitted ? "✅ Submitted" : "🎭 Storyteller"}</h2>
+      <h2>
+        {isSubmitted ? (
+          <>
+            <Icon.Checkmark size={IconSize.large} /> Submitted
+          </>
+        ) : (
+          <>
+            <Icon.Sparkles size={IconSize.large} /> Storyteller
+          </>
+        )}
+      </h2>
+      {isSubmitted && (localSubmittedClue || roomState.currentClue) && (
+        <p className="clue-reminder">
+          <strong>Storyteller Clue:</strong>{" "}
+          <strong style={{ fontWeight: 900, fontSize: "1.1em" }}>
+            "{localSubmittedClue || roomState.currentClue}"
+          </strong>
+        </p>
+      )}
     </>
   );
 
@@ -281,14 +303,6 @@ export function StorytellerChoiceModal(props: StorytellerModalProps) {
     footer,
     content: (
       <>
-        {isSubmitted && (localSubmittedClue || roomState.currentClue) && (
-          <p className="clue-reminder">
-            <strong style={{ fontWeight: 900, fontSize: "1.1em" }}>
-              "{localSubmittedClue || roomState.currentClue}"
-            </strong>
-          </p>
-        )}
-
         {isSubmitted &&
           (() => {
             const submittedCardId =
@@ -349,8 +363,19 @@ export function PlayerChoiceModal(props: PlayerChoiceModalProps) {
 
   const header = (
     <>
-      <h2>{isSubmitted ? "✅ Submitted" : "✍️ Choose Card"}</h2>
+      <h2>
+        {isSubmitted ? (
+          <>
+            <Icon.Checkmark size={IconSize.large} /> Submitted
+          </>
+        ) : (
+          <>
+            <Icon.Cards size={IconSize.large} /> Choose Card
+          </>
+        )}
+      </h2>
       <p className="clue-reminder">
+        <strong>Storyteller Clue:</strong>{" "}
         <strong style={{ fontWeight: 900, fontSize: "1.1em" }}>
           "{roomState.currentClue}"
         </strong>
@@ -424,6 +449,7 @@ export function WaitingPlayersModal(props: {
     <>
       <h2>⏳ Waiting</h2>
       <p className="clue-reminder">
+        <strong>Storyteller Clue:</strong>{" "}
         <strong style={{ fontWeight: 900, fontSize: "1.1em" }}>
           "{roomState.currentClue}"
         </strong>
@@ -493,18 +519,48 @@ export function VotingModal(props: VotingModalProps) {
   const canVote = !isStoryteller && !isSpectator && !hasVoted;
 
   const getHeaderTitle = () => {
-    if (canVote) return "🗳️ Vote";
-    if (hasVoted && !allVotesIn) return "✅ Voted";
-    if (allVotesIn) return "📊 All Votes In";
-    if (isStoryteller) return "👁️ Watching";
-    if (isSpectator) return "👁️ Spectating";
-    return "🗳️ Vote";
+    if (canVote)
+      return (
+        <>
+          <Icon.Vote size={IconSize.large} /> Vote
+        </>
+      );
+    if (hasVoted && !allVotesIn)
+      return (
+        <>
+          <Icon.Checkmark size={IconSize.large} /> Voted
+        </>
+      );
+    if (allVotesIn)
+      return (
+        <>
+          <Icon.Results size={IconSize.large} /> All Votes In
+        </>
+      );
+    if (isStoryteller)
+      return (
+        <>
+          <Icon.Eye size={IconSize.large} /> Watching
+        </>
+      );
+    if (isSpectator)
+      return (
+        <>
+          <Icon.Eye size={IconSize.large} /> Spectating
+        </>
+      );
+    return (
+      <>
+        <Icon.Vote size={IconSize.large} /> Vote
+      </>
+    );
   };
 
   const header = (
     <>
       <h2>{getHeaderTitle()}</h2>
       <p className="clue-reminder">
+        <strong>Storyteller Clue:</strong>{" "}
         <strong style={{ fontWeight: 900, fontSize: "1.1em" }}>
           "{roomState.currentClue}"
         </strong>
@@ -562,8 +618,11 @@ export function RevealModal(props: RevealModalProps) {
 
   const header = (
     <>
-      <h2>🎨 Results</h2>
+      <h2>
+        <Icon.Results size={IconSize.large} /> Results
+      </h2>
       <p className="clue-reminder">
+        <strong>Storyteller Clue:</strong>{" "}
         <strong style={{ fontWeight: 900, fontSize: "1.1em" }}>
           "{roomState.currentClue}"
         </strong>
@@ -573,7 +632,7 @@ export function RevealModal(props: RevealModalProps) {
 
   const footer = isAdmin ? (
     <Button variant="continue" onClick={onAdvanceRound}>
-      ▶️ Continue
+      <Icon.ArrowForward size={IconSize.medium} /> Continue
     </Button>
   ) : (
     <p style={{ color: "#95a5a6", fontStyle: "italic", margin: 0 }}>
@@ -620,7 +679,9 @@ export function GameEndModal(props: GameEndModalProps) {
 
   const header = (
     <>
-      <h2>🏆 Game Over</h2>
+      <h2>
+        <Icon.Trophy size={IconSize.large} /> Game Over
+      </h2>
     </>
   );
 
@@ -641,7 +702,9 @@ export function GameEndModal(props: GameEndModalProps) {
     content: (
       <div className="game-end-content">
         <div className="winner-announcement">
-          <div className="winner-crown">👑</div>
+          <div className="winner-crown">
+            <Icon.Crown size={IconSize.xxlarge} />
+          </div>
           {wonByTarget && <p className="winner-text">{winner.name} wins!</p>}
         </div>
         <div className="final-scores-list">

@@ -5,7 +5,7 @@ import { QRCode } from "../components/QRCode";
 import { Modal } from "../components/Modal";
 import * as ModalContent from "../components/ModalContent";
 import { ProfileImageUpload } from "../components/ProfileImageUpload";
-import { Button } from "../components/ui";
+import { Button, Icon, IconSize } from "../components/ui";
 
 interface UnifiedGamePageProps {
   roomState: RoomState | null;
@@ -311,7 +311,9 @@ export function UnifiedGamePage({
       <div className="unified-game-page join-state">
         <div className="join-container">
           <div className="join-box">
-            <h1>🎨 DIXIT</h1>
+            <h1>
+              <Icon.Sparkles size={IconSize.xlarge} /> DIXIT
+            </h1>
             <p className="tagline">A game of creative storytelling</p>
 
             <form onSubmit={handleJoin} className="join-form">
@@ -342,7 +344,7 @@ export function UnifiedGamePage({
                 size="large"
                 disabled={!name.trim()}
               >
-                🚀 Join Game
+                <Icon.Rocket size={IconSize.medium} /> Join Game
               </Button>
               <Button
                 type="button"
@@ -354,7 +356,7 @@ export function UnifiedGamePage({
               </Button>
             </form>
             <div className="qr-code-section">
-              <p className="qr-hint">📱 Scan to join from mobile</p>
+              <p className="qr-hint">Scan to join from mobile</p>
               <QRCode url={serverUrl} size={180} />
             </div>
           </div>
@@ -386,19 +388,33 @@ export function UnifiedGamePage({
             }`}
             onClick={openCards}
             title={
-              !isInGame ? "Players" :
-              roomState.phase === "STORYTELLER_CHOICE" ? "My Cards" :
-              roomState.phase === "PLAYERS_CHOICE" ? "Choose Card" :
-              roomState.phase === "VOTING" ? "Vote" :
-              "Results"
+              !isInGame
+                ? "Players"
+                : roomState.phase === "STORYTELLER_CHOICE"
+                ? "My Cards"
+                : roomState.phase === "PLAYERS_CHOICE"
+                ? "Choose Card"
+                : roomState.phase === "VOTING"
+                ? "Vote"
+                : "Results"
             }
           >
-            {!isInGame && "⚙️"}
-            {roomState.phase === "STORYTELLER_CHOICE" && "🃏"}
-            {roomState.phase === "PLAYERS_CHOICE" && "🃏"}
-            {roomState.phase === "VOTING" && "🗳️"}
-            {roomState.phase === "REVEAL" && "🎨"}
-            {roomState.phase === "GAME_END" && "🏆"}
+            {!isInGame && <Icon.Settings size={IconSize.large} />}
+            {roomState.phase === "STORYTELLER_CHOICE" && (
+              <Icon.Cards size={IconSize.large} />
+            )}
+            {roomState.phase === "PLAYERS_CHOICE" && (
+              <Icon.Cards size={IconSize.large} />
+            )}
+            {roomState.phase === "VOTING" && (
+              <Icon.Vote size={IconSize.large} />
+            )}
+            {roomState.phase === "REVEAL" && (
+              <Icon.Results size={IconSize.large} />
+            )}
+            {roomState.phase === "GAME_END" && (
+              <Icon.Trophy size={IconSize.large} />
+            )}
           </button>
 
           {/* QR Button - Show when QR is closed during deck building */}
@@ -408,7 +424,7 @@ export function UnifiedGamePage({
               onClick={() => setShowQR(true)}
               title="Show QR Code"
             >
-              📱
+              <Icon.QRCode size={IconSize.large} />
             </button>
           )}
 
@@ -420,8 +436,9 @@ export function UnifiedGamePage({
               disabled={
                 roomState.players.length < 3 || roomState.deckSize < 100
               }
+              title="Start Game"
             >
-              🚀 Start Game
+              <Icon.Rocket size={IconSize.large} />
             </button>
           )}
         </>
@@ -437,7 +454,7 @@ export function UnifiedGamePage({
             onClick={openCards}
             title="Players"
           >
-            ⚙️
+            <Icon.Settings size={IconSize.large} />
           </button>
 
           {/* QR Button for spectators */}
@@ -447,7 +464,7 @@ export function UnifiedGamePage({
               onClick={() => setShowQR(true)}
               title="Show QR Code"
             >
-              📱
+              <Icon.QRCode size={IconSize.large} />
             </button>
           )}
         </>
@@ -466,7 +483,7 @@ export function UnifiedGamePage({
             }
           }}
         >
-          ▶️ Continue
+          <Icon.ArrowForward size={IconSize.medium} /> Continue
         </button>
       )}
 

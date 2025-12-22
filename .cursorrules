@@ -153,7 +153,7 @@ const HeavyComponent = lazy(() => import("./HeavyComponent"));
 ### UI Components (Single Source of Truth)
 
 - ALL reusable UI components MUST be created in `client/src/components/ui/`
-- These are primitive components: Button, Input, Badge, PlayerToken, CloseButton, Card
+- These are primitive components: Button, Input, Badge, PlayerToken, CloseButton, Card, Icon
 - Feature-specific components go in `client/src/components/`
 - Page components go in `client/src/pages/`
 
@@ -177,7 +177,7 @@ client/src/
 
 ```typescript
 // ✅ GOOD
-import { Button, Badge, PlayerToken } from "../components/ui";
+import { Button, Badge, PlayerToken, Icon, IconSize } from "../components/ui";
 
 // ❌ BAD - Don't create inline buttons
 <button className="btn-primary">Click</button>;
@@ -248,7 +248,68 @@ import { PlayerToken, getPlayerColor } from "../components/ui";
 <Input variant="inline" placeholder="Enter your clue..." />
 ```
 
-### 6. CloseButton Usage
+### 6. Icon Usage
+
+**Icon Library: Lucide React**
+
+We use [Lucide React](https://lucide.dev/) for all icons. It provides:
+
+- ✅ **Better tree-shaking** → Smaller bundle sizes
+- ✅ **Consistent design** → All icons from same design system
+- ✅ **Full TypeScript support** → Fully typed
+- ✅ **Modern & clean** → Professional appearance
+
+```typescript
+// ✅ GOOD - Import from UI library
+import { Icon, IconSize } from "../components/ui";
+
+// ✅ GOOD - Use predefined icons
+<Icon.Settings size={IconSize.large} />
+<Icon.QRCode size={IconSize.medium} />
+<Icon.Rocket size={IconSize.large} />
+<Icon.Card size={IconSize.large} />
+<Icon.Vote size={IconSize.large} />
+<Icon.Results size={IconSize.large} />
+<Icon.Trophy size={IconSize.large} />
+<Icon.People size={IconSize.large} />
+<Icon.Logout size={IconSize.medium} />
+
+// ✅ GOOD - Icon sizes
+IconSize.small    // 16px
+IconSize.medium   // 20px
+IconSize.large    // 24px
+IconSize.xlarge   // 32px
+IconSize.xxlarge  // 48px
+
+// ✅ GOOD - Icons with text
+<Button variant="primary">
+  <Icon.Rocket size={IconSize.medium} /> Join Game
+</Button>
+
+// ❌ BAD - Don't use emojis for UI icons
+<button>🚀 Join Game</button>
+<h2>👥 Players</h2>
+
+// ❌ BAD - Don't import directly from lucide-react
+import { Settings } from "lucide-react";
+```
+
+**Available Icons:**
+
+- **Navigation**: Settings, Home, Menu, ArrowForward, ArrowBack, Close
+- **Game Actions**: Rocket, Play, Pause, Refresh
+- **Cards & Content**: Card, Images, Image, Camera
+- **Voting & Scoring**: Vote, Checkmark, Results, Star, Heart, Trophy, Crown, Sparkles
+- **Social & Players**: People, Share
+- **Utilities**: QRCode, Logout, Trash, Upload, Download, Copy, Add, Remove, Search, Filter
+- **Visibility & Info**: Eye, EyeOff, Info, Warning
+
+**When to Use Icons vs Emojis:**
+
+- ✅ **Icons**: UI elements, buttons, headers, navigation (professional, consistent)
+- ✅ **Emojis**: User-generated content, flavor text, decorative elements (fun, expressive)
+
+### 7. CloseButton Usage
 
 ```typescript
 // ❌ BAD
@@ -368,21 +429,31 @@ const colors = ["#f39c12", "#3498db", ...];
 
 // Don't create one-off badge components
 <span className="my-custom-badge">Text</span>
+
+// Don't use emojis for UI icons
+<button>🚀 Start</button>
+<h2>👥 Players</h2>
+
+// Don't import icons directly from lucide-react
+import { Settings } from "lucide-react";
 ```
 
 ### ✅ DO
 
 ```typescript
-// Use the Button component
+// Use the Button component with icons
 <Button variant="primary" size="large">
-  ...
+  <Icon.Rocket size={IconSize.medium} /> Start Game
 </Button>;
 
-// Import color helpers
-import { getPlayerColor } from "../components/ui";
+// Import from UI library
+import { Button, Icon, IconSize, getPlayerColor } from "../components/ui";
 
 // Use Badge component
 <Badge variant="admin" />;
+
+// Use Icon component for UI elements
+<Icon.Settings size={IconSize.large} />;
 
 // Add new variants when reusable
 // (Edit Button.tsx to add "danger" variant, etc.)
@@ -397,6 +468,7 @@ When refactoring old code:
 - [ ] Replace token rendering with `<PlayerToken />`
 - [ ] Replace inputs with `<Input variant="*" />`
 - [ ] Replace close buttons with `<CloseButton />`
+- [ ] Replace emoji icons with `<Icon.* />` components
 - [ ] Import from `"../components/ui"`
 
 ## Benefits of This System

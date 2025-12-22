@@ -22,3 +22,5 @@ export type { InputProps, InputVariant } from "./Input";
 export { Card } from "./Card";
 export type { CardProps, CardVariant } from "./Card";
 
+export { Icon, IconSize, defaultIconProps } from "./Icon";
+
