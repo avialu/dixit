@@ -140,6 +140,29 @@ npm start</pre>
     // Send initial room state immediately so QR code shows correct URL
     broadcastRoomState();
 
+    // Handle reconnection - allows client to re-register their socket with their clientId
+    socket.on("reconnect", (data) => {
+      try {
+        const { clientId } = data;
+        
+        if (!clientId) {
+          socket.emit("error", { message: "clientId is required" });
+          return;
+        }
+        
+        // Re-register the socket (works for both players and spectators)
+        socketToClient.set(socket.id, clientId);
+        console.log(`Socket re-registered for clientId: ${clientId}`);
+        
+        // Send fresh state
+        broadcastRoomState();
+        sendPlayerState(socket.id, clientId);
+        socket.emit("reconnectSuccess", { playerId: clientId });
+      } catch (error: any) {
+        socket.emit("error", { message: error.message });
+      }
+    });
+
     socket.on("join", (data) => {
       try {
         const { name, clientId } = joinSchema.parse(data);

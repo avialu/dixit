@@ -290,6 +290,12 @@ export function GameBoard({
           preserveAspectRatio="xMidYMid meet"
           className="score-track-svg"
         >
+          {/* Define reusable circular clip path */}
+          <defs>
+            <clipPath id="token-circle-mask">
+              <circle cx="0" cy="0" r="3.5" />
+            </clipPath>
+          </defs>
           {/* Draw path connections */}
           {pathPositions.slice(0, -1).map((pos, i) => {
             const nextPos = pathPositions[i + 1];
@@ -370,6 +376,9 @@ export function GameBoard({
             );
             const isMoving = isAnimating && delta && delta.delta !== 0;
 
+            const tokenX = position.x + offsetX;
+            const tokenY = position.y - 5 * scaleFactor;
+
             return (
               <g
                 key={player.id}
@@ -377,44 +386,42 @@ export function GameBoard({
               >
                 {player.tokenImage ? (
                   /* Token with custom image */
-                  <>
-                    <defs>
-                      <pattern
-                        id={`token-img-${player.id}`}
-                        patternUnits="objectBoundingBox"
-                        width="1"
-                        height="1"
-                      >
-                        <image
-                          href={player.tokenImage}
-                          x="0"
-                          y="0"
-                          width="1"
-                          height="1"
-                          preserveAspectRatio="xMidYMid slice"
-                        />
-                      </pattern>
-                    </defs>
+                  <g
+                    transform={`translate(${tokenX}, ${tokenY})`}
+                    style={{
+                      transition: isAnimating
+                        ? "transform 2s ease-in-out"
+                        : "none",
+                    }}
+                  >
+                    <g
+                      clipPath="url(#token-circle-mask)"
+                      transform={`scale(${scaleFactor})`}
+                    >
+                      <image
+                        href={player.tokenImage}
+                        x="-3.5"
+                        y="-3.5"
+                        width="7"
+                        height="7"
+                        preserveAspectRatio="xMidYMid slice"
+                      />
+                    </g>
                     <circle
-                      cx={position.x + offsetX}
-                      cy={position.y - 5 * scaleFactor}
+                      cx="0"
+                      cy="0"
                       r={3.5 * scaleFactor}
-                      fill={`url(#token-img-${player.id})`}
+                      fill="none"
                       stroke="#fff"
                       strokeWidth={0.5 * scaleFactor}
-                      className="player-token"
-                      style={{
-                        transition: isAnimating
-                          ? "cx 2s ease-in-out, cy 2s ease-in-out"
-                          : "none",
-                      }}
+                      className="player-token-border"
                     />
-                  </>
+                  </g>
                 ) : (
                   /* Token with color fallback */
                   <circle
-                    cx={position.x + offsetX}
-                    cy={position.y - 5 * scaleFactor}
+                    cx={tokenX}
+                    cy={tokenY}
                     r={3.5 * scaleFactor}
                     fill={getPlayerColor(player.id)}
                     stroke="#fff"
@@ -429,8 +436,8 @@ export function GameBoard({
                 )}
                 {roomState.storytellerId === player.id && (
                   <text
-                    x={position.x + offsetX}
-                    y={position.y - 4.5 * scaleFactor}
+                    x={tokenX}
+                    y={tokenY + 0.5 * scaleFactor}
                     fontSize={3 * scaleFactor}
                     textAnchor="middle"
                     dominantBaseline="middle"
@@ -445,8 +452,8 @@ export function GameBoard({
                 )}
                 {isMoving && delta.delta > 0 && (
                   <text
-                    x={position.x + offsetX}
-                    y={position.y - 12 * scaleFactor}
+                    x={tokenX}
+                    y={tokenY - 7 * scaleFactor}
                     fontSize={3 * scaleFactor}
                     fontWeight="bold"
                     textAnchor="middle"

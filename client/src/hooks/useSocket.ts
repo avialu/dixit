@@ -20,6 +20,16 @@ export function useSocket() {
     
     newSocket.on('connect', () => {
       console.log('Connected to server:', newSocket.id);
+      
+      // Auto-reconnect: register this socket with existing clientId
+      if (clientId) {
+        console.log('Auto-reconnecting with clientId:', clientId);
+        newSocket.emit('reconnect', { clientId });
+      }
+    });
+
+    newSocket.on('reconnectSuccess', (data: { playerId: string }) => {
+      console.log('Reconnect successful for:', data.playerId);
     });
 
     newSocket.on('disconnect', () => {

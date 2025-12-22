@@ -1,6 +1,7 @@
 import { RoomState, PlayerState } from "../hooks/useGameState";
 import { CardView } from "../components/CardView";
 import { DeckUploader } from "../components/DeckUploader";
+import { ProfileImageUpload } from "../components/ProfileImageUpload";
 
 // Types for modal content props
 interface LobbyModalProps {
@@ -88,20 +89,6 @@ export function LobbyModal(props: LobbyModalProps) {
     handleLogout,
   } = props;
 
-  const handleTokenImageUpload = (
-    event: React.ChangeEvent<HTMLInputElement>
-  ) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const imageData = e.target?.result as string;
-      onUploadTokenImage(imageData);
-    };
-    reader.readAsDataURL(file);
-  };
-
   const handleRemoveTokenImage = () => {
     onUploadTokenImage(null);
   };
@@ -136,60 +123,60 @@ export function LobbyModal(props: LobbyModalProps) {
                 className={`player-card ${isMe ? "you" : ""}`}
               >
                 {/* Token Image Display/Upload */}
-                <div className="player-token-preview">
-                  {player.tokenImage ? (
-                    <img
-                      src={player.tokenImage}
-                      alt={`${player.name}'s token`}
-                      className="token-image"
-                    />
-                  ) : (
-                    <div
-                      className="token-color-preview"
-                      style={{
-                        background: (() => {
-                          const colors = [
-                            "#f39c12",
-                            "#3498db",
-                            "#2ecc71",
-                            "#e74c3c",
-                            "#9b59b6",
-                            "#1abc9c",
-                          ];
-                          const index = roomState.players.findIndex(
-                            (p) => p.id === player.id
-                          );
-                          return colors[index % colors.length];
-                        })(),
-                      }}
-                    />
-                  )}
-                  {isMe && !isSpectator && (
-                    <div className="token-upload-actions">
-                      <label
-                        className="btn-icon-small"
-                        title="Upload token image"
+                {isMe && !isSpectator ? (
+                  <ProfileImageUpload
+                    imageUrl={player.tokenImage || null}
+                    onUpload={onUploadTokenImage}
+                    onRemove={handleRemoveTokenImage}
+                    playerColor={(() => {
+                      const colors = [
+                        "#f39c12",
+                        "#3498db",
+                        "#2ecc71",
+                        "#e74c3c",
+                        "#9b59b6",
+                        "#1abc9c",
+                      ];
+                      const index = roomState.players.findIndex(
+                        (p) => p.id === player.id
+                      );
+                      return colors[index % colors.length];
+                    })()}
+                    size="small"
+                  />
+                ) : (
+                  <div className="player-token-preview">
+                    {player.tokenImage ? (
+                      <img
+                        src={player.tokenImage}
+                        alt={`${player.name}'s token`}
+                        className="token-image"
+                      />
+                    ) : (
+                      <div
+                        className="token-color-preview"
+                        style={{
+                          background: (() => {
+                            const colors = [
+                              "#f39c12",
+                              "#3498db",
+                              "#2ecc71",
+                              "#e74c3c",
+                              "#9b59b6",
+                              "#1abc9c",
+                            ];
+                            const index = roomState.players.findIndex(
+                              (p) => p.id === player.id
+                            );
+                            return colors[index % colors.length];
+                          })(),
+                        }}
                       >
-                        📷
-                        <input
-                          type="file"
-                          accept="image/*"
-                          style={{ display: "none" }}
-                          onChange={handleTokenImageUpload}
-                        />
-                      </label>
-                      {player.tokenImage && (
-                        <button
-                          className="btn-icon-small"
-                          onClick={handleRemoveTokenImage}
-                          title="Remove token image"
-                        >
-                          ✕
-                        </button>
-                      )}
-                    </div>
-                  )}
-                </div>
+                        <div className="token-plus-sign">+</div>
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 {isEditing ? (
                   <div className="player-name-edit">

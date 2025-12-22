@@ -4,6 +4,7 @@ import { GameBoard } from "../components/GameBoard";
 import { QRCode } from "../components/QRCode";
 import { Modal } from "../components/Modal";
 import * as ModalContent from "../components/ModalContent";
+import { ProfileImageUpload } from "../components/ProfileImageUpload";
 
 interface UnifiedGamePageProps {
   roomState: RoomState | null;
@@ -35,7 +36,7 @@ export function UnifiedGamePage({
   clientId,
   socket,
   onJoin,
-  onJoinSpectator,
+  onJoinSpectator: _onJoinSpectator,
   onLeave,
   onUploadImage: _onUploadImage,
   onDeleteImage: _onDeleteImage,
@@ -72,6 +73,8 @@ export function UnifiedGamePage({
   // Track name editing state - which player ID is being edited
   const [editingPlayerId, setEditingPlayerId] = useState<string | null>(null);
   const [newName, setNewName] = useState("");
+  // Track profile image for join screen
+  const [profileImage, setProfileImage] = useState<string | null>(null);
 
   // Detect demo mode (no socket connection)
   const isDemoMode = socket === null;
@@ -150,7 +153,7 @@ export function UnifiedGamePage({
     }
   }, [roomState?.phase, isStoryteller, isSpectator]);
 
-  // Auto-join spectators when they connect
+  // Auto-join spectators when they connect (only if not already joined)
   useEffect(() => {
     if (!isDemoMode && isSpectator && socket?.connected && !isJoined) {
       // Auto-join spectator
@@ -163,12 +166,18 @@ export function UnifiedGamePage({
     e.preventDefault();
     if (name.trim()) {
       onJoin(name.trim(), clientId);
+      // Upload profile image after joining if one was selected
+      if (profileImage) {
+        setTimeout(() => {
+          onUploadTokenImage(profileImage);
+        }, 100);
+      }
     }
   };
 
   const handleSpectatorJoin = () => {
     setIsUserSpectator(true);
-    onJoinSpectator(clientId);
+    _onJoinSpectator(clientId);
   };
 
   const handleLogout = () => {
@@ -280,6 +289,21 @@ export function UnifiedGamePage({
     const serverUrl =
       roomState?.serverUrl || detectedServerUrl || window.location.origin;
 
+    // Calculate player color based on placeholder index
+    const getPlayerColor = () => {
+      const colors = [
+        "#f39c12",
+        "#3498db",
+        "#2ecc71",
+        "#e74c3c",
+        "#9b59b6",
+        "#1abc9c",
+      ];
+      // Use a simple hash of current time for randomness
+      const index = Math.floor(Math.random() * colors.length);
+      return colors[index];
+    };
+
     return (
       <div className="unified-game-page join-state">
         <div className="join-container">
@@ -288,6 +312,18 @@ export function UnifiedGamePage({
             <p className="tagline">A game of creative storytelling</p>
 
             <form onSubmit={handleJoin} className="join-form">
+              {/* Profile Image Upload */}
+              <div className="join-profile-section">
+                <ProfileImageUpload
+                  imageUrl={profileImage}
+                  onUpload={setProfileImage}
+                  onRemove={() => setProfileImage(null)}
+                  playerColor={getPlayerColor()}
+                  size="large"
+                />
+                <p className="join-profile-hint">Add your profile photo</p>
+              </div>
+
               <input
                 type="text"
                 placeholder="Enter your name"
@@ -302,12 +338,8 @@ export function UnifiedGamePage({
                 disabled={!name.trim()}
                 className="btn-primary btn-large"
               >
-                Join Game
+                🚀 Join Game
               </button>
-            </form>
-
-            <div className="spectator-section">
-              <p className="spectator-hint">Just want to watch?</p>
               <button
                 type="button"
                 onClick={handleSpectatorJoin}
@@ -315,12 +347,10 @@ export function UnifiedGamePage({
               >
                 👀 Join as Spectator
               </button>
-            </div>
-
+            </form>
             <div className="qr-code-section">
-              <p className="qr-hint">Scan to join on mobile</p>
+              <p className="qr-hint">📱 Scan to join from mobile</p>
               <QRCode url={serverUrl} size={180} />
-              <p className="qr-url">{serverUrl}</p>
             </div>
           </div>
         </div>
@@ -362,7 +392,9 @@ export function UnifiedGamePage({
             <button
               className="floating-action-button start-game-button"
               onClick={onStartGame}
-              disabled={roomState.players.length < 3 || roomState.deckSize < 100}
+              disabled={
+                roomState.players.length < 3 || roomState.deckSize < 100
+              }
             >
               🚀 Start Game
             </button>
@@ -400,117 +432,127 @@ export function UnifiedGamePage({
       )}
 
       {/* Modal Popup - Shows when player needs to act */}
-      {showModal && (() => {
-        let modalContent: { header: React.ReactNode; footer: React.ReactNode; content: React.ReactNode } | null = null;
+      {showModal &&
+        (() => {
+          let modalContent: {
+            header: React.ReactNode;
+            footer: React.ReactNode;
+            content: React.ReactNode;
+          } | null = null;
 
-        if (modalType === "cards") {
-          // LOBBY - Before game starts
-          if (!isInGame) {
-            modalContent = ModalContent.LobbyModal({
-              roomState,
-              playerId,
-              isSpectator,
-              isAdmin,
-              editingPlayerId,
-              newName,
-              setEditingPlayerId,
-              setNewName,
-              handleStartEditName,
-              handleSaveName,
-              handleCancelEditName,
-              onUploadImage: _onUploadImage,
-              onDeleteImage: _onDeleteImage,
-              onSetAllowPlayerUploads,
-              onUploadTokenImage,
-              handleLogout,
-            });
-          }
-          // STORYTELLER_CHOICE phase
-          else if (roomState.phase === "STORYTELLER_CHOICE") {
-            if (isStoryteller) {
-              modalContent = ModalContent.StorytellerChoiceModal({
+          if (modalType === "cards") {
+            // LOBBY - Before game starts
+            if (!isInGame) {
+              modalContent = ModalContent.LobbyModal({
+                roomState,
+                playerId,
+                isSpectator,
+                isAdmin,
+                editingPlayerId,
+                newName,
+                setEditingPlayerId,
+                setNewName,
+                handleStartEditName,
+                handleSaveName,
+                handleCancelEditName,
+                onUploadImage: _onUploadImage,
+                onDeleteImage: _onDeleteImage,
+                onSetAllowPlayerUploads,
+                onUploadTokenImage,
+                handleLogout,
+              });
+            }
+            // STORYTELLER_CHOICE phase
+            else if (roomState.phase === "STORYTELLER_CHOICE") {
+              if (isStoryteller) {
+                modalContent = ModalContent.StorytellerChoiceModal({
+                  playerState,
+                  selectedCardId,
+                  clue,
+                  localSubmittedCardId,
+                  localSubmittedClue,
+                  roomState,
+                  setSelectedCardId,
+                  setClue,
+                  handleStorytellerSubmit,
+                });
+              } else {
+                modalContent = ModalContent.WaitingStorytellerModal({
+                  playerState,
+                });
+              }
+            }
+            // PLAYERS_CHOICE phase
+            else if (roomState.phase === "PLAYERS_CHOICE") {
+              if (!isStoryteller) {
+                modalContent = ModalContent.PlayerChoiceModal({
+                  playerState,
+                  selectedCardId,
+                  localSubmittedCardId,
+                  roomState,
+                  setSelectedCardId,
+                  handlePlayerSubmit,
+                });
+              } else {
+                modalContent = ModalContent.WaitingPlayersModal({
+                  playerState,
+                  roomState,
+                });
+              }
+            }
+            // VOTING phase
+            else if (roomState.phase === "VOTING") {
+              modalContent = ModalContent.VotingModal({
+                roomState,
                 playerState,
                 selectedCardId,
-                clue,
-                localSubmittedCardId,
-                localSubmittedClue,
-                roomState,
+                localVotedCardId,
+                isStoryteller,
+                isSpectator,
                 setSelectedCardId,
-                setClue,
-                handleStorytellerSubmit,
+                handleVote,
               });
-            } else {
-              modalContent = ModalContent.WaitingStorytellerModal({ playerState });
             }
-          }
-          // PLAYERS_CHOICE phase
-          else if (roomState.phase === "PLAYERS_CHOICE") {
-            if (!isStoryteller) {
-              modalContent = ModalContent.PlayerChoiceModal({
+            // REVEAL phase
+            else if (roomState.phase === "REVEAL") {
+              modalContent = ModalContent.RevealModal({
+                roomState,
                 playerState,
-                selectedCardId,
-                localSubmittedCardId,
-                roomState,
-                setSelectedCardId,
-                handlePlayerSubmit,
+                isAdmin,
+                onAdvanceRound: () => {
+                  if (socket) {
+                    socket.emit("advanceRound");
+                  } else {
+                    // Demo mode fallback
+                    _onAdvanceRound();
+                  }
+                  setShowModal(false);
+                },
               });
-            } else {
-              modalContent = ModalContent.WaitingPlayersModal({ playerState, roomState });
+            }
+            // GAME_END phase
+            else if (roomState.phase === "GAME_END") {
+              modalContent = ModalContent.GameEndModal({
+                roomState,
+                isAdmin,
+                onResetGame,
+                onNewDeck,
+              });
             }
           }
-          // VOTING phase
-          else if (roomState.phase === "VOTING") {
-            modalContent = ModalContent.VotingModal({
-              roomState,
-              playerState,
-              selectedCardId,
-              localVotedCardId,
-              isStoryteller,
-              isSpectator,
-              setSelectedCardId,
-              handleVote,
-            });
-          }
-          // REVEAL phase
-          else if (roomState.phase === "REVEAL") {
-            modalContent = ModalContent.RevealModal({
-              roomState,
-              playerState,
-              isAdmin,
-              onAdvanceRound: () => {
-                if (socket) {
-                  socket.emit("advanceRound");
-                } else {
-                  // Demo mode fallback
-                  _onAdvanceRound();
-                }
-                setShowModal(false);
-              },
-            });
-          }
-          // GAME_END phase
-          else if (roomState.phase === "GAME_END") {
-            modalContent = ModalContent.GameEndModal({
-              roomState,
-              isAdmin,
-              onResetGame,
-              onNewDeck,
-            });
-          }
-        }
 
-        return modalContent ? (
-          <Modal
-            isOpen={true}
-            onClose={() => setShowModal(false)}
-            header={modalContent.header}
-            footer={modalContent.footer}
-            opaqueBackdrop={!isInGame}
-          >
-            {modalContent.content}
-          </Modal>
-        ) : null;
-      })()}
+          return modalContent ? (
+            <Modal
+              isOpen={true}
+              onClose={() => setShowModal(false)}
+              header={modalContent.header}
+              footer={modalContent.footer}
+              opaqueBackdrop={!isInGame}
+            >
+              {modalContent.content}
+            </Modal>
+          ) : null;
+        })()}
     </div>
   );
 }
