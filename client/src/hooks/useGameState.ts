@@ -62,6 +62,17 @@ export function useGameState(socket: Socket | null) {
       setTimeout(() => setError(null), 5000);
     });
 
+    socket.on('kicked', (data: { message: string }) => {
+      // Show alert to user
+      alert(data.message);
+      
+      // Clear local storage to prevent auto-reconnect
+      localStorage.removeItem('dixit-clientId');
+      
+      // Reload page to return to join screen
+      window.location.reload();
+    });
+
     socket.on('phaseChanged', (data: { phase: string }) => {
       console.log('Phase changed to:', data.phase);
     });
@@ -70,6 +81,7 @@ export function useGameState(socket: Socket | null) {
       socket.off('roomState');
       socket.off('playerState');
       socket.off('error');
+      socket.off('kicked');
       socket.off('phaseChanged');
     };
   }, [socket]);

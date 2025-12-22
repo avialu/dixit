@@ -22,6 +22,8 @@ interface LobbyModalProps {
   onSetAllowPlayerUploads: (allow: boolean) => void;
   onUploadTokenImage: (imageData: string | null) => void;
   handleLogout: () => void;
+  onKickPlayer: (playerId: string) => void;
+  onPromotePlayer: (playerId: string) => void;
 }
 
 interface StorytellerModalProps {
@@ -88,6 +90,8 @@ export function LobbyModal(props: LobbyModalProps) {
     onSetAllowPlayerUploads,
     onUploadTokenImage,
     handleLogout,
+    onKickPlayer,
+    onPromotePlayer,
   } = props;
 
   const handleRemoveTokenImage = () => {
@@ -198,8 +202,47 @@ export function LobbyModal(props: LobbyModalProps) {
                     >
                       {player.name}
                     </span>
+                    {player.isAdmin && (
+                      <Icon.Crown 
+                        size={IconSize.medium} 
+                        className="admin-crown-icon"
+                        style={{ color: '#f1c40f' }}
+                      />
+                    )}
                     {isMe && <Badge variant="you" />}
                     {player.isAdmin && <Badge variant="admin" />}
+                    
+                    {/* Admin controls */}
+                    {isAdmin && !isMe && (
+                      <div className="admin-controls">
+                        {!player.isAdmin && (
+                          <Button
+                            variant="icon"
+                            onClick={() => {
+                              if (window.confirm(`Make ${player.name} the admin?\n\nYou will become a regular player.`)) {
+                                onPromotePlayer(player.id);
+                              }
+                            }}
+                            title="Make admin"
+                            className="btn-make-admin"
+                          >
+                            <Icon.Crown size={IconSize.small} />
+                          </Button>
+                        )}
+                        <Button
+                          variant="icon"
+                          onClick={() => {
+                            if (window.confirm(`Kick ${player.name}? Their images will be transferred to you.`)) {
+                              onKickPlayer(player.id);
+                            }
+                          }}
+                          title="Kick player"
+                          className="btn-kick"
+                        >
+                          <Icon.Trash size={IconSize.small} />
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>

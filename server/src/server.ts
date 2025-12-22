@@ -144,16 +144,16 @@ npm start</pre>
     socket.on("reconnect", (data) => {
       try {
         const { clientId } = data;
-        
+
         if (!clientId) {
           socket.emit("error", { message: "clientId is required" });
           return;
         }
-        
+
         // Re-register the socket (works for both players and spectators)
         socketToClient.set(socket.id, clientId);
         console.log(`Socket re-registered for clientId: ${clientId}`);
-        
+
         // Send fresh state
         broadcastRoomState();
         sendPlayerState(socket.id, clientId);
@@ -508,10 +508,14 @@ npm start</pre>
         if (targetSocketId) {
           const targetSocket = io.sockets.sockets.get(targetSocketId);
           if (targetSocket) {
-            targetSocket.emit("error", {
-              message: "You have been kicked from the game",
+            // Send a specific "kicked" event so client can handle redirect
+            targetSocket.emit("kicked", {
+              message: "You have been kicked from the game by the admin",
             });
-            targetSocket.disconnect(true);
+            // Small delay to ensure event is received before disconnect
+            setTimeout(() => {
+              targetSocket.disconnect(true);
+            }, 100);
           }
           socketToClient.delete(targetSocketId);
         }

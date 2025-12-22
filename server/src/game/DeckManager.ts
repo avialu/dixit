@@ -140,9 +140,9 @@ export class DeckManager {
   }
 
   reset(): void {
-    this.deck = [];
+    // Just unlock the deck, keep all uploaded images
     this.locked = false;
-    this.imageCountByPlayer.clear();
+    // Note: deck and imageCountByPlayer are preserved on reset
     // Note: allowPlayerUploads is preserved on reset
   }
 
@@ -176,6 +176,33 @@ export class DeckManager {
     this.imageCountByPlayer.delete(playerId);
     
     return removedCount;
+  }
+
+  /**
+   * Transfer all images from one player to another
+   * Used when a player is kicked or leaves
+   */
+  transferImages(fromPlayerId: string, toPlayerId: string): number {
+    let transferredCount = 0;
+    
+    // Update ownership of all images from the source player
+    this.deck.forEach(card => {
+      if (card.uploadedBy === fromPlayerId) {
+        card.uploadedBy = toPlayerId;
+        transferredCount++;
+      }
+    });
+    
+    // Update image counts
+    const fromCount = this.imageCountByPlayer.get(fromPlayerId) || 0;
+    const toCount = this.imageCountByPlayer.get(toPlayerId) || 0;
+    
+    this.imageCountByPlayer.delete(fromPlayerId);
+    this.imageCountByPlayer.set(toPlayerId, toCount + fromCount);
+    
+    console.log(`Transferred ${transferredCount} images from ${fromPlayerId} to ${toPlayerId}`);
+    
+    return transferredCount;
   }
 
   /**

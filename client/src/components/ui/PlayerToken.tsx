@@ -60,9 +60,7 @@ export function PlayerToken({
           style={{
             background: playerColor || PLAYER_TOKEN_COLORS[0],
           }}
-        >
-          <div className="token-plus-sign">+</div>
-        </div>
+        />
       )}
       {children}
     </div>

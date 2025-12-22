@@ -6,6 +6,7 @@ import { Modal } from "../components/Modal";
 import * as ModalContent from "../components/ModalContent";
 import { ProfileImageUpload } from "../components/ProfileImageUpload";
 import { Button, Icon, IconSize } from "../components/ui";
+import { useNotifications } from "../hooks/useNotifications";
 
 interface UnifiedGamePageProps {
   roomState: RoomState | null;
@@ -81,6 +82,22 @@ export function UnifiedGamePage({
 
   // Detect demo mode (no socket connection)
   const isDemoMode = socket === null;
+
+  // Handle notification clicks - open appropriate modal
+  const handleNotificationClick = (action: "openCards" | "openResults") => {
+    console.log("Notification click handler - Action:", action);
+    if (action === "openCards") {
+      setModalType("cards");
+      setShowModal(true);
+    } else if (action === "openResults") {
+      setModalType("cards");
+      setShowModal(true);
+    }
+  };
+
+  // Enable notifications for mobile/background play
+  const { notificationPermission, requestNotificationPermission } =
+    useNotifications(roomState, playerState, playerId, handleNotificationClick);
 
   // Fetch server URL on mount (for cases where we need it before roomState is available)
   useEffect(() => {
@@ -249,6 +266,18 @@ export function UnifiedGamePage({
     setNewName("");
   };
 
+  const handleKickPlayer = (targetPlayerId: string) => {
+    if (socket) {
+      socket.emit("adminKickPlayer", { targetPlayerId });
+    }
+  };
+
+  const handlePromotePlayer = (targetPlayerId: string) => {
+    if (socket) {
+      socket.emit("adminPromotePlayer", { targetPlayerId });
+    }
+  };
+
   const handleStorytellerSubmit = () => {
     if (selectedCardId && clue.trim()) {
       onStorytellerSubmit(selectedCardId, clue.trim());
@@ -377,6 +406,108 @@ export function UnifiedGamePage({
           onCloseQR={() => setShowQR(false)}
         />
       </div>
+
+      {/* Notification Permission Banner */}
+      {notificationPermission === "default" && isJoined && (
+        <div className="notification-banner">
+          <div className="notification-banner-content">
+            <Icon.Info size={IconSize.medium} />
+            <div className="notification-instructions-simple">
+              <span>
+                <strong>Get notified when it's your turn!</strong>
+              </span>
+              <span className="notification-explainer">
+                When you tap "Enable", Safari will ask:{" "}
+                <strong>"Allow notifications?"</strong>
+                <br />→ Tap <strong>"Allow"</strong> ✅ (You'll get alerts even
+                when screen is locked)
+                <br />→ If you tap "Don't Allow" ❌, we'll show you how to fix
+                it in Settings
+              </span>
+            </div>
+            <Button
+              variant="primary"
+              size="small"
+              onClick={requestNotificationPermission}
+              title="This will show Safari's permission dialog"
+            >
+              Enable Notifications
+            </Button>
+            <Button
+              variant="icon"
+              onClick={() => {
+                // Hide banner permanently for this session
+                const banner = document.querySelector(
+                  ".notification-banner"
+                ) as HTMLElement;
+                if (banner) banner.style.display = "none";
+              }}
+              title="Dismiss"
+            >
+              ×
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Notification Denied - Show Instructions */}
+      {notificationPermission === "denied" && isJoined && (
+        <div className="notification-banner notification-banner-denied">
+          <div className="notification-banner-content">
+            <Icon.Warning size={IconSize.medium} />
+            <div className="notification-instructions">
+              <strong>Notifications Blocked</strong>
+              <span>To enable notifications on iPhone:</span>
+              <ol className="settings-steps">
+                <li>
+                  <strong>Step 1:</strong> Open your iPhone{" "}
+                  <strong>Settings</strong> app (gray icon with gears)
+                </li>
+                <li>
+                  <strong>Step 2:</strong> Scroll down and tap{" "}
+                  <strong>Safari</strong>
+                </li>
+                <li>
+                  <strong>Step 3:</strong> Scroll down to{" "}
+                  <strong>"Settings for Websites"</strong> section
+                </li>
+                <li>
+                  <strong>Step 4:</strong> Tap <strong>Notifications</strong>
+                </li>
+                <li>
+                  <strong>Step 5:</strong> Find{" "}
+                  <strong>{window.location.hostname}</strong> in the list
+                </li>
+                <li>
+                  <strong>Step 6:</strong> Change from <strong>"Deny"</strong>{" "}
+                  to <strong>"Allow"</strong>
+                </li>
+                <li>
+                  <strong>Step 7:</strong> Return here and{" "}
+                  <strong>refresh this page</strong>
+                </li>
+              </ol>
+              <span className="settings-note">
+                ⚠️ Note: Requires iOS 16.4 or later. If you don't see the
+                Notifications option, your iOS version doesn't support web
+                notifications yet.
+              </span>
+            </div>
+            <Button
+              variant="icon"
+              onClick={() => {
+                const banner = document.querySelectorAll(
+                  ".notification-banner"
+                )[1] as HTMLElement;
+                if (banner) banner.style.display = "none";
+              }}
+              title="Dismiss"
+            >
+              ×
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* Floating Action Buttons - For Players (not spectators) */}
       {isJoined && !isSpectator && (
@@ -516,6 +647,8 @@ export function UnifiedGamePage({
                 onSetAllowPlayerUploads,
                 onUploadTokenImage,
                 handleLogout,
+                onKickPlayer: handleKickPlayer,
+                onPromotePlayer: handlePromotePlayer,
               });
             }
             // STORYTELLER_CHOICE phase

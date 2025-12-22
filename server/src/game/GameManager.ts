@@ -42,8 +42,34 @@ export class GameManager {
   // Player Management
   addPlayer(name: string, clientId: string): Player {
     if (this.state.players.has(clientId)) {
-      // Reconnection
+      // Reconnection - player object still exists
       const player = this.state.players.get(clientId)!;
+
+      // Check if there's another admin (someone else became admin while they were gone)
+      if (player.isAdmin) {
+        let hasOtherAdmin = false;
+        for (const [id, p] of this.state.players.entries()) {
+          if (id !== clientId && p.isAdmin) {
+            hasOtherAdmin = true;
+            break;
+          }
+        }
+
+        // If someone else is admin now, demote this reconnecting player
+        if (hasOtherAdmin) {
+          player.isAdmin = false;
+          console.log(
+            `${player.name} (${clientId}) reconnected but was demoted (another player is now admin)`
+          );
+        } else {
+          console.log(`${player.name} (${clientId}) reconnected as admin`);
+        }
+      } else {
+        console.log(
+          `${player.name} (${clientId}) reconnected as regular player`
+        );
+      }
+
       player.reconnect();
       return player;
     }
@@ -56,13 +82,29 @@ export class GameManager {
       }
     }
 
-    const isFirstPlayer = this.state.players.size === 0;
-    const player = new Player(clientId, name, isFirstPlayer);
+    // Check if there's already an admin
+    let hasAdmin = false;
+    for (const p of this.state.players.values()) {
+      if (p.isAdmin) {
+        hasAdmin = true;
+        break;
+      }
+    }
+
+    // Only make this player admin if there are no other players (first player)
+    // If there are other players, only make admin if there's no existing admin
+    const shouldBeAdmin = this.state.players.size === 0 || !hasAdmin;
+    const player = new Player(clientId, name, shouldBeAdmin);
     this.state.players.set(clientId, player);
 
-    if (isFirstPlayer) {
-      // Update deck manager with admin ID
-      this.deckManager = new DeckManager(clientId);
+    if (shouldBeAdmin) {
+      console.log(`${name} (${clientId}) joined as admin`);
+      // Update deck manager with admin ID only if this is the first player
+      if (this.state.players.size === 1) {
+        this.deckManager = new DeckManager(clientId);
+      }
+    } else {
+      console.log(`${name} (${clientId}) joined as regular player`);
     }
 
     return player;
@@ -79,17 +121,50 @@ export class GameManager {
     // Actually remove the player from the game (for manual logout)
     const player = this.state.players.get(clientId);
 
-    // Remove their uploaded images (works for both players and spectators)
-    const removedCount = this.deckManager.removePlayerImages(clientId);
-    if (removedCount > 0) {
+    // Check if leaving player is admin
+    const wasAdmin = player?.isAdmin || false;
+
+    // If admin is leaving, transfer admin role to next player
+    if (wasAdmin && this.state.players.size > 1) {
+      // Find first non-leaving player to become admin
+      for (const [pid, p] of this.state.players.entries()) {
+        if (pid !== clientId) {
+          p.isAdmin = true;
+          console.log(`Transferred admin role to ${p.name} (${pid})`);
+          break;
+        }
+      }
+    }
+
+    // Get all images from the leaving player
+    const playerImages = this.deckManager
+      .getAllCards()
+      .filter((card) => card.uploadedBy === clientId);
+
+    // Transfer images to current admin (if any images exist)
+    if (playerImages.length > 0) {
       const userName = player ? player.name : "Spectator";
       console.log(
-        `Removed ${removedCount} images from ${userName} (${clientId}) who logged out`
+        `Transferring ${playerImages.length} images from ${userName} (${clientId}) who logged out to admin`
       );
+
+      // Find current admin to transfer images to
+      let newOwnerId = "";
+      for (const [pid, p] of this.state.players.entries()) {
+        if (p.isAdmin && pid !== clientId) {
+          newOwnerId = pid;
+          break;
+        }
+      }
+
+      // Transfer the images if we found an admin
+      if (newOwnerId) {
+        this.deckManager.transferImages(clientId, newOwnerId);
+      }
     }
 
     if (!player) {
-      // Not a player (spectator or already removed), but images are removed above
+      // Not a player (spectator or already removed)
       console.log(`Spectator logged out: ${clientId}`);
       return;
     }
@@ -130,16 +205,33 @@ export class GameManager {
       throw new Error("Player not found");
     }
 
-    // Remove their uploaded images
-    const removedCount = this.deckManager.removePlayerImages(targetPlayerId);
-    if (removedCount > 0) {
+    // Transfer their images to the admin instead of deleting
+    const transferredCount = this.deckManager.transferImages(
+      targetPlayerId,
+      adminId
+    );
+    if (transferredCount > 0) {
       console.log(
-        `Removed ${removedCount} images from kicked player ${targetPlayer.name}`
+        `Transferred ${transferredCount} images from kicked player ${targetPlayer.name} to admin`
       );
+    }
+
+    // Return their cards to the deck if game hasn't started
+    if (
+      this.state.phase === GamePhase.DECK_BUILDING &&
+      targetPlayer.hand.length > 0
+    ) {
+      console.log(
+        `Returning ${targetPlayer.hand.length} cards from kicked ${targetPlayer.name} back to deck`
+      );
+      this.deckManager.returnCards(targetPlayer.hand);
+      targetPlayer.hand = [];
     }
 
     // Remove the player completely
     this.state.players.delete(targetPlayerId);
+
+    console.log(`Player kicked: ${targetPlayerId} (${targetPlayer.name})`);
   }
 
   changeName(playerId: string, newName: string): void {
@@ -189,6 +281,11 @@ export class GameManager {
       throw new Error("Cannot promote players during an active game");
     }
 
+    const currentAdmin = this.state.players.get(adminId);
+    if (!currentAdmin) {
+      throw new Error("Current admin not found");
+    }
+
     const targetPlayer = this.state.players.get(targetPlayerId);
     if (!targetPlayer) {
       throw new Error("Player not found");
@@ -198,16 +295,37 @@ export class GameManager {
       throw new Error("Player is already an admin");
     }
 
+    // Demote current admin to regular player
+    currentAdmin.isAdmin = false;
+    console.log(`${currentAdmin.name} (${adminId}) is no longer admin`);
+
     // Promote target player
     targetPlayer.isAdmin = true;
-
-    // Update deck manager to recognize new admin
-    // Note: DeckManager stores adminId but we'll need to ensure both admins can manage
+    console.log(`${targetPlayer.name} (${targetPlayerId}) is now admin`);
   }
 
   reconnectPlayer(clientId: string): Player | null {
     const player = this.state.players.get(clientId);
     if (player) {
+      // Check if there's another admin (someone else became admin while they were disconnected)
+      if (player.isAdmin) {
+        let hasOtherAdmin = false;
+        for (const [id, p] of this.state.players.entries()) {
+          if (id !== clientId && p.isAdmin) {
+            hasOtherAdmin = true;
+            break;
+          }
+        }
+
+        // If someone else is admin now, demote this reconnecting player
+        if (hasOtherAdmin) {
+          player.isAdmin = false;
+          console.log(
+            `${player.name} (${clientId}) reconnected but was demoted (another player is now admin)`
+          );
+        }
+      }
+
       player.reconnect();
       return player;
     }
