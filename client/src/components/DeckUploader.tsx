@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { resizeAndCompressImages } from "../utils/imageResize";
 import { RoomState } from "../hooks/useGameState";
+import { Button } from "./ui";
 
 interface DeckUploaderProps {
   roomState: RoomState;
@@ -346,7 +347,7 @@ export function DeckUploader({
         />
 
         <div className="upload-buttons">
-          <button
+          <Button
             onClick={() => fileInputRef.current?.click()}
             disabled={uploading || myImages.length >= 200 || !canUpload}
             className="btn-upload"
@@ -363,10 +364,10 @@ export function DeckUploader({
                 <span>Upload Images</span>
               </>
             )}
-          </button>
+          </Button>
 
           {!isMobile && (
-            <button
+            <Button
               onClick={() => folderInputRef.current?.click()}
               disabled={uploading || myImages.length >= 200 || !canUpload}
               className="btn-upload"
@@ -383,7 +384,7 @@ export function DeckUploader({
                   <span>Upload Folder</span>
                 </>
               )}
-            </button>
+            </Button>
           )}
         </div>
 
@@ -417,14 +418,14 @@ export function DeckUploader({
       {/* Images Grid Section */}
       {myImages.length > 0 && (
         <div className="images-actions">
-          <button
+          <Button
             onClick={handleDeleteAll}
             className="btn-delete-all"
             title="Delete all your images"
           >
             <span className="btn-icon">🗑️</span>
             <span>Delete All ({myImages.length})</span>
-          </button>
+          </Button>
         </div>
       )}
 
@@ -451,7 +452,7 @@ export function DeckUploader({
                       <span className="placeholder-icon">🖼️</span>
                     </div>
                   )}
-                  <button
+                  <Button
                     onClick={async () => {
                       const cachedImage = imageCache[img.id];
 
@@ -497,11 +498,11 @@ export function DeckUploader({
                         }
                       }
                     }}
-                    className="preview-delete-btn"
+                    className="x-button preview-delete-btn"
                     title="Delete image"
                   >
                     ×
-                  </button>
+                  </Button>
                 </div>
               );
             })}

@@ -1,4 +1,5 @@
 import { ReactNode } from "react";
+import { CloseButton } from "./ui";
 
 interface ModalProps {
   isOpen: boolean;
@@ -48,16 +49,7 @@ export function Modal({
         onClick={(e) => e.stopPropagation()}
       >
         {/* Close Button */}
-        {showCloseButton && (
-          <button
-            className="modal-close-button"
-            onClick={onClose}
-            aria-label="Close modal"
-            title="Close and view board"
-          >
-            ✕
-          </button>
-        )}
+        {showCloseButton && <CloseButton onClose={onClose} />}
 
         {/* Content Container */}
         <div className="modal-content">

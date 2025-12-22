@@ -5,6 +5,7 @@ import { QRCode } from "../components/QRCode";
 import { Modal } from "../components/Modal";
 import * as ModalContent from "../components/ModalContent";
 import { ProfileImageUpload } from "../components/ProfileImageUpload";
+import { Button } from "../components/ui";
 
 interface UnifiedGamePageProps {
   roomState: RoomState | null;
@@ -75,6 +76,8 @@ export function UnifiedGamePage({
   const [newName, setNewName] = useState("");
   // Track profile image for join screen
   const [profileImage, setProfileImage] = useState<string | null>(null);
+  // Track QR code visibility
+  const [showQR, setShowQR] = useState(true);
 
   // Detect demo mode (no socket connection)
   const isDemoMode = socket === null;
@@ -333,20 +336,22 @@ export function UnifiedGamePage({
                 autoFocus
                 className="name-input"
               />
-              <button
+              <Button
                 type="submit"
+                variant="primary"
+                size="large"
                 disabled={!name.trim()}
-                className="btn-primary btn-large"
               >
                 🚀 Join Game
-              </button>
-              <button
+              </Button>
+              <Button
                 type="button"
+                variant="secondary"
+                size="large"
                 onClick={handleSpectatorJoin}
-                className="btn-secondary btn-large"
               >
                 👀 Join as Spectator
-              </button>
+              </Button>
             </form>
             <div className="qr-code-section">
               <p className="qr-hint">📱 Scan to join from mobile</p>
@@ -366,6 +371,8 @@ export function UnifiedGamePage({
         <GameBoard
           roomState={roomState}
           triggerAnimation={triggerBoardAnimation}
+          showQR={showQR}
+          onCloseQR={() => setShowQR(false)}
         />
       </div>
 
@@ -378,14 +385,32 @@ export function UnifiedGamePage({
               showModal && modalType === "cards" ? "hidden" : ""
             }`}
             onClick={openCards}
+            title={
+              !isInGame ? "Players" :
+              roomState.phase === "STORYTELLER_CHOICE" ? "My Cards" :
+              roomState.phase === "PLAYERS_CHOICE" ? "Choose Card" :
+              roomState.phase === "VOTING" ? "Vote" :
+              "Results"
+            }
           >
-            {!isInGame && "👥 Players"}
-            {roomState.phase === "STORYTELLER_CHOICE" && "🎭 My Cards"}
-            {roomState.phase === "PLAYERS_CHOICE" && "🃏 Choose Card"}
-            {roomState.phase === "VOTING" && "🗳️ Vote"}
-            {roomState.phase === "REVEAL" && "🎨 Results"}
-            {roomState.phase === "GAME_END" && "🏆 Results"}
+            {!isInGame && "⚙️"}
+            {roomState.phase === "STORYTELLER_CHOICE" && "🃏"}
+            {roomState.phase === "PLAYERS_CHOICE" && "🃏"}
+            {roomState.phase === "VOTING" && "🗳️"}
+            {roomState.phase === "REVEAL" && "🎨"}
+            {roomState.phase === "GAME_END" && "🏆"}
           </button>
+
+          {/* QR Button - Show when QR is closed during deck building */}
+          {!isInGame && !showQR && (
+            <button
+              className="floating-action-button qr-button"
+              onClick={() => setShowQR(true)}
+              title="Show QR Code"
+            >
+              📱
+            </button>
+          )}
 
           {/* Admin Start Game Button - During deck building */}
           {isAdmin && !isInGame && (
@@ -404,14 +429,28 @@ export function UnifiedGamePage({
 
       {/* Floating Action Buttons - For Spectators (only in deck building) */}
       {isJoined && isSpectator && !isInGame && (
-        <button
-          className={`floating-action-button cards-button ${
-            showModal && modalType === "cards" ? "hidden" : ""
-          }`}
-          onClick={openCards}
-        >
-          👥 Players
-        </button>
+        <>
+          <button
+            className={`floating-action-button cards-button ${
+              showModal && modalType === "cards" ? "hidden" : ""
+            }`}
+            onClick={openCards}
+            title="Players"
+          >
+            ⚙️
+          </button>
+
+          {/* QR Button for spectators */}
+          {!showQR && (
+            <button
+              className="floating-action-button qr-button"
+              onClick={() => setShowQR(true)}
+              title="Show QR Code"
+            >
+              📱
+            </button>
+          )}
+        </>
       )}
 
       {/* Admin Continue Button - During REVEAL phase on board */}

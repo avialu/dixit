@@ -696,26 +696,47 @@ select {
   opacity: 0.3;
 }
 
+/* ========================================
+   X BUTTON - SINGLE SOURCE OF TRUTH
+   ======================================== */
+.x-button {
+  background: #e74c3c;
+  color: white;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  font-weight: bold;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  line-height: 1;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+.x-button:hover {
+  background: #c0392b;
+  transform: scale(1.15);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+.x-button:active {
+  background: #a93226;
+  transform: scale(0.95);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+}
+
+/* Preview Delete Button - extends x-button */
 .preview-delete-btn {
   position: absolute;
   top: 6px;
   right: 6px;
   width: 30px;
   height: 30px;
-  border-radius: 50%;
-  border: 2px solid #fff;
-  background: rgba(220, 53, 69, 0.95);
-  color: #fff;
   font-size: 20px;
-  font-weight: bold;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  padding: 0;
-  line-height: 1;
-  transition: all 0.2s;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
   opacity: 0;
   transform: scale(0.8);
   z-index: 10;
@@ -724,16 +745,6 @@ select {
 .image-preview-card:hover .preview-delete-btn {
   opacity: 1;
   transform: scale(1);
-}
-
-.preview-delete-btn:hover {
-  background: rgba(192, 57, 43, 1);
-  transform: scale(1.15);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
-}
-
-.preview-delete-btn:active {
-  transform: scale(0.95);
 }
 
 /* Mobile and touch device optimizations */
@@ -941,6 +952,18 @@ select {
   border: 3px solid rgba(74, 144, 226, 0.6);
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6), 0 0 20px rgba(74, 144, 226, 0.3);
   backdrop-filter: blur(10px);
+  position: relative;
+}
+
+/* Board QR Close Button - extends x-button */
+.board-qr-close-btn {
+  position: absolute;
+  top: -0.75rem;
+  right: -0.75rem;
+  width: 2.5rem;
+  height: 2.5rem;
+  font-size: 1.5rem;
+  z-index: 10;
 }
 
 .board-qr-hint {
@@ -2177,32 +2200,15 @@ select {
   font-size: 3rem;
 }
 
+/* Profile Upload Remove - extends x-button */
 .profile-upload-remove {
   position: absolute;
   bottom: -5px;
   left: -5px;
   width: 28px;
   height: 28px;
-  border-radius: 50%;
-  border: 2px solid #fff;
-  background: #e74c3c;
-  color: #fff;
   font-size: 18px;
-  font-weight: bold;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  padding: 0;
-  line-height: 1;
-  transition: all 0.2s;
   z-index: 2;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-}
-
-.profile-upload-remove:hover {
-  background: #c0392b;
-  transform: scale(1.15);
 }
 
 /* Profile Image Section on Join Screen */
@@ -2922,9 +2928,36 @@ select {
   right: 2rem;
 }
 
+.floating-action-button.qr-button {
+  bottom: 2rem;
+  right: 7.5rem; /* Middle position - to the left of settings */
+  background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+  box-shadow: 0 8px 24px rgba(52, 152, 219, 0.4);
+  animation: pulse-glow-blue 2s ease-in-out infinite;
+}
+
+.floating-action-button.qr-button:hover {
+  transform: translateY(-4px) scale(1.05);
+  box-shadow: 0 12px 32px rgba(52, 152, 219, 0.6);
+}
+
+.floating-action-button.qr-button:active {
+  transform: translateY(-2px) scale(1.02);
+}
+
+@keyframes pulse-glow-blue {
+  0%,
+  100% {
+    box-shadow: 0 8px 24px rgba(52, 152, 219, 0.4);
+  }
+  50% {
+    box-shadow: 0 8px 32px rgba(52, 152, 219, 0.7);
+  }
+}
+
 .floating-action-button.start-game-button {
   bottom: 2rem;
-  right: 18rem; /* Same level as cards button, positioned to the left */
+  right: 13rem; /* Leftmost position - to the left of QR */
   background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%);
   box-shadow: 0 8px 24px rgba(243, 156, 18, 0.4);
   animation: pulse-glow-orange 2s ease-in-out infinite;
@@ -2987,42 +3020,15 @@ select {
   }
 }
 
+/* Modal Close Button - extends x-button */
 .modal-close-button {
   position: absolute;
   top: 0.75rem;
   right: 0.75rem;
-  z-index: 102;
   width: 2.75rem;
   height: 2.75rem;
-  background: rgba(44, 62, 80, 0.95);
-  color: white;
-  border: 2px solid rgba(255, 255, 255, 0.2);
-  border-radius: 12px;
   font-size: 1.5rem;
-  font-weight: bold;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s ease;
-  line-height: 1;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-  /* Touch optimization */
-  -webkit-tap-highlight-color: transparent;
-  touch-action: manipulation;
-}
-
-.modal-close-button:hover {
-  background: rgba(52, 73, 94, 1);
-  border-color: rgba(255, 255, 255, 0.4);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
-  transform: scale(1.05);
-}
-
-.modal-close-button:active {
-  background: rgba(231, 76, 60, 0.95);
-  transform: scale(0.95);
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+  z-index: 102;
 }
 
 .modal-content {
@@ -4359,6 +4365,14 @@ select {
     box-sizing: border-box;
   }
 
+  .board-qr-close-btn {
+    width: 2.25rem;
+    height: 2.25rem;
+    font-size: 1.3rem;
+    top: 0.5rem;
+    right: 0.5rem;
+  }
+
   .board-qr-hint {
     font-size: 0.9rem;
     margin-bottom: 0.75rem;
@@ -4566,7 +4580,6 @@ select {
     width: 3rem;
     height: 3rem;
     font-size: 1.5rem;
-    border-radius: 10px;
     /* Ensure it's easily tappable */
     min-width: 44px;
     min-height: 44px;
@@ -4589,9 +4602,16 @@ select {
     right: 1rem;
   }
 
+  .floating-action-button.qr-button {
+    bottom: 1rem;
+    right: 6rem; /* Middle position - to the left of settings */
+    padding: 1rem 1.5rem;
+    font-size: 1rem;
+  }
+
   .floating-action-button.start-game-button {
     bottom: 1rem;
-    right: 13rem; /* Same level as cards button, positioned to the left */
+    right: 11rem; /* Leftmost position - to the left of QR */
     padding: 1rem 1.5rem;
     font-size: 1rem;
   }
@@ -4903,7 +4923,6 @@ select {
     width: 3rem;
     height: 3rem;
     font-size: 1.4rem;
-    border-radius: 10px;
     /* iOS tap target minimum */
     min-width: 44px;
     min-height: 44px;
@@ -4926,9 +4945,16 @@ select {
     right: 0.5rem;
   }
 
+  .floating-action-button.qr-button {
+    bottom: 0.5rem;
+    right: 5rem; /* Middle position - to the left of settings */
+    padding: 0.75rem 1rem;
+    font-size: 0.9rem;
+  }
+
   .floating-action-button.start-game-button {
     bottom: 0.5rem;
-    right: 10rem; /* Same level as cards button, positioned to the left */
+    right: 9.5rem; /* Leftmost position - to the left of QR */
     padding: 0.75rem 1rem;
     font-size: 0.9rem;
   }
@@ -4951,6 +4977,14 @@ select {
   /* Smaller QR code */
   .board-qr-code-container canvas {
     max-width: 140px;
+  }
+
+  .board-qr-close-btn {
+    width: 2rem;
+    height: 2rem;
+    font-size: 1.2rem;
+    top: 0.5rem;
+    right: 0.5rem;
   }
 
   /* Compact join box */

@@ -2,6 +2,7 @@ import { RoomState, PlayerState } from "../hooks/useGameState";
 import { CardView } from "../components/CardView";
 import { DeckUploader } from "../components/DeckUploader";
 import { ProfileImageUpload } from "../components/ProfileImageUpload";
+import { Button, Badge, PlayerToken, getPlayerColor, Input } from "./ui";
 
 // Types for modal content props
 interface LobbyModalProps {
@@ -101,9 +102,9 @@ export function LobbyModal(props: LobbyModalProps) {
 
   const footer = (
     <>
-      <button onClick={handleLogout} className="btn-secondary">
+      <Button variant="secondary" onClick={handleLogout}>
         🚪 Logout & Return to Join Screen
-      </button>
+      </Button>
     </>
   );
 
@@ -128,87 +129,54 @@ export function LobbyModal(props: LobbyModalProps) {
                     imageUrl={player.tokenImage || null}
                     onUpload={onUploadTokenImage}
                     onRemove={handleRemoveTokenImage}
-                    playerColor={(() => {
-                      const colors = [
-                        "#f39c12",
-                        "#3498db",
-                        "#2ecc71",
-                        "#e74c3c",
-                        "#9b59b6",
-                        "#1abc9c",
-                      ];
-                      const index = roomState.players.findIndex(
-                        (p) => p.id === player.id
-                      );
-                      return colors[index % colors.length];
-                    })()}
+                    playerColor={getPlayerColor(
+                      roomState.players.findIndex((p) => p.id === player.id)
+                    )}
                     size="small"
                   />
                 ) : (
-                  <div className="player-token-preview">
-                    {player.tokenImage ? (
-                      <img
-                        src={player.tokenImage}
-                        alt={`${player.name}'s token`}
-                        className="token-image"
-                      />
-                    ) : (
-                      <div
-                        className="token-color-preview"
-                        style={{
-                          background: (() => {
-                            const colors = [
-                              "#f39c12",
-                              "#3498db",
-                              "#2ecc71",
-                              "#e74c3c",
-                              "#9b59b6",
-                              "#1abc9c",
-                            ];
-                            const index = roomState.players.findIndex(
-                              (p) => p.id === player.id
-                            );
-                            return colors[index % colors.length];
-                          })(),
-                        }}
-                      >
-                        <div className="token-plus-sign">+</div>
-                      </div>
+                  <PlayerToken
+                    imageUrl={player.tokenImage}
+                    playerColor={getPlayerColor(
+                      roomState.players.findIndex((p) => p.id === player.id)
                     )}
-                  </div>
+                    size="small"
+                  />
                 )}
 
                 {isEditing ? (
                   <div className="player-name-edit">
-                    <input
+                    <Input
                       type="text"
+                      variant="inline"
                       value={newName}
                       onChange={(e) => setNewName(e.target.value)}
                       placeholder="Enter new name"
                       maxLength={50}
                       autoFocus
-                      className="name-input-inline"
                       onKeyDown={(e) => {
                         if (e.key === "Enter") handleSaveName();
                         if (e.key === "Escape") handleCancelEditName();
                       }}
                     />
                     <div className="name-edit-actions">
-                      <button
+                      <Button
+                        variant="icon"
                         onClick={handleSaveName}
                         disabled={!newName.trim()}
-                        className="btn-icon btn-save"
+                        className="btn-save"
                         title="Save"
                       >
                         ✓
-                      </button>
-                      <button
+                      </Button>
+                      <Button
+                        variant="icon"
                         onClick={handleCancelEditName}
-                        className="btn-icon btn-cancel"
+                        className="btn-cancel"
                         title="Cancel"
                       >
-                        ✕
-                      </button>
+                        ×
+                      </Button>
                     </div>
                   </div>
                 ) : (
@@ -228,8 +196,8 @@ export function LobbyModal(props: LobbyModalProps) {
                     >
                       {player.name}
                     </span>
-                    {isMe && <span className="you-badge">(You)</span>}
-                    {player.isAdmin && <span className="admin-badge">👑</span>}
+                    {isMe && <Badge variant="you" />}
+                    {player.isAdmin && <Badge variant="admin" />}
                   </div>
                 )}
               </div>
@@ -288,22 +256,23 @@ export function StorytellerChoiceModal(props: StorytellerModalProps) {
 
   const footer = !isSubmitted ? (
     <div className="clue-submit-row">
-      <input
+      <Input
         type="text"
+        variant="inline"
         placeholder="Enter your clue..."
         value={clue}
         onChange={(e) => setClue(e.target.value)}
         maxLength={200}
-        className="clue-input-inline"
         autoFocus
       />
-      <button
+      <Button
+        variant="primary"
         onClick={handleStorytellerSubmit}
         disabled={!selectedCardId || !clue.trim()}
-        className="btn-primary btn-inline"
+        className="btn-inline"
       >
         Submit
-      </button>
+      </Button>
     </div>
   ) : null;
 
@@ -390,13 +359,14 @@ export function PlayerChoiceModal(props: PlayerChoiceModalProps) {
   );
 
   const footer = !isSubmitted ? (
-    <button
+    <Button
+      variant="primary"
+      size="large"
       onClick={handlePlayerSubmit}
       disabled={!selectedCardId}
-      className="btn-primary btn-large"
     >
       Submit Card
-    </button>
+    </Button>
   ) : null;
 
   return {
@@ -543,13 +513,14 @@ export function VotingModal(props: VotingModalProps) {
   );
 
   const footer = canVote ? (
-    <button
+    <Button
+      variant="primary"
+      size="large"
       onClick={handleVote}
       disabled={!selectedCardId}
-      className="btn-primary btn-large"
     >
       Submit Vote
-    </button>
+    </Button>
   ) : hasVoted && !allVotesIn ? (
     <p style={{ color: "#95a5a6", margin: 0 }}>⏳ Waiting...</p>
   ) : null;
@@ -601,9 +572,9 @@ export function RevealModal(props: RevealModalProps) {
   );
 
   const footer = isAdmin ? (
-    <button onClick={onAdvanceRound} className="btn-continue">
+    <Button variant="continue" onClick={onAdvanceRound}>
       ▶️ Continue
-    </button>
+    </Button>
   ) : (
     <p style={{ color: "#95a5a6", fontStyle: "italic", margin: 0 }}>
       ⏳ Waiting...
@@ -655,12 +626,12 @@ export function GameEndModal(props: GameEndModalProps) {
 
   const footer = isAdmin ? (
     <div className="game-end-actions">
-      <button onClick={onResetGame} className="btn-primary">
+      <Button variant="primary" onClick={onResetGame}>
         Reset Game
-      </button>
-      <button onClick={onNewDeck} className="btn-secondary">
+      </Button>
+      <Button variant="secondary" onClick={onNewDeck}>
         New Deck
-      </button>
+      </Button>
     </div>
   ) : null;
 

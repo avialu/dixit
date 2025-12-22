@@ -1,4 +1,5 @@
 import { resizeAndCompressImage } from "../utils/imageResize";
+import { Button } from "./ui";
 
 interface ProfileImageUploadProps {
   imageUrl: string | null;
@@ -64,9 +65,9 @@ export function ProfileImageUpload({
         />
       </label>
       {imageUrl && (
-        <button
+        <Button
           type="button"
-          className="profile-upload-remove"
+          className="x-button profile-upload-remove"
           onClick={(e) => {
             e.preventDefault();
             onRemove();
@@ -74,7 +75,7 @@ export function ProfileImageUpload({
           title="Remove image"
         >
           ×
-        </button>
+        </Button>
       )}
     </div>
   );

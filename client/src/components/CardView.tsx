@@ -1,3 +1,5 @@
+import { Badge } from "./ui";
+
 interface CardViewProps {
   cards: Array<{
     id?: string;
@@ -135,18 +137,12 @@ export function CardView({
               <div className="card-header">
                 {/* Card owner */}
                 <div className="card-owner">
-                  {isStoryteller && (
-                    <span
-                      className="storyteller-badge"
-                      aria-label="Storyteller"
-                    >
-                      🎭{" "}
-                    </span>
-                  )}
+                  {isStoryteller && <Badge variant="storyteller" />}
                   {ownerName}
                   {scoreDeltas && (
-                    <span
-                      className="owner-points"
+                    <Badge
+                      variant="score"
+                      value={ownerPoints}
                       style={{
                         background:
                           ownerPoints > 0
@@ -154,10 +150,7 @@ export function CardView({
                             : "rgba(149, 165, 166, 0.5)",
                         color: "white",
                       }}
-                      aria-label={`Earned ${ownerPoints} points`}
-                    >
-                      +{ownerPoints}
-                    </span>
+                    />
                   )}
                 </div>
 
@@ -232,12 +225,7 @@ export function CardView({
 
             {/* Vote Count Badge (during voting, before reveal) */}
             {showDrawer && !showResults && votes && voteCount > 0 && (
-              <div
-                className="vote-count-badge"
-                aria-label={`${voteCount} votes`}
-              >
-                {voteCount}
-              </div>
+              <Badge variant="votes" value={voteCount} />
             )}
           </div>
         );

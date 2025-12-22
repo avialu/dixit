@@ -1,0 +1,682 @@
+# Dixit Game - Development Guidelines
+
+> **AI Assistant Rules**: Follow ALL guidelines in this file for EVERY response. This is mandatory.
+
+---
+
+## 🚨 CRITICAL WORKFLOW - READ FIRST
+
+### Before ANY Code Changes
+
+1. ✅ **Read and understand** the relevant code sections
+2. ✅ **Run tests** to establish baseline: `npm run build` (client)
+3. ✅ **Check linter** errors for files you'll modify
+4. ✅ **Verify** all imports resolve correctly
+
+### After ANY Code Changes
+
+1. ✅ **Run linter** on modified files
+2. ✅ **Build client**: `cd client && npm run build`
+3. ✅ **Test in browser** if UI changes (describe what you tested)
+4. ✅ **No regressions** - existing features must still work
+
+### If Build Fails
+
+- ❌ **STOP** - Do not proceed to next task
+- 🔍 **Fix** TypeScript/build errors immediately
+- ✅ **Verify** fix with another build
+- 📝 **Document** what was broken and how you fixed it
+
+---
+
+## 📱 MOBILE-FIRST DESIGN PRINCIPLES
+
+### Learn from the Best: Google, Instagram, X (Twitter)
+
+#### 1. Touch Targets (Instagram, Twitter)
+
+```typescript
+// ❌ BAD - Too small for mobile
+<button style={{ padding: '4px' }}>Click</button>
+
+// ✅ GOOD - Minimum 44x44px touch target
+<Button variant="primary" style={{ minHeight: '44px', minWidth: '44px' }}>
+  Click
+</Button>
+```
+
+#### 2. Thumb-Friendly Zones (Mobile Apps Standard)
+
+- **Primary actions** → Bottom 1/3 of screen (easy thumb reach)
+- **Secondary actions** → Middle 1/3 (stretch reach)
+- **Informational content** → Top 1/3 (scroll to view)
+
+```typescript
+// ✅ GOOD - Primary button at bottom
+<div className="modal-footer">
+  <Button variant="continue">Submit</Button>
+</div>
+```
+
+#### 3. Progressive Disclosure (Google Apps)
+
+- Show ONLY essential information first
+- Hide advanced options behind "Show more" or settings
+- Use modals/drawers for detailed info
+
+```typescript
+// ✅ GOOD - Simple first, details on demand
+<Button onClick={() => setShowAdvanced(!showAdvanced)}>
+  Advanced Options ▼
+</Button>;
+{
+  showAdvanced && <AdvancedSettings />;
+}
+```
+
+#### 4. Immediate Feedback (Instagram-like)
+
+- **Every tap** → visual feedback (scale, color change)
+- **Loading states** → skeleton screens or spinners
+- **Success/Error** → clear, brief toast notifications
+
+```typescript
+// ✅ GOOD - Loading state
+{
+  uploading ? (
+    <Button disabled>
+      <span>⏳</span> Uploading...
+    </Button>
+  ) : (
+    <Button onClick={handleUpload}>Upload</Button>
+  );
+}
+```
+
+#### 5. Gesture Support (Twitter/Instagram)
+
+- **Swipe** → navigate back, dismiss modals
+- **Pull-to-refresh** → refresh content
+- **Long-press** → context menus, details
+
+#### 6. Performance (All Top Apps)
+
+- **Lazy load** images and heavy components
+- **Optimize images** - use WebP, resize before upload
+- **Debounce** search inputs (300ms minimum)
+- **Virtual scrolling** for long lists (100+ items)
+
+```typescript
+// ✅ GOOD - Lazy loading
+import { lazy, Suspense } from "react";
+const HeavyComponent = lazy(() => import("./HeavyComponent"));
+
+<Suspense fallback={<Spinner />}>
+  <HeavyComponent />
+</Suspense>;
+```
+
+#### 7. Accessibility (Google Standard)
+
+- **aria-label** on all interactive elements
+- **Keyboard navigation** (Tab, Enter, Escape)
+- **Screen reader** support
+- **High contrast** text (WCAG AA: 4.5:1 ratio)
+
+```typescript
+// ✅ GOOD - Accessible button
+<Button variant="primary" aria-label="Submit your vote" onClick={handleVote}>
+  Vote
+</Button>
+```
+
+#### 8. Error States (Best Practice)
+
+```typescript
+// ✅ GOOD - Clear error messaging
+{
+  error && (
+    <div role="alert" className="error-message">
+      ⚠️ {error}
+      <Button variant="secondary" onClick={retry}>
+        Try Again
+      </Button>
+    </div>
+  );
+}
+```
+
+---
+
+## 🎨 Component Location Rules
+
+### UI Components (Single Source of Truth)
+
+- ALL reusable UI components MUST be created in `client/src/components/ui/`
+- These are primitive components: Button, Input, Badge, PlayerToken, CloseButton, Card
+- Feature-specific components go in `client/src/components/`
+- Page components go in `client/src/pages/`
+
+### Component Hierarchy
+
+```
+client/src/
+├── components/
+│   ├── ui/              # ✅ Primitive UI components (Button, Badge, etc.)
+│   │   └── index.ts     # Barrel export
+│   ├── Modal.tsx        # ✅ Feature components
+│   ├── GameBoard.tsx    # ✅ Feature components
+│   └── ...
+└── pages/               # ✅ Page-level components
+    └── UnifiedGamePage.tsx
+```
+
+## Using UI Components
+
+### 1. Always Import from UI Library
+
+```typescript
+// ✅ GOOD
+import { Button, Badge, PlayerToken } from "../components/ui";
+
+// ❌ BAD - Don't create inline buttons
+<button className="btn-primary">Click</button>;
+```
+
+### 2. Button Usage
+
+```typescript
+// ❌ BAD
+<button className="btn-primary">Submit</button>
+<button className="btn-secondary">Cancel</button>
+<button className="btn-continue">Continue</button>
+<button className="btn-icon">✓</button>
+
+// ✅ GOOD
+<Button variant="primary">Submit</Button>
+<Button variant="secondary">Cancel</Button>
+<Button variant="continue">Continue</Button>
+<Button variant="icon">✓</Button>
+
+// ✅ GOOD - With size
+<Button variant="primary" size="large">Join Game</Button>
+
+// ✅ GOOD - Override className for edge cases
+<Button variant="primary" className="custom-spacing">Submit</Button>
+```
+
+### 3. Badge Usage
+
+```typescript
+// ❌ BAD
+<span className="admin-badge">👑</span>
+<span className="you-badge">(You)</span>
+
+// ✅ GOOD
+<Badge variant="admin" />
+<Badge variant="you" />
+<Badge variant="storyteller" />
+<Badge variant="score" value={3} />
+<Badge variant="votes" value={2} />
+```
+
+### 4. PlayerToken Usage
+
+```typescript
+// ❌ BAD - Duplicated color logic
+<div style={{ background: colors[index % colors.length] }}>...</div>;
+
+// ✅ GOOD
+import { PlayerToken, getPlayerColor } from "../components/ui";
+
+<PlayerToken
+  imageUrl={player.tokenImage}
+  playerColor={getPlayerColor(playerIndex)}
+  size="small"
+/>;
+```
+
+### 5. Input Usage
+
+```typescript
+// ❌ BAD
+<input className="name-input-inline" />
+<input className="clue-input-inline" />
+
+// ✅ GOOD
+<Input variant="inline" placeholder="Enter your name..." />
+<Input variant="inline" placeholder="Enter your clue..." />
+```
+
+### 6. CloseButton Usage
+
+```typescript
+// ❌ BAD
+<button className="modal-close-button" onClick={onClose}>×</button>
+
+// ✅ GOOD
+<CloseButton onClose={onClose} />
+```
+
+**X Button Standards - SINGLE SOURCE OF TRUTH:**
+
+All X buttons MUST use the `.x-button` base class:
+
+```css
+/* global.css - SINGLE SOURCE OF TRUTH for all X buttons */
+.x-button {
+  background: #e74c3c;
+  color: white;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  /* ... all styling defined once */
+}
+```
+
+**Usage in Components:**
+
+```typescript
+// ✅ GOOD - Always include x-button class
+<button className="x-button modal-close-button">×</button>
+<button className="x-button profile-upload-remove">×</button>
+<button className="x-button preview-delete-btn">×</button>
+
+// ❌ BAD - Missing x-button base class
+<button className="modal-close-button">×</button>
+```
+
+**Rules:**
+
+- ✅ `.x-button` defines ALL core styling (color, shape, hover, active)
+- ✅ Specific classes (`.modal-close-button`) only define position and size
+- ✅ Always use `×` character (multiplication sign)
+- ✅ Never duplicate the core styling - extend `.x-button` only
+
+## Type Safety Rules
+
+### Strict Variants with Escape Hatch
+
+- All UI components have strict TypeScript variants
+- Use `className` prop to override/extend styles when needed
+- Prefer adding new variants over using className hacks
+
+```typescript
+// ✅ Type-safe variants
+variant: "primary" | "secondary" | "continue" | "icon"
+
+// ✅ Escape hatch when needed
+<Button variant="primary" className="special-case">...</Button>
+```
+
+## When to Add New Variants
+
+If you find yourself doing this:
+
+```typescript
+<Button className="btn-custom-style">New Action</Button>
+```
+
+Consider instead:
+
+1. Is this a one-off? Keep the className override
+2. Will this be reused? Add a new variant to the Button component
+3. Update the Button.tsx component
+4. Export the new variant type
+5. Document it in this file
+
+## Color Palette
+
+### Player Token Colors
+
+Use the exported constant for consistency:
+
+```typescript
+import { PLAYER_TOKEN_COLORS, getPlayerColor } from "../components/ui";
+
+// Available colors (in order):
+// #f39c12 (Orange)
+// #3498db (Blue)
+// #2ecc71 (Green)
+// #e74c3c (Red)
+// #9b59b6 (Purple)
+// #1abc9c (Teal)
+```
+
+## Testing New Components
+
+When creating a new UI component:
+
+1. Create the file in `client/src/components/ui/`
+2. Export it from `client/src/components/ui/index.ts`
+3. Document variants and props in the component file
+4. Add usage examples to this .cursorrules file
+5. Update existing code to use the new component
+
+## Common Mistakes to Avoid
+
+### ❌ DON'T
+
+```typescript
+// Don't create inline styled buttons
+<button style={{...}}>Click</button>
+
+// Don't use className for variants
+<button className="btn-primary btn-large">...</button>
+
+// Don't duplicate color logic
+const colors = ["#f39c12", "#3498db", ...];
+
+// Don't create one-off badge components
+<span className="my-custom-badge">Text</span>
+```
+
+### ✅ DO
+
+```typescript
+// Use the Button component
+<Button variant="primary" size="large">
+  ...
+</Button>;
+
+// Import color helpers
+import { getPlayerColor } from "../components/ui";
+
+// Use Badge component
+<Badge variant="admin" />;
+
+// Add new variants when reusable
+// (Edit Button.tsx to add "danger" variant, etc.)
+```
+
+## Migration Checklist
+
+When refactoring old code:
+
+- [ ] Replace all `<button className="btn-*">` with `<Button variant="*">`
+- [ ] Replace all badge spans with `<Badge variant="*" />`
+- [ ] Replace token rendering with `<PlayerToken />`
+- [ ] Replace inputs with `<Input variant="*" />`
+- [ ] Replace close buttons with `<CloseButton />`
+- [ ] Import from `"../components/ui"`
+
+## Benefits of This System
+
+1. **Single Source of Truth** - Change button styles once, updates everywhere
+2. **Type Safety** - Catch typos at compile time (variant="primray" → error)
+3. **Consistency** - Same look and feel across all pages
+4. **Maintainability** - Easy to find and update component logic
+5. **Developer Experience** - Clear, documented patterns
+6. **Accessibility** - Centralized aria labels and keyboard handling
+
+---
+
+## 🧪 TESTING & QUALITY ASSURANCE
+
+### Required Testing Steps
+
+#### For UI Component Changes
+
+1. ✅ **Visual test** all variants of the component
+2. ✅ **Test on mobile viewport** (375px width minimum)
+3. ✅ **Test interactions** (click, hover, focus, disabled states)
+4. ✅ **Verify accessibility** (keyboard navigation, screen reader)
+
+#### For Feature Changes
+
+1. ✅ **Happy path** - main user flow works
+2. ✅ **Edge cases** - empty states, errors, loading
+3. ✅ **Mobile + Desktop** - responsive behavior
+4. ✅ **Network conditions** - slow connection handling
+
+#### Build Verification (MANDATORY)
+
+```bash
+# Client build - MUST PASS before completing task
+cd client && npm run build
+
+# If fails, fix TypeScript errors immediately
+# Common issues:
+# - Missing imports
+# - Type mismatches
+# - Unused variables
+# - Invalid prop types
+```
+
+---
+
+## 🎯 CODE QUALITY STANDARDS
+
+### TypeScript Best Practices
+
+```typescript
+// ✅ GOOD - Explicit types
+interface ButtonProps {
+  variant: "primary" | "secondary";
+  onClick: () => void;
+  children: ReactNode;
+}
+
+// ❌ BAD - Any types
+function doSomething(data: any) {}
+
+// ✅ GOOD - Proper typing
+function doSomething(data: UserData) {}
+```
+
+### React Best Practices (From Top Apps)
+
+#### 1. State Management
+
+```typescript
+// ❌ BAD - Unnecessary re-renders
+const [data, setData] = useState(bigObject);
+
+// ✅ GOOD - Only store what you need
+const [userId, setUserId] = useState(bigObject.id);
+```
+
+#### 2. Use Hooks Correctly
+
+```typescript
+// ❌ BAD - Hooks in conditions
+if (condition) {
+  useEffect(() => {}, []);
+}
+
+// ✅ GOOD - Hooks at top level
+useEffect(() => {
+  if (condition) {
+    // logic here
+  }
+}, [condition]);
+```
+
+#### 3. Memoization (Performance)
+
+```typescript
+// ✅ GOOD - Expensive calculations
+const sortedList = useMemo(
+  () => data.sort((a, b) => a.score - b.score),
+  [data]
+);
+
+// ✅ GOOD - Callback stability
+const handleClick = useCallback(() => {
+  doSomething(id);
+}, [id]);
+```
+
+### CSS Best Practices
+
+#### Mobile-First Media Queries
+
+```css
+/* ✅ GOOD - Mobile first, then scale up */
+.button {
+  padding: 12px; /* Mobile */
+}
+
+@media (min-width: 768px) {
+  .button {
+    padding: 16px; /* Desktop */
+  }
+}
+
+/* ❌ BAD - Desktop first */
+.button {
+  padding: 16px;
+}
+
+@media (max-width: 768px) {
+  .button {
+    padding: 12px;
+  }
+}
+```
+
+#### Use CSS Variables
+
+```css
+/* ✅ GOOD - Reusable colors */
+:root {
+  --primary-color: #667eea;
+  --spacing-unit: 8px;
+}
+
+.button {
+  background: var(--primary-color);
+  padding: calc(var(--spacing-unit) * 2);
+}
+```
+
+---
+
+## ⚡ PERFORMANCE GUIDELINES
+
+### Image Optimization (Instagram/Twitter Standard)
+
+```typescript
+// ✅ GOOD - Resize before upload
+import { resizeAndCompressImage } from "../utils/imageResize";
+
+const handleUpload = async (file: File) => {
+  const optimized = await resizeAndCompressImage(file);
+  // Max 800x600, quality 0.8, converts to WebP
+  onUpload(optimized);
+};
+```
+
+### Lazy Loading
+
+```typescript
+// ✅ GOOD - Load on demand
+const GameBoard = lazy(() => import("./GameBoard"));
+
+// Use Suspense wrapper
+<Suspense fallback={<LoadingSpinner />}>
+  <GameBoard />
+</Suspense>;
+```
+
+### Debouncing (Search/Input)
+
+```typescript
+// ✅ GOOD - Debounce expensive operations
+const debouncedSearch = useMemo(
+  () => debounce((query) => fetchResults(query), 300),
+  []
+);
+```
+
+---
+
+## 🚀 DEPLOYMENT CHECKLIST
+
+Before marking any task complete:
+
+- [ ] ✅ All TypeScript errors fixed
+- [ ] ✅ Build passes (`npm run build`)
+- [ ] ✅ No console errors in browser
+- [ ] ✅ Mobile viewport tested (375px - 768px)
+- [ ] ✅ Desktop viewport tested (1024px+)
+- [ ] ✅ Loading states work correctly
+- [ ] ✅ Error states display properly
+- [ ] ✅ Accessibility: keyboard navigation works
+- [ ] ✅ UI components imported from `components/ui/`
+- [ ] ✅ No inline buttons, badges, or inputs
+- [ ] ✅ Existing features still work (no regressions)
+
+---
+
+## 📚 LEARNING FROM TOP APPS
+
+### Google Material Design
+
+- **Elevation** - Use shadows to show hierarchy
+- **Motion** - 300ms transitions for smoothness
+- **Density** - Compact on mobile, spacious on desktop
+
+### Instagram
+
+- **Instant feedback** - Every action has visual response
+- **Optimistic updates** - Show changes immediately, sync later
+- **Pull-to-refresh** - Standard gesture for refresh
+
+### X (Twitter)
+
+- **Infinite scroll** - Seamless content loading
+- **Skeleton screens** - Show layout while loading
+- **Minimal UI** - Clean, distraction-free interface
+
+### Common Patterns
+
+1. **Bottom sheets** (mobile) vs **side panels** (desktop)
+2. **FAB buttons** (Floating Action Button) for primary actions
+3. **Snackbars/Toasts** for brief notifications (3-5 seconds)
+4. **Empty states** with helpful CTAs
+5. **Search** with instant results (debounced)
+
+---
+
+## ❓ Decision Framework
+
+### When Adding Features
+
+1. **Is it mobile-first?** Start with mobile viewport
+2. **Is it accessible?** Can be used with keyboard only
+3. **Is it performant?** <100ms interaction response
+4. **Is it tested?** Works on mobile AND desktop
+5. **Uses design system?** Import from `components/ui/`
+
+### When Fixing Bugs
+
+1. **Reproduce** the issue first
+2. **Understand** root cause (don't guess)
+3. **Fix** with minimal changes
+4. **Test** the fix thoroughly
+5. **Verify** no new issues introduced
+
+### Questions?
+
+If unsure about whether to create a new component or variant:
+
+1. Is it reused 3+ times? → Component or variant
+2. Is it a one-off special case? → className override
+3. Is it feature-specific? → `components/` not `components/ui/`
+4. Is it a primitive (button, input, badge)? → `components/ui/`
+
+---
+
+## 🎓 REMEMBER
+
+> "Make it work, make it right, make it fast" - Kent Beck
+
+1. **Always** use UI components from `components/ui/`
+2. **Always** run build after changes
+3. **Always** test on mobile viewport
+4. **Always** consider accessibility
+5. **Never** use inline buttons, badges, or inputs
+6. **Never** skip testing steps
+7. **Never** commit code that doesn't build
+
+**This is a multiplayer game - performance and mobile UX are critical!**

@@ -1,15 +1,20 @@
 import { useState, useEffect, useRef } from "react";
 import { RoomState } from "../hooks/useGameState";
 import { QRCode } from "./QRCode";
+import { CloseButton } from "./ui";
 
 interface GameBoardProps {
   roomState: RoomState;
   triggerAnimation?: boolean; // External trigger for animation
+  showQR?: boolean;
+  onCloseQR?: () => void;
 }
 
 export function GameBoard({
   roomState,
   triggerAnimation = false,
+  showQR = true,
+  onCloseQR,
 }: GameBoardProps) {
   const [animatingScores, setAnimatingScores] = useState<{
     [playerId: string]: number;
@@ -264,9 +269,16 @@ export function GameBoard({
       </div>
 
       {/* QR Code during DECK_BUILDING phase */}
-      {roomState.phase === "DECK_BUILDING" && (
+      {roomState.phase === "DECK_BUILDING" && showQR && (
         <div className="board-qr-code-section">
           <div className="board-qr-code-container">
+            {onCloseQR && (
+              <CloseButton
+                onClose={onCloseQR}
+                className="board-qr-close-btn"
+                title="Close QR code"
+              />
+            )}
             <p className="board-qr-hint">Scan to join on mobile</p>
             <QRCode url={roomState.serverUrl} size={180} />
             <p className="board-qr-url">{roomState.serverUrl}</p>

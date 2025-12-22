@@ -1,4 +1,5 @@
 import { Player } from '../hooks/useGameState';
+import { Button, Badge } from './ui';
 
 interface PlayerListProps {
   players: Player[];
@@ -29,9 +30,9 @@ export function PlayerList({
               <div style={{ flex: 1 }}>
                 <span className="player-name">
                   {player.name}
-                  {player.isAdmin && ' 👑'}
-                  {storytellerId === player.id && ' 📖'}
-                  {currentPlayerId === player.id && ' (You)'}
+                  {player.isAdmin && <Badge variant="admin" />}
+                  {storytellerId === player.id && <Badge variant="storyteller" />}
+                  {currentPlayerId === player.id && <Badge variant="you" />}
                 </span>
                 {showScores && <span className="player-score"> {player.score} pts</span>}
                 {!player.isConnected && ' (disconnected)'}
@@ -39,23 +40,24 @@ export function PlayerList({
               {isAdmin && player.id !== currentPlayerId && (
                 <div style={{ display: 'flex', gap: '4px' }}>
                   {!player.isAdmin && onPromotePlayer && (
-                    <button
+                    <Button
+                      variant="secondary"
+                      size="small"
                       onClick={() => onPromotePlayer(player.id)}
-                      className="btn-secondary btn-small"
                       style={{ padding: '4px 8px', fontSize: '12px' }}
                       title="Promote to Admin"
                     >
                       Promote
-                    </button>
+                    </Button>
                   )}
                   {onKickPlayer && (
-                    <button
+                    <Button
                       onClick={() => onKickPlayer(player.id)}
                       className="btn-danger btn-small"
                       style={{ padding: '4px 8px', fontSize: '12px' }}
                     >
                       Kick
-                    </button>
+                    </Button>
                   )}
                 </div>
               )}
