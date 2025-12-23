@@ -8,6 +8,7 @@ import { ProfileImageUpload } from "../components/ProfileImageUpload";
 import { Button, Icon, IconSize } from "../components/ui";
 import { storage } from "../utils/storage";
 import { ConfirmModal } from "../components/ConfirmModal";
+import { getMinimumDeckSize } from "../utils/imageConstants";
 
 interface UnifiedGamePageProps {
   roomState: RoomState | null;
@@ -70,13 +71,14 @@ export function UnifiedGamePage({
   const [localSubmittedCardId, setLocalSubmittedCardId] = useState<
     string | null
   >(null);
-  const [localSubmittedClue, setLocalSubmittedClue] = useState<string>("");
   // Track local vote for locking UI
   const [localVotedCardId, setLocalVotedCardId] = useState<string | null>(null);
   // Track if we should trigger board animation (when closing REVEAL modal)
   const [triggerBoardAnimation, setTriggerBoardAnimation] = useState(false);
-  // Track if user chose to be a spectator
-  const [isUserSpectator, setIsUserSpectator] = useState(false);
+  // Track if user chose to be a spectator - initialize from localStorage
+  const [isUserSpectator, setIsUserSpectator] = useState(
+    storage.isSpectator.get()
+  );
   // Track name editing state - which player ID is being edited
   const [editingPlayerId, setEditingPlayerId] = useState<string | null>(null);
   const [newName, setNewName] = useState("");
@@ -115,7 +117,6 @@ export function UnifiedGamePage({
     // Clear local submissions when leaving STORYTELLER_CHOICE or PLAYERS_CHOICE
     if (phase !== "STORYTELLER_CHOICE") {
       setLocalSubmittedCardId(null);
-      setLocalSubmittedClue("");
     }
     if (phase !== "PLAYERS_CHOICE") {
       setLocalSubmittedCardId(null);
@@ -200,6 +201,7 @@ export function UnifiedGamePage({
 
   const handleSpectatorJoin = () => {
     setIsUserSpectator(true);
+    storage.isSpectator.set(true);
     _onJoinSpectator(clientId);
   };
 
@@ -212,8 +214,10 @@ export function UnifiedGamePage({
     const performLogout = () => {
       // Emit leave event so server removes the player immediately
       onLeave();
-      // Clear the stored clientId so they don't auto-rejoin
+      // Clear all stored flags so they don't auto-rejoin
       storage.clientId.remove();
+      storage.hasJoined.remove();
+      storage.isSpectator.remove();
       // Reset spectator state
       setIsUserSpectator(false);
       // Small delay to ensure leave event is processed before reload
@@ -311,7 +315,6 @@ export function UnifiedGamePage({
       onStorytellerSubmit(selectedCardId, clue.trim());
       // Store locally for UI locking
       setLocalSubmittedCardId(selectedCardId);
-      setLocalSubmittedClue(clue.trim());
       setSelectedCardId(null);
       setClue("");
       setShowModal(false);
@@ -491,13 +494,30 @@ export function UnifiedGamePage({
               className="floating-action-button start-game-button"
               onClick={onStartGame}
               disabled={
-                roomState.players.length < 3 || roomState.deckSize < 100
+                roomState.players.length < 3 ||
+                roomState.deckSize <
+                  getMinimumDeckSize(
+                    roomState.players.length,
+                    roomState.winTarget
+                  )
               }
               title={
                 roomState.players.length < 3
                   ? "Need at least 3 players"
-                  : roomState.deckSize < 100
-                  ? "Need at least 100 images"
+                  : roomState.deckSize <
+                    getMinimumDeckSize(
+                      roomState.players.length,
+                      roomState.winTarget
+                    )
+                  ? `Need ${
+                      getMinimumDeckSize(
+                        roomState.players.length,
+                        roomState.winTarget
+                      ) - roomState.deckSize
+                    } more images (${roomState.deckSize}/${getMinimumDeckSize(
+                      roomState.players.length,
+                      roomState.winTarget
+                    )})`
                   : "Start Game"
               }
             >
@@ -593,7 +613,6 @@ export function UnifiedGamePage({
                   selectedCardId,
                   clue,
                   localSubmittedCardId,
-                  localSubmittedClue,
                   roomState,
                   setSelectedCardId,
                   setClue,

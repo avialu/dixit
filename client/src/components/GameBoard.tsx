@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { RoomState } from "../hooks/useGameState";
 import { QRCode } from "./QRCode";
 import { CloseButton } from "./ui";
+import { getMinimumDeckSize } from "../utils/imageConstants";
 
 interface GameBoardProps {
   roomState: RoomState;
@@ -129,7 +130,12 @@ export function GameBoard({
   const scaleFactor = Math.min(viewBoxWidth, viewBoxHeight) / 100;
 
   // Generate path positions - either snake (zigzag) or spiral (snail)
-  const generateSnakePattern = (length: number, cols: number, margin: number, topMargin: number) => {
+  const generateSnakePattern = (
+    length: number,
+    cols: number,
+    margin: number,
+    topMargin: number
+  ) => {
     const positions: { x: number; y: number; index: number }[] = [];
     const xSpacing = (viewBoxWidth - margin * 2) / (cols - 1);
     const rows = Math.ceil(length / cols);
@@ -154,7 +160,12 @@ export function GameBoard({
     return positions;
   };
 
-  const generateSpiralPattern = (length: number, cols: number, margin: number, topMargin: number) => {
+  const generateSpiralPattern = (
+    length: number,
+    cols: number,
+    margin: number,
+    topMargin: number
+  ) => {
     const positions: { x: number; y: number; index: number }[] = [];
     const xSpacing = (viewBoxWidth - margin * 2) / (cols - 1);
     const rows = Math.ceil(length / cols);
@@ -163,42 +174,83 @@ export function GameBoard({
     const yOffset = topMargin;
 
     // Create a grid to track visited positions
-    const grid: boolean[][] = Array(rows).fill(null).map(() => Array(cols).fill(false));
-    
-    let x = 0, y = 0;
-    let dx = 1, dy = 0; // Start moving right
-    
+    const grid: boolean[][] = Array(rows)
+      .fill(null)
+      .map(() => Array(cols).fill(false));
+
+    let x = 0,
+      y = 0;
+    let dx = 1,
+      dy = 0; // Start moving right
+
     for (let i = 0; i < length; i++) {
       positions.push({
         x: x * xSpacing + xOffset,
         y: y * ySpacing + yOffset,
         index: i,
       });
-      
+
       grid[y][x] = true;
-      
+
+      // Don't move after the last position
+      if (i === length - 1) break;
+
       // Try to continue in current direction
-      const nextX = x + dx;
-      const nextY = y + dy;
-      
+      let nextX = x + dx;
+      let nextY = y + dy;
+
       // Check if we need to turn (hit boundary or visited cell)
       if (
-        nextX < 0 || nextX >= cols ||
-        nextY < 0 || nextY >= rows ||
+        nextX < 0 ||
+        nextX >= cols ||
+        nextY < 0 ||
+        nextY >= rows ||
         grid[nextY]?.[nextX]
       ) {
-        // Turn clockwise: right -> down -> left -> up -> right
-        if (dx === 1 && dy === 0) {
-          dx = 0; dy = 1; // Turn down
-        } else if (dx === 0 && dy === 1) {
-          dx = -1; dy = 0; // Turn left
-        } else if (dx === -1 && dy === 0) {
-          dx = 0; dy = -1; // Turn up
-        } else if (dx === 0 && dy === -1) {
-          dx = 1; dy = 0; // Turn right
+        // Turn clockwise and keep trying until we find a valid direction
+        let attempts = 0;
+        while (attempts < 4) {
+          // Turn clockwise: right -> down -> left -> up -> right
+          if (dx === 1 && dy === 0) {
+            dx = 0;
+            dy = 1; // Turn down
+          } else if (dx === 0 && dy === 1) {
+            dx = -1;
+            dy = 0; // Turn left
+          } else if (dx === -1 && dy === 0) {
+            dx = 0;
+            dy = -1; // Turn up
+          } else if (dx === 0 && dy === -1) {
+            dx = 1;
+            dy = 0; // Turn right
+          }
+
+          // Check if this new direction is valid
+          nextX = x + dx;
+          nextY = y + dy;
+
+          if (
+            nextX >= 0 &&
+            nextX < cols &&
+            nextY >= 0 &&
+            nextY < rows &&
+            !grid[nextY]?.[nextX]
+          ) {
+            // Valid direction found
+            break;
+          }
+
+          attempts++;
+        }
+
+        // If we tried all 4 directions and none are valid, we're stuck
+        // This shouldn't happen in a proper spiral, but handle it gracefully
+        if (attempts >= 4) {
+          console.warn("Spiral pattern stuck at position", { x, y, i, length });
+          break;
         }
       }
-      
+
       x += dx;
       y += dy;
     }
@@ -258,15 +310,23 @@ export function GameBoard({
     const storytellerName = storyteller?.name || "Storyteller";
 
     switch (roomState.phase) {
-      case "DECK_BUILDING":
+      case "DECK_BUILDING": {
+        const minRequired = getMinimumDeckSize(
+          roomState.players.length,
+          roomState.winTarget
+        );
+        const needMore = minRequired - roomState.deckSize;
         return {
           icon: "🎴",
           text:
             roomState.players.length < 3
               ? "Waiting for players to join..."
-              : "Building the deck...",
-          subtext: `${roomState.players.length} players | ${roomState.deckSize} images`,
+              : needMore > 0
+              ? `Need ${needMore} more images to start`
+              : "Ready to start!",
+          subtext: `${roomState.players.length} players | ${roomState.deckSize}/${minRequired} images`,
         };
+      }
       case "STORYTELLER_CHOICE":
         return {
           icon: "🎭",

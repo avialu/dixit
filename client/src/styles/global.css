@@ -151,17 +151,69 @@ select {
   font-size: 1.5rem;
 }
 
-/* Error Toast */
+/* Error Toast - Enhanced with severity levels */
 .error-toast {
   position: fixed;
   top: 20px;
   right: 20px;
-  background: #dc3545;
-  color: white;
   padding: 1rem 1.5rem;
   border-radius: 8px;
-  z-index: 1000;
+  z-index: 10000;
   max-width: 400px;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  animation: slideInRight 0.3s ease-out;
+}
+
+.error-toast .error-icon {
+  font-size: 1.5rem;
+  flex-shrink: 0;
+}
+
+.error-toast .error-message {
+  flex: 1;
+  font-weight: 500;
+}
+
+.error-toast .error-retry {
+  font-size: 0.875rem;
+  opacity: 0.9;
+  font-style: italic;
+}
+
+/* Severity-based colors */
+.error-info {
+  background: #17a2b8;
+  color: white;
+}
+
+.error-warning {
+  background: #ffc107;
+  color: #000;
+}
+
+.error-error {
+  background: #dc3545;
+  color: white;
+}
+
+.error-fatal {
+  background: #6c757d;
+  color: white;
+  border: 2px solid #dc3545;
+}
+
+@keyframes slideInRight {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
 }
 
 /* Phase Indicator */

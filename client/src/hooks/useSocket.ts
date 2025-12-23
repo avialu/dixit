@@ -41,7 +41,8 @@ export function useSocket() {
       reconnectAttempts.current = 0; // Reset attempts on successful connection
       
       // Auto-reconnect: register this socket with existing clientId
-      if (clientId) {
+      // Only attempt reconnect if the player has actually joined before
+      if (clientId && storage.hasJoined.get()) {
         console.log('Auto-reconnecting with clientId:', clientId);
         newSocket.emit('reconnect', { clientId });
       }

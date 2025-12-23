@@ -1,7 +1,62 @@
 import { IMAGE_CONSTANTS } from './imageConstants';
 
+/**
+ * Validate image file format using magic numbers (file signatures)
+ * This is more reliable than checking MIME type alone
+ */
+async function validateImageMagicNumbers(file: File): Promise<boolean> {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    
+    reader.onload = (e) => {
+      const arr = new Uint8Array(e.target?.result as ArrayBuffer);
+      
+      // Check magic numbers for common image formats
+      // JPEG: FF D8 FF
+      if (arr[0] === 0xFF && arr[1] === 0xD8 && arr[2] === 0xFF) {
+        resolve(true);
+        return;
+      }
+      
+      // PNG: 89 50 4E 47
+      if (arr[0] === 0x89 && arr[1] === 0x50 && arr[2] === 0x4E && arr[3] === 0x47) {
+        resolve(true);
+        return;
+      }
+      
+      // GIF: 47 49 46 38
+      if (arr[0] === 0x47 && arr[1] === 0x49 && arr[2] === 0x46 && arr[3] === 0x38) {
+        resolve(true);
+        return;
+      }
+      
+      // WebP: 52 49 46 46 (RIFF) ... 57 45 42 50 (WEBP)
+      if (arr[0] === 0x52 && arr[1] === 0x49 && arr[2] === 0x46 && arr[3] === 0x46) {
+        if (arr.length >= 12 && arr[8] === 0x57 && arr[9] === 0x45 && arr[10] === 0x42 && arr[11] === 0x50) {
+          resolve(true);
+          return;
+        }
+      }
+      
+      resolve(false);
+    };
+    
+    reader.onerror = () => resolve(false);
+    
+    // Read first 12 bytes to check magic numbers
+    reader.readAsArrayBuffer(file.slice(0, 12));
+  });
+}
+
 export async function resizeAndCompressImage(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
+  return new Promise(async (resolve, reject) => {
+    // Validate magic numbers first
+    const isValidImage = await validateImageMagicNumbers(file);
+    if (!isValidImage) {
+      reject(new Error('Invalid image format. Only JPEG, PNG, GIF, and WebP are supported.'));
+      return;
+    }
+    
     const reader = new FileReader();
 
     reader.onload = async (e) => {
@@ -9,6 +64,12 @@ export async function resizeAndCompressImage(file: File): Promise<string> {
       
       img.onload = async () => {
         try {
+          // Reject absurdly large images to prevent DOS
+          if (img.width > 10000 || img.height > 10000) {
+            reject(new Error('Image dimensions too large (max 10000x10000)'));
+            return;
+          }
+          
           // Calculate new dimensions
           let width = img.width;
           let height = img.height;

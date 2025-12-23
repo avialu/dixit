@@ -3,6 +3,7 @@ import { Player } from "./Player.js";
 import { DeckManager } from "./DeckManager.js";
 import { ScoringEngine } from "./ScoringEngine.js";
 import { GAME_CONSTANTS } from "./constants.js";
+import { gameConfig, featureFlags } from "../config/index.js";
 import { logger } from "../utils/logger.js";
 import {
   GamePhase,
@@ -19,6 +20,7 @@ export class GameManager {
   private state: GameState;
   private deckManager: DeckManager;
   private submittedCardsData: Map<string, string>; // cardId -> imageData
+  private phaseTransitionLock: boolean = false; // Prevent race conditions during phase transitions
 
   constructor() {
     this.state = {
@@ -314,10 +316,10 @@ export class GameManager {
 
   /**
    * Clean up disconnected players who have been offline for too long
-   * @param maxDisconnectedTime Maximum time in milliseconds a player can be disconnected (default: 30 minutes)
+   * @param maxDisconnectedTime Maximum time in milliseconds a player can be disconnected
    * @returns Number of players cleaned up
    */
-  cleanupDisconnectedPlayers(maxDisconnectedTime: number = 30 * 60 * 1000): number {
+  cleanupDisconnectedPlayers(maxDisconnectedTime: number = gameConfig.maxDisconnectedTime): number {
     const now = Date.now();
     let cleanedCount = 0;
     const playersToRemove: string[] = [];
@@ -374,8 +376,8 @@ export class GameManager {
     return cleanedCount;
   }
 
-  getPlayer(clientId: string): Player {
-    return this.state.players.get(clientId)!;
+  getPlayer(clientId: string): Player | undefined {
+    return this.state.players.get(clientId);
   }
 
   // Deck Management
@@ -445,6 +447,29 @@ export class GameManager {
     return card;
   }
 
+  /**
+   * Load default images into the deck
+   * Can be called by admin to supplement uploaded images
+   */
+  loadDefaultImages(adminId: string): void {
+    this.validateAdmin(adminId);
+    
+    if (this.state.phase !== GamePhase.DECK_BUILDING) {
+      throw new Error("Can only load default images during DECK_BUILDING phase");
+    }
+    
+    const currentDeckSize = this.deckManager.getDeckSize();
+    logger.info("Loading default images", { currentDeckSize });
+    this.deckManager.loadDefaultImages();
+    
+    const newDeckSize = this.deckManager.getDeckSize();
+    logger.info("Loaded default images", { 
+      previousSize: currentDeckSize, 
+      newSize: newDeckSize,
+      addedCount: newDeckSize - currentDeckSize
+    });
+  }
+
   deleteImage(cardId: string, playerId: string): boolean {
     return this.deckManager.deleteImage(cardId, playerId);
   }
@@ -469,11 +494,17 @@ export class GameManager {
       );
     }
 
-    // Load default images if needed
+    // Check if we have enough images based on player count and win target
     const currentDeckSize = this.deckManager.getDeckSize();
-    if (currentDeckSize < GAME_CONSTANTS.MIN_IMAGES_TO_START) {
-      logger.info("Loading default images", { currentDeckSize });
-      this.deckManager.loadDefaultImages();
+    const winTarget = this.state.winTarget ?? GAME_CONSTANTS.DEFAULT_WIN_TARGET;
+    const minRequired = GAME_CONSTANTS.getMinDeckSize(
+      this.state.players.size,
+      winTarget
+    );
+    if (currentDeckSize < minRequired) {
+      throw new Error(
+        `Need at least ${minRequired} images to start (${this.state.players.size} players, ${winTarget} point target)`
+      );
     }
 
     // Lock the deck
@@ -536,6 +567,10 @@ export class GameManager {
       throw new Error("Not in player choice phase");
     }
 
+    if (this.phaseTransitionLock) {
+      throw new Error("Please wait, processing other submissions...");
+    }
+
     if (this.state.storytellerId === playerId) {
       throw new Error("Storyteller cannot submit another card");
     }
@@ -567,7 +602,15 @@ export class GameManager {
     // Check if all players have submitted
     const expectedSubmissions = this.state.players.size;
     if (this.state.submittedCards.length === expectedSubmissions) {
-      this.shuffleCardsForVoting();
+      // Lock to prevent double transition
+      if (this.phaseTransitionLock) return;
+      this.phaseTransitionLock = true;
+      
+      try {
+        this.shuffleCardsForVoting();
+      } finally {
+        this.phaseTransitionLock = false;
+      }
     }
   }
 
@@ -592,6 +635,10 @@ export class GameManager {
   playerVote(playerId: string, cardId: string): void {
     if (this.state.phase !== GamePhase.VOTING) {
       throw new Error("Not in voting phase");
+    }
+
+    if (this.phaseTransitionLock) {
+      throw new Error("Please wait, processing other votes...");
     }
 
     if (this.state.storytellerId === playerId) {
@@ -626,7 +673,15 @@ export class GameManager {
     // Check if all non-storytellers have voted
     const expectedVotes = this.state.players.size - 1; // minus storyteller
     if (this.state.votes.length === expectedVotes) {
-      this.transitionToReveal();
+      // Lock to prevent double transition
+      if (this.phaseTransitionLock) return;
+      this.phaseTransitionLock = true;
+      
+      try {
+        this.transitionToReveal();
+      } finally {
+        this.phaseTransitionLock = false;
+      }
     }
   }
 
@@ -664,6 +719,14 @@ export class GameManager {
 
     if (this.state.phase !== GamePhase.REVEAL) {
       throw new Error("Can only advance from REVEAL phase");
+    }
+
+    // Periodic cleanup of disconnected players (every 5 rounds)
+    if (featureFlags.enablePeriodicCleanup && this.state.currentRound > 0 && this.state.currentRound % 5 === 0) {
+      const cleanedCount = this.cleanupDisconnectedPlayers(gameConfig.maxDisconnectedTime);
+      if (cleanedCount > 0) {
+        logger.info("Periodic cleanup executed", { cleanedCount, round: this.state.currentRound });
+      }
     }
 
     // Check if any player reached win target
@@ -712,8 +775,11 @@ export class GameManager {
   resetGame(adminId: string): void {
     this.validateAdmin(adminId);
 
-    // Reset scores and hands
+    // Collect all cards from player hands back to the deck
     for (const player of this.state.players.values()) {
+      if (player.hand.length > 0) {
+        this.deckManager.returnCards(player.hand);
+      }
       player.score = 0;
       player.hand = [];
     }
@@ -727,7 +793,7 @@ export class GameManager {
     this.state.lastScoreDeltas.clear();
     this.submittedCardsData.clear();
 
-    // Reset deck (shuffle again)
+    // Unlock and shuffle the deck for replay
     this.deckManager.reset();
 
     // Keep the uploaded images but reset to deck building

@@ -2,14 +2,24 @@ import { RoomState, PlayerState } from "../hooks/useGameState";
 import { CardView } from "../components/CardView";
 import { DeckUploader } from "../components/DeckUploader";
 import { ProfileImageUpload } from "../components/ProfileImageUpload";
-import { Button, Badge, PlayerToken, getPlayerColor, Input, Icon, IconSize } from "./ui";
+import {
+  Button,
+  Badge,
+  PlayerToken,
+  getPlayerColor,
+  Input,
+  Icon,
+  IconSize,
+} from "./ui";
 
 // Helper function to format waiting message
 function formatWaitingFor(playerNames: string[]): string {
   if (playerNames.length === 0) return "";
   if (playerNames.length === 1) return playerNames[0];
-  if (playerNames.length === 2) return `${playerNames[0]} and ${playerNames[1]}`;
-  if (playerNames.length === 3) return `${playerNames[0]}, ${playerNames[1]} and ${playerNames[2]}`;
+  if (playerNames.length === 2)
+    return `${playerNames[0]} and ${playerNames[1]}`;
+  if (playerNames.length === 3)
+    return `${playerNames[0]}, ${playerNames[1]} and ${playerNames[2]}`;
   // More than 3: show first name and count
   return `${playerNames[0]} and ${playerNames.length - 1} more`;
 }
@@ -43,7 +53,6 @@ interface StorytellerModalProps {
   selectedCardId: string | null;
   clue: string;
   localSubmittedCardId: string | null;
-  localSubmittedClue: string;
   roomState: RoomState;
   setSelectedCardId: (id: string | null) => void;
   setClue: (clue: string) => void;
@@ -112,13 +121,15 @@ export function LobbyModal(props: LobbyModalProps) {
     onUploadTokenImage(null);
   };
 
-  const handleBoardBackgroundUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleBoardBackgroundUpload = async (
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     // Import the resize function
     const { resizeAndCompressImage } = await import("../utils/imageResize");
-    
+
     try {
       const imageData = await resizeAndCompressImage(file);
       onSetBoardBackground(imageData);
@@ -135,7 +146,8 @@ export function LobbyModal(props: LobbyModalProps) {
   const header = (
     <>
       <h2>
-        <Icon.People size={IconSize.large} /> Players ({roomState.players.length})
+        <Icon.People size={IconSize.large} /> Players (
+        {roomState.players.length})
       </h2>
     </>
   );
@@ -237,15 +249,15 @@ export function LobbyModal(props: LobbyModalProps) {
                       {player.name}
                     </span>
                     {player.isAdmin && (
-                      <Icon.Crown 
-                        size={IconSize.medium} 
+                      <Icon.Crown
+                        size={IconSize.medium}
                         className="admin-crown-icon"
-                        style={{ color: '#f1c40f' }}
+                        style={{ color: "#f1c40f" }}
                       />
                     )}
                     {isMe && <Badge variant="you" />}
                     {player.isAdmin && <Badge variant="admin" />}
-                    
+
                     {/* Admin controls */}
                     {isAdmin && !isMe && (
                       <div className="admin-controls">
@@ -291,25 +303,49 @@ export function LobbyModal(props: LobbyModalProps) {
 
         {/* Board Background Settings (Admin Only) */}
         {isAdmin && (
-          <div style={{ marginTop: "2rem", padding: "1rem", background: "rgba(255, 255, 255, 0.1)", borderRadius: "8px" }}>
+          <div
+            style={{
+              marginTop: "2rem",
+              padding: "1rem",
+              background: "rgba(255, 255, 255, 0.1)",
+              borderRadius: "8px",
+            }}
+          >
             <h3 style={{ marginBottom: "1rem" }}>
               <Icon.Image size={IconSize.medium} /> Board Background (Admin)
             </h3>
-            <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: "0.5rem",
+              }}
+            >
               {roomState.boardBackgroundImage ? (
-                <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" }}>
-                  <img 
-                    src={roomState.boardBackgroundImage} 
-                    alt="Board background preview" 
-                    style={{ 
-                      width: "80px", 
-                      height: "60px", 
-                      objectFit: "cover", 
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "0.5rem",
+                    flexWrap: "wrap",
+                  }}
+                >
+                  <img
+                    src={roomState.boardBackgroundImage}
+                    alt="Board background preview"
+                    style={{
+                      width: "80px",
+                      height: "60px",
+                      objectFit: "cover",
                       borderRadius: "4px",
-                      border: "2px solid #fff"
+                      border: "2px solid #fff",
                     }}
                   />
-                  <Button variant="secondary" size="small" onClick={handleRemoveBoardBackground}>
+                  <Button
+                    variant="secondary"
+                    size="small"
+                    onClick={handleRemoveBoardBackground}
+                  >
                     Use Default Background
                   </Button>
                 </div>
@@ -331,13 +367,22 @@ export function LobbyModal(props: LobbyModalProps) {
                     variant="primary"
                     size="small"
                     onClick={() => {
-                      const input = document.getElementById("board-background-input") as HTMLInputElement;
+                      const input = document.getElementById(
+                        "board-background-input"
+                      ) as HTMLInputElement;
                       input?.click();
                     }}
                   >
-                    <Icon.Upload size={IconSize.small} /> Upload Custom Background
+                    <Icon.Upload size={IconSize.small} /> Upload Custom
+                    Background
                   </Button>
-                  <p style={{ fontSize: "0.9rem", color: "#95a5a6", marginTop: "0.5rem" }}>
+                  <p
+                    style={{
+                      fontSize: "0.9rem",
+                      color: "#95a5a6",
+                      marginTop: "0.5rem",
+                    }}
+                  >
                     Upload an image to customize the game board background
                   </p>
                 </div>
@@ -348,27 +393,44 @@ export function LobbyModal(props: LobbyModalProps) {
 
         {/* Board Pattern Settings (Admin Only) */}
         {isAdmin && (
-          <div style={{ marginTop: "1rem", padding: "1rem", background: "rgba(255, 255, 255, 0.1)", borderRadius: "8px" }}>
+          <div
+            style={{
+              marginTop: "1rem",
+              padding: "1rem",
+              background: "rgba(255, 255, 255, 0.1)",
+              borderRadius: "8px",
+            }}
+          >
             <h3 style={{ marginBottom: "1rem" }}>
               <Icon.Settings size={IconSize.medium} /> Board Pattern (Admin)
             </h3>
             <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
-              <Button 
-                variant={roomState.boardPattern === "snake" ? "primary" : "secondary"}
+              <Button
+                variant={
+                  roomState.boardPattern === "snake" ? "primary" : "secondary"
+                }
                 size="small"
                 onClick={() => onSetBoardPattern("snake")}
               >
                 🐍 Snake (Zigzag)
               </Button>
-              <Button 
-                variant={roomState.boardPattern === "spiral" ? "primary" : "secondary"}
+              <Button
+                variant={
+                  roomState.boardPattern === "spiral" ? "primary" : "secondary"
+                }
                 size="small"
                 onClick={() => onSetBoardPattern("spiral")}
               >
                 🐌 Spiral (Snail)
               </Button>
             </div>
-            <p style={{ fontSize: "0.9rem", color: "#95a5a6", marginTop: "0.5rem" }}>
+            <p
+              style={{
+                fontSize: "0.9rem",
+                color: "#95a5a6",
+                marginTop: "0.5rem",
+              }}
+            >
               Choose how the score track is arranged on the board
             </p>
           </div>
@@ -383,7 +445,8 @@ export function LobbyModal(props: LobbyModalProps) {
         )}
         {isSpectator && (
           <p style={{ color: "#95a5a6", marginTop: "1rem" }}>
-            <Icon.Eye size={IconSize.medium} /> Spectating - You can upload images to help build the deck!
+            <Icon.Eye size={IconSize.medium} /> Spectating - You can upload
+            images to help build the deck!
           </p>
         )}
       </>
@@ -435,7 +498,10 @@ export function StorytellerChoiceModal(props: StorytellerModalProps) {
             </strong>
           </p>
           {waitingForPlayers.length > 0 && (
-            <p className="clue-reminder" style={{ color: "#95a5a6", fontSize: "0.95rem" }}>
+            <p
+              className="clue-reminder"
+              style={{ color: "#95a5a6", fontSize: "0.95rem" }}
+            >
               ⏳ Waiting for {formatWaitingFor(waitingForPlayers)}
             </p>
           )}
@@ -557,7 +623,10 @@ export function PlayerChoiceModal(props: PlayerChoiceModalProps) {
         </strong>
       </p>
       {isSubmitted && waitingForPlayers.length > 0 && (
-        <p className="clue-reminder" style={{ color: "#95a5a6", fontSize: "0.95rem" }}>
+        <p
+          className="clue-reminder"
+          style={{ color: "#95a5a6", fontSize: "0.95rem" }}
+        >
           ⏳ Waiting for {formatWaitingFor(waitingForPlayers)}
         </p>
       )}
@@ -642,7 +711,10 @@ export function WaitingPlayersModal(props: {
         </strong>
       </p>
       {waitingForPlayers.length > 0 && (
-        <p className="clue-reminder" style={{ color: "#95a5a6", fontSize: "0.95rem" }}>
+        <p
+          className="clue-reminder"
+          style={{ color: "#95a5a6", fontSize: "0.95rem" }}
+        >
           ⏳ Waiting for {formatWaitingFor(waitingForPlayers)}
         </p>
       )}
@@ -766,7 +838,10 @@ export function VotingModal(props: VotingModalProps) {
         </strong>
       </p>
       {hasVoted && waitingForPlayers.length > 0 && !allVotesIn && (
-        <p className="clue-reminder" style={{ color: "#95a5a6", fontSize: "0.95rem" }}>
+        <p
+          className="clue-reminder"
+          style={{ color: "#95a5a6", fontSize: "0.95rem" }}
+        >
           ⏳ Waiting for {formatWaitingFor(waitingForPlayers)}
         </p>
       )}

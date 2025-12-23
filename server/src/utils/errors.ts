@@ -6,17 +6,43 @@
  */
 
 /**
+ * Error severity levels for client error handling
+ */
+export enum ErrorSeverity {
+  INFO = 'info',        // Informational (e.g., "Please wait...")
+  WARNING = 'warning',  // Warning (e.g., "Try again")
+  ERROR = 'error',      // Error (e.g., "Something broke")
+  FATAL = 'fatal'       // Fatal (e.g., "Reload page")
+}
+
+/**
  * Base error class for all game-related errors
  */
 export class GameError extends Error {
+  public readonly severity: ErrorSeverity;
+  public readonly retryable: boolean;
+
   constructor(
     message: string,
     public code?: string,
-    public statusCode: number = 400
+    public statusCode: number = 400,
+    severity: ErrorSeverity = ErrorSeverity.ERROR,
+    retryable: boolean = false
   ) {
     super(message);
     this.name = "GameError";
+    this.severity = severity;
+    this.retryable = retryable;
     Error.captureStackTrace(this, this.constructor);
+  }
+
+  toJSON() {
+    return {
+      message: this.message,
+      code: this.code,
+      severity: this.severity,
+      retryable: this.retryable,
+    };
   }
 }
 
@@ -25,7 +51,7 @@ export class GameError extends Error {
  */
 export class ValidationError extends GameError {
   constructor(message: string, field?: string) {
-    super(message, "VALIDATION_ERROR", 400);
+    super(message, "VALIDATION_ERROR", 400, ErrorSeverity.WARNING, false);
     this.name = "ValidationError";
     if (field) {
       this.code = `VALIDATION_ERROR_${field.toUpperCase()}`;
@@ -38,7 +64,7 @@ export class ValidationError extends GameError {
  */
 export class PermissionError extends GameError {
   constructor(message: string) {
-    super(message, "PERMISSION_ERROR", 403);
+    super(message, "PERMISSION_ERROR", 403, ErrorSeverity.ERROR, false);
     this.name = "PermissionError";
   }
 }
@@ -48,7 +74,7 @@ export class PermissionError extends GameError {
  */
 export class NotFoundError extends GameError {
   constructor(resource: string) {
-    super(`${resource} not found`, "NOT_FOUND", 404);
+    super(`${resource} not found`, "NOT_FOUND", 404, ErrorSeverity.ERROR, false);
     this.name = "NotFoundError";
   }
 }
@@ -58,11 +84,41 @@ export class NotFoundError extends GameError {
  */
 export class GameStateError extends GameError {
   constructor(message: string, currentState?: string, expectedState?: string) {
-    super(message, "GAME_STATE_ERROR", 400);
+    super(message, "GAME_STATE_ERROR", 400, ErrorSeverity.WARNING, false);
     this.name = "GameStateError";
     if (currentState && expectedState) {
       this.code = `GAME_STATE_ERROR_${currentState}_TO_${expectedState}`;
     }
+  }
+}
+
+/**
+ * Network error - connection or communication issue
+ */
+export class NetworkError extends GameError {
+  constructor(message: string, code: string = 'NETWORK_ERROR') {
+    super(message, code, 500, ErrorSeverity.WARNING, true);
+    this.name = 'NetworkError';
+  }
+}
+
+/**
+ * Rate limit error - too many requests
+ */
+export class RateLimitError extends GameError {
+  public readonly retryAfter: number; // seconds
+
+  constructor(message: string, retryAfter: number = 10, code: string = 'RATE_LIMIT') {
+    super(message, code, 429, ErrorSeverity.WARNING, true);
+    this.name = 'RateLimitError';
+    this.retryAfter = retryAfter;
+  }
+
+  toJSON() {
+    return {
+      ...super.toJSON(),
+      retryAfter: this.retryAfter,
+    };
   }
 }
 
@@ -94,5 +150,25 @@ export function getErrorCode(error: unknown): string | undefined {
     return error.code;
   }
   return undefined;
+}
+
+/**
+ * Get error severity from error (or default)
+ */
+export function getErrorSeverity(error: unknown): ErrorSeverity {
+  if (isGameError(error)) {
+    return error.severity;
+  }
+  return ErrorSeverity.ERROR;
+}
+
+/**
+ * Check if error is retryable
+ */
+export function isRetryable(error: unknown): boolean {
+  if (isGameError(error)) {
+    return error.retryable;
+  }
+  return false;
 }
 

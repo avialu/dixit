@@ -8,10 +8,31 @@ function App() {
   const { socket, clientId, getClientId } = useSocket();
   const { roomState, playerState, error, actions } = useGameState(socket);
 
+  // Get error severity class
+  const getErrorClass = () => {
+    if (!error) return '';
+    const severity = error.severity || 'error';
+    return `error-toast error-${severity}`;
+  };
+
   return (
     <BrowserRouter>
       <div className="app">
-        {error && <div className="error-toast">{error}</div>}
+        {error && (
+          <div className={getErrorClass()}>
+            <span className="error-icon">
+              {error.severity === 'info' && 'ℹ️'}
+              {error.severity === 'warning' && '⚠️'}
+              {error.severity === 'error' && '❌'}
+              {error.severity === 'fatal' && '🚨'}
+              {!error.severity && '❌'}
+            </span>
+            <span className="error-message">{error.message}</span>
+            {error.retryable && error.retryAfter && (
+              <span className="error-retry">Retry in {error.retryAfter}s</span>
+            )}
+          </div>
+        )}
 
         <Routes>
           <Route

@@ -57,9 +57,9 @@ describe('ScoringEngine', () => {
       const scores = ScoringEngine.aggregateScores(results);
 
       expect(scores.get(storytellerId)).toBe(0);
-      expect(scores.get(player1)).toBe(2);
-      expect(scores.get(player2)).toBe(2);
-      expect(scores.get(player3)).toBe(2);
+      expect(scores.get(player1)).toBe(3); // 2 (too obscure) + 1 (vote from player3)
+      expect(scores.get(player2)).toBe(3); // 2 (too obscure) + 1 (vote from player1)
+      expect(scores.get(player3)).toBe(3); // 2 (too obscure) + 1 (vote from player2)
     });
   });
 
@@ -83,7 +83,7 @@ describe('ScoringEngine', () => {
 
       expect(scores.get(storytellerId)).toBe(3);
       expect(scores.get(player1)).toBe(3); // guessed correctly
-      expect(scores.get(player3)).toBe(3); // guessed correctly
+      expect(scores.get(player3)).toBe(4); // guessed correctly + 1 vote from player2
       expect(scores.get(player2)).toBeUndefined(); // didn't score
     });
   });

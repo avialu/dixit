@@ -3,6 +3,7 @@ import { resizeAndCompressImages } from "../utils/imageResize";
 import { RoomState } from "../hooks/useGameState";
 import { Button } from "./ui";
 import { ConfirmModal } from "./ConfirmModal";
+import { getMinimumDeckSize } from "../utils/imageConstants";
 
 interface DeckUploaderProps {
   roomState: RoomState;
@@ -177,6 +178,14 @@ export function DeckUploader({
             <span className="stat-icon">📦</span>
             <span className="stat-text">
               Deck: <strong>{roomState.deckSize}</strong>
+              <span style={{ color: '#95a5a6', fontSize: '0.9em' }}>
+                /{getMinimumDeckSize(roomState.players.length, roomState.winTarget)}
+              </span>
+              {roomState.deckSize < getMinimumDeckSize(roomState.players.length, roomState.winTarget) && (
+                <span style={{ color: '#f39c12', marginLeft: '0.5rem' }}>
+                  (Need {getMinimumDeckSize(roomState.players.length, roomState.winTarget) - roomState.deckSize} more)
+                </span>
+              )}
             </span>
             <span className="stat-divider">•</span>
             <span className="stat-text">

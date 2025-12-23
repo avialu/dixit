@@ -6,6 +6,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 import { existsSync } from "fs";
 import { GameManager } from "./game/GameManager.js";
+import { serverConfig, rateLimitConfig } from "./config/index.js";
 import {
   joinSchema,
   adminSetWinTargetSchema,
@@ -29,17 +30,22 @@ import {
   GameError,
   ValidationError,
   PermissionError,
+  NetworkError,
+  RateLimitError,
+  ErrorSeverity,
   getErrorMessage,
   getErrorCode,
+  getErrorSeverity,
+  isRetryable,
 } from "./utils/errors.js";
 import { logger } from "./utils/logger.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-export function createApp(port: number = 3000) {
+export function createApp(port: number = serverConfig.port) {
   // Get server URL (prefer ENV, then LAN IP, then localhost)
-  const envServerUrl = process.env.SERVER_URL;
+  const envServerUrl = serverConfig.url;
   const lanIp = getLanIpAddress();
   const serverUrl =
     envServerUrl ||
@@ -47,9 +53,7 @@ export function createApp(port: number = 3000) {
   const app = express();
   const httpServer = createServer(app);
   // CORS configuration - restrict to allowed origins
-  const allowedOrigins = process.env.ALLOWED_ORIGINS
-    ? process.env.ALLOWED_ORIGINS.split(",")
-    : ["http://localhost:5174", "http://localhost:3000"];
+  const allowedOrigins = [...serverConfig.allowedOrigins];
   
   // Add LAN IP if available
   if (lanIp) {
@@ -67,8 +71,8 @@ export function createApp(port: number = 3000) {
 
   // Rate limiting to prevent abuse
   const apiLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 100, // Limit each IP to 100 requests per windowMs
+    windowMs: rateLimitConfig.apiWindowMs,
+    max: rateLimitConfig.apiMax,
     standardHeaders: true,
     legacyHeaders: false,
     message: "Too many requests from this IP, please try again later.",
@@ -85,19 +89,20 @@ export function createApp(port: number = 3000) {
   
   // Socket event rate limiting (per socket)
   const socketEventCounts = new Map<string, { count: number; resetTime: number }>();
-  const SOCKET_EVENT_LIMIT = 50; // 50 events per window
-  const SOCKET_EVENT_WINDOW = 10 * 1000; // 10 seconds
   
   function checkSocketRateLimit(socketId: string): boolean {
     const now = Date.now();
     const record = socketEventCounts.get(socketId);
     
     if (!record || now > record.resetTime) {
-      socketEventCounts.set(socketId, { count: 1, resetTime: now + SOCKET_EVENT_WINDOW });
+      socketEventCounts.set(socketId, { 
+        count: 1, 
+        resetTime: now + rateLimitConfig.socketWindowMs 
+      });
       return true;
     }
     
-    if (record.count >= SOCKET_EVENT_LIMIT) {
+    if (record.count >= rateLimitConfig.socketMax) {
       return false;
     }
     
@@ -111,41 +116,38 @@ export function createApp(port: number = 3000) {
   async function withClientId(socket: any, callback: SocketCallback): Promise<void> {
     // Check rate limit first
     if (!checkSocketRateLimit(socket.id)) {
-      socket.emit("error", { message: "Too many requests. Please slow down." });
+      const error = new RateLimitError("Too many requests. Please slow down.", 10);
+      socket.emit("error", error.toJSON());
       logger.warn("Socket rate limit exceeded", { socketId: socket.id });
       return;
     }
     
     const clientId = socketToClient.get(socket.id);
     if (!clientId) {
-      socket.emit("error", { message: "Please join the game first" });
+      const error = new ValidationError("Please join the game first");
+      socket.emit("error", error.toJSON());
       return;
     }
     try {
       await callback(clientId);
     } catch (error) {
-      // Handle specific error types
+      // Handle specific error types with enhanced error objects
       if (error instanceof ValidationError) {
-        socket.emit("validationError", {
-          message: error.message,
-          code: error.code,
-        });
+        socket.emit("validationError", error.toJSON());
         logger.warn("Validation error", { clientId, error: error.message });
       } else if (error instanceof PermissionError) {
-        socket.emit("permissionError", {
-          message: error.message,
-          code: error.code,
-        });
+        socket.emit("permissionError", error.toJSON());
         logger.warn("Permission error", { clientId, error: error.message });
+      } else if (error instanceof RateLimitError) {
+        socket.emit("rateLimitError", error.toJSON());
+        logger.warn("Rate limit error", { clientId, error: error.message });
       } else if (error instanceof GameError) {
-        socket.emit("gameError", {
-          message: error.message,
-          code: error.code,
-        });
+        socket.emit("gameError", error.toJSON());
         logger.error("Game error", { clientId, error: error.message });
       } else {
         const message = getErrorMessage(error);
-        socket.emit("error", { message });
+        const gameError = new GameError(message, 'UNKNOWN_ERROR', 500, ErrorSeverity.ERROR, false);
+        socket.emit("error", gameError.toJSON());
         logger.error("Unexpected error", { clientId, error: message });
       }
     }
@@ -269,18 +271,39 @@ npm start</pre>
         const parsed = reconnectSchema.parse(data);
         const { clientId } = parsed;
 
-        // Re-register the socket (works for both players and spectators)
-        socketToClient.set(socket.id, clientId);
-        logger.info("Socket re-registered", { clientId, socketId: socket.id });
+        // Check if this is a player (in game) or spectator (just watching)
+        const player = gameManager.getPlayer(clientId);
+        const isSpectator = !player;
+        
+        if (isSpectator) {
+          // Spectator reconnection - just re-register the socket
+          socketToClient.set(socket.id, clientId);
+          logger.info("Spectator reconnected", { clientId, socketId: socket.id });
+          
+          // Send fresh state
+          broadcastRoomState();
+          socket.emit("reconnectSuccess", { playerId: clientId });
+        } else {
+          // Player reconnection - verify player exists and mark as connected
+          socketToClient.set(socket.id, clientId);
+          player.reconnect(); // Mark player as connected
+          
+          logger.info("Player reconnected", { clientId, socketId: socket.id, playerName: player.name });
 
-        // Send fresh state
-        broadcastRoomState();
-        sendPlayerState(socket.id, clientId);
-        socket.emit("reconnectSuccess", { playerId: clientId });
+          // Send fresh state
+          broadcastRoomState();
+          sendPlayerState(socket.id, clientId);
+          socket.emit("reconnectSuccess", { playerId: clientId });
+        }
       } catch (error) {
         const message =
           error instanceof Error ? error.message : "Reconnection failed";
-        socket.emit("error", { message });
+        socket.emit("error", { 
+          message, 
+          code: 'RECONNECT_ERROR',
+          severity: 'error'
+        });
+        logger.error("Reconnection error", { error: message });
       }
     });
 
@@ -315,7 +338,7 @@ npm start</pre>
         logger.info("Spectator joined", { clientId });
 
         broadcastRoomState();
-        socket.emit("joinSuccess", { playerId: clientId });
+        socket.emit("joinSpectatorSuccess", { spectatorId: clientId });
       } catch (error) {
         const message =
           error instanceof Error
