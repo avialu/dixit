@@ -6,7 +6,8 @@ import { Modal } from "../components/Modal";
 import * as ModalContent from "../components/ModalContent";
 import { ProfileImageUpload } from "../components/ProfileImageUpload";
 import { Button, Icon, IconSize } from "../components/ui";
-import { useNotifications } from "../hooks/useNotifications";
+import { storage } from "../utils/storage";
+import { ConfirmModal } from "../components/ConfirmModal";
 
 interface UnifiedGamePageProps {
   roomState: RoomState | null;
@@ -79,25 +80,20 @@ export function UnifiedGamePage({
   const [profileImage, setProfileImage] = useState<string | null>(null);
   // Track QR code visibility
   const [showQR, setShowQR] = useState(true);
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+  }>({
+    isOpen: false,
+    title: "",
+    message: "",
+    onConfirm: () => {},
+  });
 
   // Detect demo mode (no socket connection)
   const isDemoMode = socket === null;
-
-  // Handle notification clicks - open appropriate modal
-  const handleNotificationClick = (action: "openCards" | "openResults") => {
-    console.log("Notification click handler - Action:", action);
-    if (action === "openCards") {
-      setModalType("cards");
-      setShowModal(true);
-    } else if (action === "openResults") {
-      setModalType("cards");
-      setShowModal(true);
-    }
-  };
-
-  // Enable notifications for mobile/background play
-  const { notificationPermission, requestNotificationPermission } =
-    useNotifications(roomState, playerState, playerId, handleNotificationClick);
 
   // Fetch server URL on mount (for cases where we need it before roomState is available)
   useEffect(() => {
@@ -206,31 +202,32 @@ export function UnifiedGamePage({
       roomState?.deckImages.filter((img) => img.uploadedBy === playerId) || [];
     const imageCount = myImages.length;
 
+    const performLogout = () => {
+      // Emit leave event so server removes the player immediately
+      onLeave();
+      // Clear the stored clientId so they don't auto-rejoin
+      storage.clientId.remove();
+      // Reset spectator state
+      setIsUserSpectator(false);
+      // Small delay to ensure leave event is processed before reload
+      setTimeout(() => {
+        window.location.reload();
+      }, 100);
+    };
+
     // Warning if user has uploaded images
     if (imageCount > 0) {
-      const confirmed = window.confirm(
-        `⚠️ Warning: You have ${imageCount} uploaded image${
+      setConfirmModal({
+        isOpen: true,
+        title: "⚠️ Logout Warning",
+        message: `You have ${imageCount} uploaded image${
           imageCount !== 1 ? "s" : ""
-        } in the deck.\n\n` +
-          `If you logout, these images will be permanently removed from the game.\n\n` +
-          `Are you sure you want to logout?`
-      );
-
-      if (!confirmed) {
-        return; // User cancelled logout
-      }
+        } in the deck. If you logout, these images will be permanently removed from the game. Are you sure you want to logout?`,
+        onConfirm: performLogout,
+      });
+    } else {
+      performLogout();
     }
-
-    // Emit leave event so server removes the player immediately
-    onLeave();
-    // Clear the stored clientId so they don't auto-rejoin
-    localStorage.removeItem("dixit-clientId");
-    // Reset spectator state
-    setIsUserSpectator(false);
-    // Small delay to ensure leave event is processed before reload
-    setTimeout(() => {
-      window.location.reload();
-    }, 100);
   };
 
   const handleStartEditName = (playerId: string, currentName: string) => {
@@ -267,15 +264,39 @@ export function UnifiedGamePage({
   };
 
   const handleKickPlayer = (targetPlayerId: string) => {
-    if (socket) {
-      socket.emit("adminKickPlayer", { targetPlayerId });
-    }
+    const targetPlayer = roomState?.players.find(
+      (p) => p.id === targetPlayerId
+    );
+    if (!targetPlayer) return;
+
+    setConfirmModal({
+      isOpen: true,
+      title: "Kick Player",
+      message: `Kick ${targetPlayer.name}? Their images will be transferred to you.`,
+      onConfirm: () => {
+        if (socket) {
+          socket.emit("adminKickPlayer", { targetPlayerId });
+        }
+      },
+    });
   };
 
   const handlePromotePlayer = (targetPlayerId: string) => {
-    if (socket) {
-      socket.emit("adminPromotePlayer", { targetPlayerId });
-    }
+    const targetPlayer = roomState?.players.find(
+      (p) => p.id === targetPlayerId
+    );
+    if (!targetPlayer) return;
+
+    setConfirmModal({
+      isOpen: true,
+      title: "Make Admin",
+      message: `Make ${targetPlayer.name} the admin? You will become a regular player.`,
+      onConfirm: () => {
+        if (socket) {
+          socket.emit("adminPromotePlayer", { targetPlayerId });
+        }
+      },
+    });
   };
 
   const handleStorytellerSubmit = () => {
@@ -407,108 +428,6 @@ export function UnifiedGamePage({
         />
       </div>
 
-      {/* Notification Permission Banner */}
-      {notificationPermission === "default" && isJoined && (
-        <div className="notification-banner">
-          <div className="notification-banner-content">
-            <Icon.Info size={IconSize.medium} />
-            <div className="notification-instructions-simple">
-              <span>
-                <strong>Get notified when it's your turn!</strong>
-              </span>
-              <span className="notification-explainer">
-                When you tap "Enable", Safari will ask:{" "}
-                <strong>"Allow notifications?"</strong>
-                <br />→ Tap <strong>"Allow"</strong> ✅ (You'll get alerts even
-                when screen is locked)
-                <br />→ If you tap "Don't Allow" ❌, we'll show you how to fix
-                it in Settings
-              </span>
-            </div>
-            <Button
-              variant="primary"
-              size="small"
-              onClick={requestNotificationPermission}
-              title="This will show Safari's permission dialog"
-            >
-              Enable Notifications
-            </Button>
-            <Button
-              variant="icon"
-              onClick={() => {
-                // Hide banner permanently for this session
-                const banner = document.querySelector(
-                  ".notification-banner"
-                ) as HTMLElement;
-                if (banner) banner.style.display = "none";
-              }}
-              title="Dismiss"
-            >
-              ×
-            </Button>
-          </div>
-        </div>
-      )}
-
-      {/* Notification Denied - Show Instructions */}
-      {notificationPermission === "denied" && isJoined && (
-        <div className="notification-banner notification-banner-denied">
-          <div className="notification-banner-content">
-            <Icon.Warning size={IconSize.medium} />
-            <div className="notification-instructions">
-              <strong>Notifications Blocked</strong>
-              <span>To enable notifications on iPhone:</span>
-              <ol className="settings-steps">
-                <li>
-                  <strong>Step 1:</strong> Open your iPhone{" "}
-                  <strong>Settings</strong> app (gray icon with gears)
-                </li>
-                <li>
-                  <strong>Step 2:</strong> Scroll down and tap{" "}
-                  <strong>Safari</strong>
-                </li>
-                <li>
-                  <strong>Step 3:</strong> Scroll down to{" "}
-                  <strong>"Settings for Websites"</strong> section
-                </li>
-                <li>
-                  <strong>Step 4:</strong> Tap <strong>Notifications</strong>
-                </li>
-                <li>
-                  <strong>Step 5:</strong> Find{" "}
-                  <strong>{window.location.hostname}</strong> in the list
-                </li>
-                <li>
-                  <strong>Step 6:</strong> Change from <strong>"Deny"</strong>{" "}
-                  to <strong>"Allow"</strong>
-                </li>
-                <li>
-                  <strong>Step 7:</strong> Return here and{" "}
-                  <strong>refresh this page</strong>
-                </li>
-              </ol>
-              <span className="settings-note">
-                ⚠️ Note: Requires iOS 16.4 or later. If you don't see the
-                Notifications option, your iOS version doesn't support web
-                notifications yet.
-              </span>
-            </div>
-            <Button
-              variant="icon"
-              onClick={() => {
-                const banner = document.querySelectorAll(
-                  ".notification-banner"
-                )[1] as HTMLElement;
-                if (banner) banner.style.display = "none";
-              }}
-              title="Dismiss"
-            >
-              ×
-            </Button>
-          </div>
-        </div>
-      )}
-
       {/* Floating Action Buttons - For Players (not spectators) */}
       {isJoined && !isSpectator && (
         <>
@@ -567,7 +486,13 @@ export function UnifiedGamePage({
               disabled={
                 roomState.players.length < 3 || roomState.deckSize < 100
               }
-              title="Start Game"
+              title={
+                roomState.players.length < 3
+                  ? "Need at least 3 players"
+                  : roomState.deckSize < 100
+                  ? "Need at least 100 images"
+                  : "Start Game"
+              }
             >
               <Icon.Rocket size={IconSize.large} />
             </button>
@@ -742,6 +667,17 @@ export function UnifiedGamePage({
             </Modal>
           ) : null;
         })()}
+
+      {/* Confirm Modal */}
+      <ConfirmModal
+        isOpen={confirmModal.isOpen}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        confirmText="Confirm"
+        confirmVariant="danger"
+        onConfirm={confirmModal.onConfirm}
+        onCancel={() => setConfirmModal({ ...confirmModal, isOpen: false })}
+      />
     </div>
   );
 }

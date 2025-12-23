@@ -356,7 +356,7 @@ export function DemoPage() {
   const [deckSize, setDeckSize] = useState(45);
   const [deckLocked, setDeckLocked] = useState(false);
   const [uploadedImages, setUploadedImages] = useState<
-    Array<{ id: string; uploadedBy: string }>
+    Array<{ id: string; uploadedBy: string; imageData: string }>
   >([]);
 
   // Animation testing states
@@ -510,6 +510,7 @@ export function DemoPage() {
       const newImage = {
         id: `demo-img-${Date.now()}`,
         uploadedBy: currentPlayerId,
+        imageData: imageData, // Include actual image data
       };
       setUploadedImages((prev) => [...prev, newImage]);
       setDeckSize((prev) => prev + 1);

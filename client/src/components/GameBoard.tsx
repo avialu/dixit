@@ -27,7 +27,7 @@ export function GameBoard({
     height: 0,
   });
 
-  const trackLength = 30; // 0 to 29 = 30 spaces
+  const trackLength = 31; // 0 to 30 = 31 spaces (supports scores from 0 to 30)
 
   // Measure container on mount and after a brief delay (for layout settle)
   useEffect(() => {
@@ -273,15 +273,10 @@ export function GameBoard({
         <div className="board-qr-code-section">
           <div className="board-qr-code-container">
             {onCloseQR && (
-              <CloseButton
-                onClose={onCloseQR}
-                className="board-qr-close-btn"
-                title="Close QR code"
-              />
+              <CloseButton onClose={onCloseQR} title="Close QR code" />
             )}
-            <p className="board-qr-hint">Scan to join on mobile</p>
+            <p className="board-qr-hint">Scan to join</p>
             <QRCode url={roomState.serverUrl} size={180} />
-            <p className="board-qr-url">{roomState.serverUrl}</p>
           </div>
         </div>
       )}
@@ -327,7 +322,7 @@ export function GameBoard({
 
           {/* Draw spaces */}
           {pathPositions.map((pos) => {
-            const scoreNumber = pos.index; // Display 0-29
+            const scoreNumber = pos.index; // Display 0-30
             const isWinTarget = scoreNumber === roomState.winTarget;
 
             return (

@@ -50,6 +50,7 @@ import {
   Trophy,
   Sparkles,
   GalleryHorizontalEnd,
+  BookOpen,
 } from "lucide-react";
 
 /**
@@ -96,6 +97,7 @@ export const Icon = {
   Trophy,
   Crown,
   Sparkles,
+  Book: BookOpen,
   
   // Social & Players
   People: Users,

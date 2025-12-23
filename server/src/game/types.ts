@@ -50,7 +50,7 @@ export interface GameState {
   deck: Card[];
   allowPlayerUploads: boolean; // If true, players can upload images. Admin can always upload.
   deckLocked: boolean;
-  winTarget: number | null; // 29, 49, or null (unlimited) - 0-based scoring
+  winTarget: number | null; // Points to win (1-100 range, or null for unlimited)
   currentRound: number;
   storytellerId: string | null;
   currentClue: string | null;
@@ -74,7 +74,7 @@ export interface RoomState {
   allowPlayerUploads: boolean; // If true, players can upload images. Admin can always upload.
   deckSize: number;
   deckLocked: boolean;
-  winTarget: number | null; // 29, 49, or null (unlimited) - 0-based scoring
+  winTarget: number | null; // Points to win (1-100 range, or null for unlimited)
   deckImages: {
     id: string;
     uploadedBy: string;

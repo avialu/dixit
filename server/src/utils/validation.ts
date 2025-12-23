@@ -10,7 +10,10 @@ export const adminSetDeckModeSchema = z.object({
 });
 
 export const adminSetWinTargetSchema = z.object({
-  target: z.union([z.literal(30), z.literal(50), z.null()]),
+  target: z.union([
+    z.number().int().min(1).max(100), // Allow any integer from 1 to 100
+    z.null(), // Allow null for unlimited play
+  ]),
 });
 
 export const uploadImageSchema = z.object({

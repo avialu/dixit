@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { resizeAndCompressImages } from "../utils/imageResize";
 import { RoomState } from "../hooks/useGameState";
 import { Button } from "./ui";
+import { ConfirmModal } from "./ConfirmModal";
 
 interface DeckUploaderProps {
   roomState: RoomState;
@@ -28,7 +29,17 @@ export function DeckUploader({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const folderInputRef = useRef<HTMLInputElement>(null);
   const [isMobile, setIsMobile] = useState(false);
-  const [imageCache, setImageCache] = useState<Record<string, string>>({});
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+  }>({
+    isOpen: false,
+    title: "",
+    message: "",
+    onConfirm: () => {},
+  });
 
   // Detect mobile device
   useEffect(() => {
@@ -40,48 +51,6 @@ export function DeckUploader({
     return () => window.removeEventListener("resize", checkMobile);
   }, []);
 
-  // Load cached images from localStorage on mount
-  useEffect(() => {
-    try {
-      const cached = localStorage.getItem(`image-cache-${playerId}`);
-      if (cached) {
-        setImageCache(JSON.parse(cached));
-      }
-    } catch (err) {
-      console.error("Failed to load image cache:", err);
-    }
-  }, [playerId]);
-
-  // Save image to cache
-  const cacheImage = (imageId: string, imageData: string) => {
-    console.log("📸 Caching image:", imageId, "Data length:", imageData.length);
-    setImageCache((prev) => {
-      const newCache = { ...prev, [imageId]: imageData };
-      try {
-        // Store in localStorage (but be careful of size limits)
-        localStorage.setItem(
-          `image-cache-${playerId}`,
-          JSON.stringify(newCache)
-        );
-        console.log(
-          "✅ Cached successfully. Total cached:",
-          Object.keys(newCache).length
-        );
-      } catch (err) {
-        console.error("❌ Failed to cache image:", err);
-        // If localStorage is full, clear old entries
-        if (err instanceof Error && err.name === "QuotaExceededError") {
-          const limitedCache = { [imageId]: imageData };
-          localStorage.setItem(
-            `image-cache-${playerId}`,
-            JSON.stringify(limitedCache)
-          );
-          return limitedCache;
-        }
-      }
-      return newCache;
-    });
-  };
 
   const myPlayer = roomState.players.find((p) => p.id === playerId);
   const isAdmin = myPlayer?.isAdmin || false;
@@ -91,26 +60,6 @@ export function DeckUploader({
   // Admins can always upload. Players and spectators can upload if admin allows it.
   const canUpload = isAdmin || roomState.allowPlayerUploads;
 
-  // Simple hash function for image data
-  const hashImageData = async (imageData: string): Promise<string> => {
-    // Use crypto API if available for better hashing
-    if (crypto.subtle) {
-      const encoder = new TextEncoder();
-      const data = encoder.encode(imageData);
-      const hashBuffer = await crypto.subtle.digest("SHA-256", data);
-      const hashArray = Array.from(new Uint8Array(hashBuffer));
-      return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
-    } else {
-      // Fallback to simple hash for older browsers
-      let hash = 0;
-      for (let i = 0; i < imageData.length; i++) {
-        const char = imageData.charCodeAt(i);
-        hash = (hash << 5) - hash + char;
-        hash = hash & hash;
-      }
-      return hash.toString(36);
-    }
-  };
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -120,14 +69,22 @@ export function DeckUploader({
     const remainingSlots = 200 - myImages.length;
 
     if (fileArray.length > remainingSlots) {
-      const proceed = confirm(
-        `You can only upload ${remainingSlots} more images. ` +
-          `The first ${remainingSlots} images will be processed.`
-      );
-      if (!proceed) return;
-      fileArray.splice(remainingSlots);
+      setConfirmModal({
+        isOpen: true,
+        title: "Too Many Images",
+        message: `You can only upload ${remainingSlots} more images. The first ${remainingSlots} images will be processed.`,
+        onConfirm: () => {
+          fileArray.splice(remainingSlots);
+          processUpload(fileArray);
+        },
+      });
+      return;
     }
 
+    await processUpload(fileArray);
+  };
+
+  const processUpload = async (fileArray: File[]) => {
     setUploading(true);
     setUploadStats({ completed: 0, total: fileArray.length, failed: 0 });
 
@@ -141,95 +98,29 @@ export function DeckUploader({
         }
       );
 
-      // Load existing image hashes to check for duplicates
-      let existingHashes: string[] = [];
-      try {
-        const stored = localStorage.getItem(`image-hashes-${playerId}`);
-        if (stored) {
-          existingHashes = JSON.parse(stored);
-        }
-      } catch (err) {
-        console.error("Failed to load image hashes:", err);
-      }
-
-      // Upload successful results and cache images immediately
+      // Upload successful results
       let failedCount = 0;
-      let duplicateCount = 0;
-      const uploadedImages: string[] = []; // Store the actual image data
-      const newHashes: string[] = [];
+      let uploadedCount = 0;
 
       for (const result of results) {
         if (result.error) {
           console.error(`Failed to process ${result.file.name}:`, result.error);
           failedCount++;
         } else {
-          // Check for duplicate
-          const imageHash = await hashImageData(result.imageData);
-
-          if (existingHashes.includes(imageHash)) {
-            console.warn(`⚠️ Duplicate image detected: ${result.file.name}`);
-            duplicateCount++;
-          } else {
-            uploadedImages.push(result.imageData);
-            newHashes.push(imageHash);
-            onUpload(result.imageData);
-          }
+          onUpload(result.imageData);
+          uploadedCount++;
         }
-      }
-
-      // Store the new hashes
-      if (newHashes.length > 0) {
-        try {
-          const allHashes = [...existingHashes, ...newHashes];
-          localStorage.setItem(
-            `image-hashes-${playerId}`,
-            JSON.stringify(allHashes)
-          );
-        } catch (err) {
-          console.error("Failed to store image hashes:", err);
-        }
-      }
-
-      // After upload, map the images to their server-assigned IDs
-      // We'll check for new images that appeared in the deck
-      if (uploadedImages.length > 0) {
-        setTimeout(() => {
-          const currentImages = roomState.deckImages.filter(
-            (img) => img.uploadedBy === playerId
-          );
-
-          // Store uploaded images by assuming they map to the most recent deck images
-          // This works because uploads are processed in order
-          const startIndex = Math.max(
-            0,
-            currentImages.length - uploadedImages.length
-          );
-
-          uploadedImages.forEach((imageData, idx) => {
-            const deckImage = currentImages[startIndex + idx];
-            if (deckImage) {
-              cacheImage(deckImage.id, imageData);
-            }
-          });
-        }, 500);
       }
 
       setUploadStats((prev) => ({ ...prev, failed: failedCount }));
 
-      // Show summary if there were any failures or duplicates
-      if (failedCount > 0 || duplicateCount > 0) {
+      // Show summary if there were any failures
+      if (failedCount > 0) {
         const messages = [];
-        if (uploadedImages.length > 0) {
+        if (uploadedCount > 0) {
           messages.push(
-            `✅ Uploaded ${uploadedImages.length} new image${
-              uploadedImages.length === 1 ? "" : "s"
-            }`
-          );
-        }
-        if (duplicateCount > 0) {
-          messages.push(
-            `⚠️ Skipped ${duplicateCount} duplicate${
-              duplicateCount === 1 ? "" : "s"
+            `✅ Uploaded ${uploadedCount} image${
+              uploadedCount === 1 ? "" : "s"
             }`
           );
         }
@@ -263,25 +154,18 @@ export function DeckUploader({
   const handleDeleteAll = async () => {
     if (myImages.length === 0) return;
 
-    const confirmed = confirm(
-      `Are you sure you want to delete all ${myImages.length} images?`
-    );
-    if (!confirmed) return;
-
-    // Delete all images
-    myImages.forEach((img) => {
-      onDelete(img.id);
+    setConfirmModal({
+      isOpen: true,
+      title: "Delete All Images",
+      message: `Are you sure you want to delete all ${myImages.length} images?`,
+      onConfirm: () => {
+        // Delete all images
+        myImages.forEach((img) => {
+          onDelete(img.id);
+        });
+        console.log("🗑️ Deleted all images");
+      },
     });
-
-    // Clear cache and hashes
-    setImageCache({});
-    try {
-      localStorage.removeItem(`image-cache-${playerId}`);
-      localStorage.removeItem(`image-hashes-${playerId}`);
-      console.log("🗑️ Cleared all images, cache, and hashes");
-    } catch (err) {
-      console.error("Failed to clear cache:", err);
-    }
   };
 
   return (
@@ -437,78 +321,40 @@ export function DeckUploader({
           </div>
         ) : (
           <div className="images-preview-grid">
-            {myImages.map((img) => {
-              const cachedImage = imageCache[img.id];
-              return (
-                <div key={img.id} className="image-preview-card">
-                  {cachedImage ? (
-                    <img
-                      src={cachedImage}
-                      alt="Uploaded image"
-                      className="preview-image"
-                    />
-                  ) : (
-                    <div className="preview-placeholder">
-                      <span className="placeholder-icon">🖼️</span>
-                    </div>
-                  )}
-                  <Button
-                    onClick={async () => {
-                      const cachedImage = imageCache[img.id];
-
-                      // Delete the image
-                      onDelete(img.id);
-
-                      // Remove from cache
-                      setImageCache((prev) => {
-                        const { [img.id]: _, ...rest } = prev;
-                        try {
-                          localStorage.setItem(
-                            `image-cache-${playerId}`,
-                            JSON.stringify(rest)
-                          );
-                        } catch (err) {
-                          console.error("Failed to update cache:", err);
-                        }
-                        return rest;
-                      });
-
-                      // Remove hash from stored hashes
-                      if (cachedImage) {
-                        try {
-                          const imageHash = await hashImageData(cachedImage);
-                          const stored = localStorage.getItem(
-                            `image-hashes-${playerId}`
-                          );
-                          if (stored) {
-                            const hashes: string[] = JSON.parse(stored);
-                            const updatedHashes = hashes.filter(
-                              (h) => h !== imageHash
-                            );
-                            localStorage.setItem(
-                              `image-hashes-${playerId}`,
-                              JSON.stringify(updatedHashes)
-                            );
-                            console.log(
-                              "🗑️ Removed image hash from duplicate detection"
-                            );
-                          }
-                        } catch (err) {
-                          console.error("Failed to remove image hash:", err);
-                        }
-                      }
-                    }}
-                    className="x-button preview-delete-btn"
-                    title="Delete image"
-                  >
-                    ×
-                  </Button>
-                </div>
-              );
-            })}
+            {myImages.map((img) => (
+              <div key={img.id} className="image-preview-card">
+                {img.imageData ? (
+                  <img
+                    src={img.imageData}
+                    alt="Uploaded image"
+                    className="preview-image"
+                  />
+                ) : (
+                  <div className="preview-placeholder">
+                    <span className="placeholder-icon">🖼️</span>
+                  </div>
+                )}
+                <Button
+                  onClick={() => onDelete(img.id)}
+                  className="x-button preview-delete-btn"
+                  title="Delete image"
+                >
+                  ×
+                </Button>
+              </div>
+            ))}
           </div>
         )}
       </div>
+      <ConfirmModal
+        isOpen={confirmModal.isOpen}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        confirmText="Confirm"
+        confirmVariant="danger"
+        onConfirm={confirmModal.onConfirm}
+        onCancel={() => setConfirmModal({ ...confirmModal, isOpen: false })}
+      />
     </div>
   );
 }

@@ -1,10 +1,7 @@
 import { nanoid } from 'nanoid';
 import { Card } from './types.js';
 import { loadDefaultImages } from '../utils/defaultImages.js';
-
-const MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5MB
-const MAX_IMAGES_PER_PLAYER = 200; // Increased from 20 to 200
-const MIN_IMAGES_TO_START = 100;
+import { GAME_CONSTANTS } from './constants.js';
 
 export class DeckManager {
   private deck: Card[] = [];
@@ -41,7 +38,7 @@ export class DeckManager {
   }
 
   canStartGame(): boolean {
-    return this.deck.length >= MIN_IMAGES_TO_START;
+    return this.deck.length >= GAME_CONSTANTS.MIN_IMAGES_TO_START;
   }
 
   getDeckSize(): number {
@@ -57,10 +54,27 @@ export class DeckManager {
       throw new Error('Cannot add image: deck is locked');
     }
 
+    // Validate image format (must be a valid data URL for image)
+    if (!imageData.startsWith('data:image/')) {
+      throw new Error('Invalid image format: must be a valid image data URL');
+    }
+
+    // Validate specific image types (JPEG, PNG, WebP, GIF)
+    const validTypes = [
+      'data:image/jpeg',
+      'data:image/jpg',
+      'data:image/png',
+      'data:image/webp',
+      'data:image/gif',
+    ];
+    if (!validTypes.some(type => imageData.startsWith(type))) {
+      throw new Error('Invalid image type: only JPEG, PNG, WebP, and GIF are supported');
+    }
+
     // Validate base64 size (rough estimate)
     const sizeInBytes = (imageData.length * 3) / 4;
-    if (sizeInBytes > MAX_IMAGE_SIZE) {
-      throw new Error(`Image too large: ${Math.round(sizeInBytes / 1024 / 1024)}MB (max 5MB)`);
+    if (sizeInBytes > GAME_CONSTANTS.MAX_IMAGE_SIZE) {
+      throw new Error(`Image too large: ${Math.round(sizeInBytes / 1024 / 1024)}MB (max ${Math.round(GAME_CONSTANTS.MAX_IMAGE_SIZE / 1024 / 1024)}MB)`);
     }
 
     // Check upload permissions
@@ -71,8 +85,8 @@ export class DeckManager {
 
     // Check per-player limit
     const currentCount = this.imageCountByPlayer.get(playerId) || 0;
-    if (currentCount >= MAX_IMAGES_PER_PLAYER) {
-      throw new Error(`Maximum ${MAX_IMAGES_PER_PLAYER} images per player`);
+    if (currentCount >= GAME_CONSTANTS.MAX_IMAGES_PER_PLAYER) {
+      throw new Error(`Maximum ${GAME_CONSTANTS.MAX_IMAGES_PER_PLAYER} images per player`);
     }
 
     const card: Card = {

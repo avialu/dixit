@@ -26,8 +26,8 @@ export function PlayerList({
       <ul>
         {players.map((player) => (
           <li key={player.id} className={!player.isConnected ? 'disconnected' : ''}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px' }}>
-              <div style={{ flex: 1 }}>
+            <div className="player-list-row">
+              <div className="player-info">
                 <span className="player-name">
                   {player.name}
                   {player.isAdmin && <Badge variant="admin" />}
@@ -38,13 +38,12 @@ export function PlayerList({
                 {!player.isConnected && ' (disconnected)'}
               </div>
               {isAdmin && player.id !== currentPlayerId && (
-                <div style={{ display: 'flex', gap: '4px' }}>
+                <div className="player-actions">
                   {!player.isAdmin && onPromotePlayer && (
                     <Button
                       variant="secondary"
                       size="small"
                       onClick={() => onPromotePlayer(player.id)}
-                      style={{ padding: '4px 8px', fontSize: '12px' }}
                       title="Promote to Admin"
                     >
                       Promote
@@ -52,9 +51,10 @@ export function PlayerList({
                   )}
                   {onKickPlayer && (
                     <Button
+                      variant="danger"
+                      size="small"
                       onClick={() => onKickPlayer(player.id)}
-                      className="btn-danger btn-small"
-                      style={{ padding: '4px 8px', fontSize: '12px' }}
+                      title="Kick player from game"
                     >
                       Kick
                     </Button>

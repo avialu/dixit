@@ -1,6 +1,6 @@
 import { ButtonHTMLAttributes, ReactNode } from "react";
 
-export type ButtonVariant = "primary" | "secondary" | "continue" | "icon";
+export type ButtonVariant = "primary" | "secondary" | "continue" | "icon" | "danger" | "success";
 export type ButtonSize = "small" | "medium" | "large";
 
 export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
@@ -18,6 +18,8 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
  * - secondary: Gray button
  * - continue: Green pulsing button for advancing rounds
  * - icon: Small icon-only button
+ * - danger: Red button for destructive actions (kick, delete)
+ * - success: Green button for confirmations
  *
  * Sizes:
  * - small: Compact button
@@ -37,6 +39,8 @@ export function Button({
     secondary: "btn-secondary",
     continue: "btn-continue",
     icon: "btn-icon",
+    danger: "btn-danger",
+    success: "btn-success",
   }[variant];
 
   const sizeClass = {
@@ -53,5 +57,6 @@ export function Button({
     </button>
   );
 }
+
 
 

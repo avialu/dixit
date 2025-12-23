@@ -218,11 +218,7 @@ export function LobbyModal(props: LobbyModalProps) {
                         {!player.isAdmin && (
                           <Button
                             variant="icon"
-                            onClick={() => {
-                              if (window.confirm(`Make ${player.name} the admin?\n\nYou will become a regular player.`)) {
-                                onPromotePlayer(player.id);
-                              }
-                            }}
+                            onClick={() => onPromotePlayer(player.id)}
                             title="Make admin"
                             className="btn-make-admin"
                           >
@@ -231,11 +227,7 @@ export function LobbyModal(props: LobbyModalProps) {
                         )}
                         <Button
                           variant="icon"
-                          onClick={() => {
-                            if (window.confirm(`Kick ${player.name}? Their images will be transferred to you.`)) {
-                              onKickPlayer(player.id);
-                            }
-                          }}
+                          onClick={() => onKickPlayer(player.id)}
                           title="Kick player"
                           className="btn-kick"
                         >

@@ -1,6 +1,8 @@
 import { ButtonHTMLAttributes } from "react";
+import { Button } from "./Button";
 
-export interface CloseButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
+export interface CloseButtonProps
+  extends ButtonHTMLAttributes<HTMLButtonElement> {
   onClose: () => void;
   className?: string;
 }
@@ -9,6 +11,7 @@ export interface CloseButtonProps extends ButtonHTMLAttributes<HTMLButtonElement
  * Unified CloseButton Component
  *
  * Standardized X button for modals and dismissible UI elements.
+ * Uses the Button component internally with icon variant.
  * Includes accessibility labels and consistent styling.
  */
 export function CloseButton({
@@ -17,7 +20,8 @@ export function CloseButton({
   ...props
 }: CloseButtonProps) {
   return (
-    <button
+    <Button
+      variant="icon"
       className={`x-button modal-close-button ${className}`}
       onClick={onClose}
       aria-label="Close modal"
@@ -25,7 +29,6 @@ export function CloseButton({
       {...props}
     >
       ×
-    </button>
+    </Button>
   );
 }
-

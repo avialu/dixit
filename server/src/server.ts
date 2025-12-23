@@ -18,6 +18,14 @@ import {
   promotePlayerSchema,
 } from "./utils/validation.js";
 import { getLanIpAddress } from "./utils/network.js";
+import {
+  GameError,
+  ValidationError,
+  PermissionError,
+  getErrorMessage,
+  getErrorCode,
+} from "./utils/errors.js";
+import { logger } from "./utils/logger.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -43,6 +51,45 @@ export function createApp(port: number = 3000) {
 
   // Map socket.id to clientId
   const socketToClient = new Map<string, string>();
+
+  // Helper: Validate client is registered (middleware pattern)
+  type SocketCallback = (clientId: string) => void | Promise<void>;
+
+  function withClientId(socket: any, callback: SocketCallback): void {
+    const clientId = socketToClient.get(socket.id);
+    if (!clientId) {
+      socket.emit("error", { message: "Please join the game first" });
+      return;
+    }
+    try {
+      callback(clientId);
+    } catch (error) {
+      // Handle specific error types
+      if (error instanceof ValidationError) {
+        socket.emit("validationError", {
+          message: error.message,
+          code: error.code,
+        });
+        logger.warn("Validation error", { clientId, error: error.message });
+      } else if (error instanceof PermissionError) {
+        socket.emit("permissionError", {
+          message: error.message,
+          code: error.code,
+        });
+        logger.warn("Permission error", { clientId, error: error.message });
+      } else if (error instanceof GameError) {
+        socket.emit("gameError", {
+          message: error.message,
+          code: error.code,
+        });
+        logger.error("Game error", { clientId, error: error.message });
+      } else {
+        const message = getErrorMessage(error);
+        socket.emit("error", { message });
+        logger.error("Unexpected error", { clientId, error: message });
+      }
+    }
+  }
 
   // Serve static files (built client)
   const publicPath = path.join(__dirname, "..", "public");
@@ -158,8 +205,10 @@ npm start</pre>
         broadcastRoomState();
         sendPlayerState(socket.id, clientId);
         socket.emit("reconnectSuccess", { playerId: clientId });
-      } catch (error: any) {
-        socket.emit("error", { message: error.message });
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : "Reconnection failed";
+        socket.emit("error", { message });
       }
     });
 
@@ -176,8 +225,10 @@ npm start</pre>
         sendPlayerState(socket.id, clientId);
 
         socket.emit("joinSuccess", { playerId: clientId });
-      } catch (error: any) {
-        socket.emit("error", { message: error.message });
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : "Failed to join game";
+        socket.emit("error", { message });
       }
     });
 
@@ -192,19 +243,17 @@ npm start</pre>
 
         broadcastRoomState();
         socket.emit("joinSuccess", { playerId: clientId });
-      } catch (error: any) {
-        socket.emit("error", { message: error.message });
+      } catch (error) {
+        const message =
+          error instanceof Error
+            ? error.message
+            : "Failed to join as spectator";
+        socket.emit("error", { message });
       }
     });
 
     socket.on("adminSetAllowPlayerUploads", (data) => {
-      try {
-        const clientId = socketToClient.get(socket.id);
-        if (!clientId) {
-          socket.emit("error", { message: "Please join the game first" });
-          return;
-        }
-
+      withClientId(socket, (clientId) => {
         const { allow } = data;
         if (typeof allow !== "boolean") {
           throw new Error("Invalid data: allow must be a boolean");
@@ -213,55 +262,31 @@ npm start</pre>
         gameManager.setAllowPlayerUploads(allow, clientId);
 
         broadcastRoomState();
-      } catch (error: any) {
-        socket.emit("error", { message: error.message });
-      }
+      });
     });
 
     socket.on("adminSetWinTarget", (data) => {
-      try {
-        const clientId = socketToClient.get(socket.id);
-        if (!clientId) {
-          socket.emit("error", { message: "Please join the game first" });
-          return;
-        }
-
+      withClientId(socket, (clientId) => {
         const { target } = adminSetWinTargetSchema.parse(data);
         gameManager.setWinTarget(target, clientId);
 
         broadcastRoomState();
-      } catch (error: any) {
-        socket.emit("error", { message: error.message });
-      }
+      });
     });
 
     socket.on("uploadImage", (data) => {
-      try {
-        const clientId = socketToClient.get(socket.id);
-        if (!clientId) {
-          socket.emit("error", { message: "Please join the game first" });
-          return;
-        }
-
+      withClientId(socket, (clientId) => {
         const { imageData } = uploadImageSchema.parse(data);
         const card = gameManager.uploadImage(imageData, clientId);
 
         console.log(`Image uploaded by ${clientId}: ${card.id}`);
 
         broadcastRoomState();
-      } catch (error: any) {
-        socket.emit("error", { message: error.message });
-      }
+      });
     });
 
     socket.on("deleteImage", (data) => {
-      try {
-        const clientId = socketToClient.get(socket.id);
-        if (!clientId) {
-          socket.emit("error", { message: "Please join the game first" });
-          return;
-        }
-
+      withClientId(socket, (clientId) => {
         const { imageId } = deleteImageSchema.parse(data);
         const deleted = gameManager.deleteImage(imageId, clientId);
 
@@ -270,34 +295,18 @@ npm start</pre>
         }
 
         broadcastRoomState();
-      } catch (error: any) {
-        socket.emit("error", { message: error.message });
-      }
+      });
     });
 
     socket.on("lockDeck", () => {
-      try {
-        const clientId = socketToClient.get(socket.id);
-        if (!clientId) {
-          socket.emit("error", { message: "Please join the game first" });
-          return;
-        }
-
+      withClientId(socket, (clientId) => {
         gameManager.lockDeck(clientId);
         broadcastRoomState();
-      } catch (error: any) {
-        socket.emit("error", { message: error.message });
-      }
+      });
     });
 
     socket.on("startGame", () => {
-      try {
-        const clientId = socketToClient.get(socket.id);
-        if (!clientId) {
-          socket.emit("error", { message: "Please join the game first" });
-          return;
-        }
-
+      withClientId(socket, (clientId) => {
         gameManager.startGame(clientId);
 
         broadcastRoomState();
@@ -308,19 +317,11 @@ npm start</pre>
         }
 
         io.emit("phaseChanged", { phase: gameManager.getCurrentPhase() });
-      } catch (error: any) {
-        socket.emit("error", { message: error.message });
-      }
+      });
     });
 
     socket.on("storytellerSubmit", (data) => {
-      try {
-        const clientId = socketToClient.get(socket.id);
-        if (!clientId) {
-          socket.emit("error", { message: "Please join the game first" });
-          return;
-        }
-
+      withClientId(socket, (clientId) => {
         const { cardId, clue } = storytellerSubmitSchema.parse(data);
 
         gameManager.storytellerSubmitCard(clientId, cardId, clue);
@@ -328,19 +329,11 @@ npm start</pre>
         broadcastRoomState();
         sendPlayerState(socket.id, clientId);
         io.emit("phaseChanged", { phase: gameManager.getCurrentPhase() });
-      } catch (error: any) {
-        socket.emit("error", { message: error.message });
-      }
+      });
     });
 
     socket.on("playerSubmitCard", (data) => {
-      try {
-        const clientId = socketToClient.get(socket.id);
-        if (!clientId) {
-          socket.emit("error", { message: "Please join the game first" });
-          return;
-        }
-
+      withClientId(socket, (clientId) => {
         const { cardId } = playerSubmitCardSchema.parse(data);
 
         gameManager.playerSubmitCard(clientId, cardId);
@@ -353,19 +346,11 @@ npm start</pre>
         if (currentPhase !== "PLAYERS_CHOICE") {
           io.emit("phaseChanged", { phase: currentPhase });
         }
-      } catch (error: any) {
-        socket.emit("error", { message: error.message });
-      }
+      });
     });
 
     socket.on("playerVote", (data) => {
-      try {
-        const clientId = socketToClient.get(socket.id);
-        if (!clientId) {
-          socket.emit("error", { message: "Please join the game first" });
-          return;
-        }
-
+      withClientId(socket, (clientId) => {
         const { cardId } = playerVoteSchema.parse(data);
         gameManager.playerVote(clientId, cardId);
 
@@ -378,19 +363,11 @@ npm start</pre>
           io.emit("phaseChanged", { phase: currentPhase });
           broadcastRoomState();
         }
-      } catch (error: any) {
-        socket.emit("error", { message: error.message });
-      }
+      });
     });
 
     socket.on("advanceRound", () => {
-      try {
-        const clientId = socketToClient.get(socket.id);
-        if (!clientId) {
-          socket.emit("error", { message: "Please join the game first" });
-          return;
-        }
-
+      withClientId(socket, (clientId) => {
         gameManager.advanceToNextRound(clientId);
 
         // Send updated hands
@@ -400,19 +377,11 @@ npm start</pre>
 
         broadcastRoomState();
         io.emit("phaseChanged", { phase: gameManager.getCurrentPhase() });
-      } catch (error: any) {
-        socket.emit("error", { message: error.message });
-      }
+      });
     });
 
     socket.on("adminResetGame", () => {
-      try {
-        const clientId = socketToClient.get(socket.id);
-        if (!clientId) {
-          socket.emit("error", { message: "Please join the game first" });
-          return;
-        }
-
+      withClientId(socket, (clientId) => {
         gameManager.resetGame(clientId);
 
         broadcastRoomState();
@@ -422,19 +391,11 @@ npm start</pre>
         }
 
         io.emit("phaseChanged", { phase: gameManager.getCurrentPhase() });
-      } catch (error: any) {
-        socket.emit("error", { message: error.message });
-      }
+      });
     });
 
     socket.on("adminNewDeck", () => {
-      try {
-        const clientId = socketToClient.get(socket.id);
-        if (!clientId) {
-          socket.emit("error", { message: "Please join the game first" });
-          return;
-        }
-
+      withClientId(socket, (clientId) => {
         gameManager.newDeck(clientId);
 
         broadcastRoomState();
@@ -444,53 +405,29 @@ npm start</pre>
         }
 
         io.emit("phaseChanged", { phase: gameManager.getCurrentPhase() });
-      } catch (error: any) {
-        socket.emit("error", { message: error.message });
-      }
+      });
     });
 
     socket.on("changeName", (data) => {
-      try {
-        const clientId = socketToClient.get(socket.id);
-        if (!clientId) {
-          socket.emit("error", { message: "Please join the game first" });
-          return;
-        }
-
+      withClientId(socket, (clientId) => {
         const { newName } = changeNameSchema.parse(data);
         gameManager.changeName(clientId, newName);
 
         broadcastRoomState();
-      } catch (error: any) {
-        socket.emit("error", { message: error.message });
-      }
+      });
     });
 
     socket.on("uploadTokenImage", (data) => {
-      try {
-        const clientId = socketToClient.get(socket.id);
-        if (!clientId) {
-          socket.emit("error", { message: "Please join the game first" });
-          return;
-        }
-
+      withClientId(socket, (clientId) => {
         const { imageData } = data;
         gameManager.setPlayerTokenImage(clientId, imageData);
 
         broadcastRoomState();
-      } catch (error: any) {
-        socket.emit("error", { message: error.message });
-      }
+      });
     });
 
     socket.on("adminKickPlayer", (data) => {
-      try {
-        const clientId = socketToClient.get(socket.id);
-        if (!clientId) {
-          socket.emit("error", { message: "Please join the game first" });
-          return;
-        }
-
+      withClientId(socket, (clientId) => {
         const { targetPlayerId } = kickPlayerSchema.parse(data);
 
         // Find the socket for the target player and disconnect them
@@ -521,42 +458,24 @@ npm start</pre>
         }
 
         broadcastRoomState();
-      } catch (error: any) {
-        socket.emit("error", { message: error.message });
-      }
+      });
     });
 
     socket.on("adminUnlockDeck", () => {
-      try {
-        const clientId = socketToClient.get(socket.id);
-        if (!clientId) {
-          socket.emit("error", { message: "Please join the game first" });
-          return;
-        }
-
+      withClientId(socket, (clientId) => {
         gameManager.unlockDeck(clientId);
 
         broadcastRoomState();
-      } catch (error: any) {
-        socket.emit("error", { message: error.message });
-      }
+      });
     });
 
     socket.on("adminPromotePlayer", (data) => {
-      try {
-        const clientId = socketToClient.get(socket.id);
-        if (!clientId) {
-          socket.emit("error", { message: "Please join the game first" });
-          return;
-        }
-
+      withClientId(socket, (clientId) => {
         const { targetPlayerId } = promotePlayerSchema.parse(data);
         gameManager.promoteToAdmin(clientId, targetPlayerId);
 
         broadcastRoomState();
-      } catch (error: any) {
-        socket.emit("error", { message: error.message });
-      }
+      });
     });
 
     socket.on("leave", () => {
@@ -571,8 +490,10 @@ npm start</pre>
 
           broadcastRoomState();
         }
-      } catch (error: any) {
-        socket.emit("error", { message: error.message });
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : "Failed to leave game";
+        socket.emit("error", { message });
       }
     });
 

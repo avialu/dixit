@@ -2,6 +2,7 @@ import { nanoid } from "nanoid";
 import { Player } from "./Player.js";
 import { DeckManager } from "./DeckManager.js";
 import { ScoringEngine } from "./ScoringEngine.js";
+import { GAME_CONSTANTS } from "./constants.js";
 import {
   GamePhase,
   GameState,
@@ -11,9 +12,6 @@ import {
   Vote,
   Card,
 } from "./types.js";
-
-const HAND_SIZE = 6;
-const MIN_IMAGES_TO_START = 100;
 
 export class GameManager {
   private state: GameState;
@@ -27,7 +25,7 @@ export class GameManager {
       deck: [],
       allowPlayerUploads: true, // Players can upload by default
       deckLocked: false,
-      winTarget: 29, // Default: 29 points to win (0-29 scale)
+      winTarget: GAME_CONSTANTS.DEFAULT_WIN_TARGET, // Default: 30 points to win (1-30 scale)
       currentRound: 0,
       storytellerId: null,
       currentClue: null,
@@ -45,25 +43,14 @@ export class GameManager {
       // Reconnection - player object still exists
       const player = this.state.players.get(clientId)!;
 
-      // Check if there's another admin (someone else became admin while they were gone)
-      if (player.isAdmin) {
-        let hasOtherAdmin = false;
-        for (const [id, p] of this.state.players.entries()) {
-          if (id !== clientId && p.isAdmin) {
-            hasOtherAdmin = true;
-            break;
-          }
-        }
+      // Handle admin conflict (extract to helper method)
+      const wasAdmin = player.isAdmin;
+      this.handleAdminConflictOnReconnect(player, clientId);
 
-        // If someone else is admin now, demote this reconnecting player
-        if (hasOtherAdmin) {
-          player.isAdmin = false;
-          console.log(
-            `${player.name} (${clientId}) reconnected but was demoted (another player is now admin)`
-          );
-        } else {
-          console.log(`${player.name} (${clientId}) reconnected as admin`);
-        }
+      if (player.isAdmin) {
+        console.log(`${player.name} (${clientId}) reconnected as admin`);
+      } else if (wasAdmin && !player.isAdmin) {
+        // Already logged in handleAdminConflictOnReconnect
       } else {
         console.log(
           `${player.name} (${clientId}) reconnected as regular player`
@@ -307,24 +294,8 @@ export class GameManager {
   reconnectPlayer(clientId: string): Player | null {
     const player = this.state.players.get(clientId);
     if (player) {
-      // Check if there's another admin (someone else became admin while they were disconnected)
-      if (player.isAdmin) {
-        let hasOtherAdmin = false;
-        for (const [id, p] of this.state.players.entries()) {
-          if (id !== clientId && p.isAdmin) {
-            hasOtherAdmin = true;
-            break;
-          }
-        }
-
-        // If someone else is admin now, demote this reconnecting player
-        if (hasOtherAdmin) {
-          player.isAdmin = false;
-          console.log(
-            `${player.name} (${clientId}) reconnected but was demoted (another player is now admin)`
-          );
-        }
-      }
+      // Handle admin conflict (extract to helper method)
+      this.handleAdminConflictOnReconnect(player, clientId);
 
       player.reconnect();
       return player;
@@ -348,6 +319,11 @@ export class GameManager {
 
     if (this.state.phase !== GamePhase.DECK_BUILDING) {
       throw new Error("Can only change win target during deck building");
+    }
+
+    // Validate target is a reasonable number if not null
+    if (target !== null && (target < 1 || target > 100)) {
+      throw new Error("Win target must be between 1 and 100 points");
     }
 
     this.state.winTarget = target;
@@ -376,13 +352,15 @@ export class GameManager {
       throw new Error("Can only start game from DECK_BUILDING phase");
     }
 
-    if (this.state.players.size < 3) {
-      throw new Error("Need at least 3 players to start");
+    if (this.state.players.size < GAME_CONSTANTS.MIN_PLAYERS) {
+      throw new Error(
+        `Need at least ${GAME_CONSTANTS.MIN_PLAYERS} players to start`
+      );
     }
 
     // Load default images if needed
     const currentDeckSize = this.deckManager.getDeckSize();
-    if (currentDeckSize < MIN_IMAGES_TO_START) {
+    if (currentDeckSize < GAME_CONSTANTS.MIN_IMAGES_TO_START) {
       console.log(`Loading default images (current deck: ${currentDeckSize})`);
       this.deckManager.loadDefaultImages();
     }
@@ -396,7 +374,7 @@ export class GameManager {
 
     // Deal cards to all players
     for (const player of this.state.players.values()) {
-      const cards = this.deckManager.drawCards(HAND_SIZE);
+      const cards = this.deckManager.drawCards(GAME_CONSTANTS.HAND_SIZE);
       player.addCards(cards);
     }
 
@@ -597,7 +575,7 @@ export class GameManager {
 
     // Refill hands to 6 cards
     for (const player of this.state.players.values()) {
-      const needed = HAND_SIZE - player.hand.length;
+      const needed = GAME_CONSTANTS.HAND_SIZE - player.hand.length;
       if (needed > 0 && this.deckManager.getDeckSize() >= needed) {
         const cards = this.deckManager.drawCards(needed);
         player.addCards(cards);
@@ -643,7 +621,7 @@ export class GameManager {
 
     // Keep the uploaded images but reset to deck building
     this.state.deckLocked = false;
-    this.state.winTarget = 29; // Reset to default
+    this.state.winTarget = GAME_CONSTANTS.DEFAULT_WIN_TARGET; // Reset to default
     this.state.phase = GamePhase.DECK_BUILDING;
   }
 
@@ -667,7 +645,7 @@ export class GameManager {
     this.state.lastScoreDeltas.clear();
     this.state.deckLocked = false;
     this.state.allowPlayerUploads = true;
-    this.state.winTarget = 29; // Reset to default
+    this.state.winTarget = GAME_CONSTANTS.DEFAULT_WIN_TARGET; // Reset to default
     this.submittedCardsData.clear();
   }
 
@@ -686,6 +664,7 @@ export class GameManager {
     const deckImages = this.deckManager.getAllCards().map((c) => ({
       id: c.id,
       uploadedBy: c.uploadedBy,
+      imageData: c.imageData, // Include image data for thumbnails
     }));
 
     // Reveal cards only in appropriate phases
@@ -765,7 +744,31 @@ export class GameManager {
     });
   }
 
-  // Helper
+  // Helpers
+  private handleAdminConflictOnReconnect(
+    player: Player,
+    clientId: string
+  ): void {
+    if (!player.isAdmin) return;
+
+    // Check if there's another admin (someone else became admin while they were disconnected)
+    let hasOtherAdmin = false;
+    for (const [id, p] of this.state.players.entries()) {
+      if (id !== clientId && p.isAdmin) {
+        hasOtherAdmin = true;
+        break;
+      }
+    }
+
+    // If someone else is admin now, demote this reconnecting player
+    if (hasOtherAdmin) {
+      player.isAdmin = false;
+      console.log(
+        `${player.name} (${clientId}) reconnected but was demoted (another player is now admin)`
+      );
+    }
+  }
+
   private validateAdmin(playerId: string): void {
     const player = this.state.players.get(playerId);
     if (!player || !player.isAdmin) {

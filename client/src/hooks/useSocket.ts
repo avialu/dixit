@@ -1,14 +1,15 @@
 import { useEffect, useState } from 'react';
 import { io, Socket } from 'socket.io-client';
 import { nanoid } from 'nanoid';
+import { storage } from '../utils/storage';
 
 const SOCKET_URL = window.location.origin;
 
 // Get or create clientId outside component to persist
-let clientId = localStorage.getItem('dixit-clientId');
+let clientId = storage.clientId.get();
 if (!clientId) {
   clientId = nanoid();
-  localStorage.setItem('dixit-clientId', clientId);
+  storage.clientId.set(clientId);
 }
 
 export function useSocket() {

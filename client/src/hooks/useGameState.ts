@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Socket } from 'socket.io-client';
+import { storage } from '../utils/storage';
 
 export interface Card {
   id: string;
@@ -24,7 +25,7 @@ export interface RoomState {
   deckSize: number;
   deckLocked: boolean;
   winTarget: number | null;
-  deckImages: { id: string; uploadedBy: string }[];
+  deckImages: { id: string; uploadedBy: string; imageData: string }[];
   currentRound: number;
   storytellerId: string | null;
   currentClue: string | null;
@@ -67,7 +68,7 @@ export function useGameState(socket: Socket | null) {
       alert(data.message);
       
       // Clear local storage to prevent auto-reconnect
-      localStorage.removeItem('dixit-clientId');
+      storage.clientId.remove();
       
       // Reload page to return to join screen
       window.location.reload();
