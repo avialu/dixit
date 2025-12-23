@@ -25,6 +25,8 @@ export interface RoomState {
   deckSize: number;
   deckLocked: boolean;
   winTarget: number | null;
+  boardBackgroundImage: string | null; // Custom board background image (base64 data URL)
+  boardPattern: "snake" | "spiral"; // Snake (zigzag) or Spiral (snail) pattern
   deckImages: { id: string; uploadedBy: string; imageData: string }[];
   currentRound: number;
   storytellerId: string | null;
@@ -180,6 +182,14 @@ export function useGameState(socket: Socket | null) {
     socket?.emit('uploadTokenImage', { imageData });
   };
 
+  const setBoardBackground = (imageData: string | null) => {
+    socket?.emit('adminSetBoardBackground', { imageData });
+  };
+
+  const setBoardPattern = (pattern: "snake" | "spiral") => {
+    socket?.emit('adminSetBoardPattern', { pattern });
+  };
+
   return {
     roomState,
     playerState,
@@ -205,6 +215,8 @@ export function useGameState(socket: Socket | null) {
       promotePlayer,
       leave,
       uploadTokenImage,
+      setBoardBackground,
+      setBoardPattern,
     },
   };
 }

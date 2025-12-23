@@ -21,6 +21,8 @@ interface UnifiedGamePageProps {
   onUploadImage: (imageData: string) => void;
   onDeleteImage: (imageId: string) => void;
   onSetAllowPlayerUploads: (allow: boolean) => void;
+  onSetBoardBackground: (imageData: string | null) => void;
+  onSetBoardPattern: (pattern: "snake" | "spiral") => void;
   onStartGame: () => void;
   onChangeName: (newName: string) => void;
   onStorytellerSubmit: (cardId: string, clue: string) => void;
@@ -44,6 +46,8 @@ export function UnifiedGamePage({
   onUploadImage: _onUploadImage,
   onDeleteImage: _onDeleteImage,
   onSetAllowPlayerUploads,
+  onSetBoardBackground,
+  onSetBoardPattern,
   onStartGame,
   onChangeName: _onChangeName,
   onStorytellerSubmit,
@@ -155,6 +159,9 @@ export function UnifiedGamePage({
       shouldAutoOpen = true;
     } else if (phase === "REVEAL") {
       // Open for everyone
+      shouldAutoOpen = true;
+    } else if (phase === "GAME_END") {
+      // Open for everyone to show winner
       shouldAutoOpen = true;
     }
 
@@ -570,6 +577,8 @@ export function UnifiedGamePage({
                 onUploadImage: _onUploadImage,
                 onDeleteImage: _onDeleteImage,
                 onSetAllowPlayerUploads,
+                onSetBoardBackground,
+                onSetBoardPattern,
                 onUploadTokenImage,
                 handleLogout,
                 onKickPlayer: handleKickPlayer,

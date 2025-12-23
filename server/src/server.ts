@@ -1,6 +1,7 @@
 import express from "express";
 import { createServer } from "http";
 import { Server as SocketIOServer } from "socket.io";
+import rateLimit from "express-rate-limit";
 import path from "path";
 import { fileURLToPath } from "url";
 import { existsSync } from "fs";
@@ -16,6 +17,12 @@ import {
   changeNameSchema,
   kickPlayerSchema,
   promotePlayerSchema,
+  reconnectSchema,
+  joinSpectatorSchema,
+  adminSetAllowPlayerUploadsSchema,
+  uploadTokenImageSchema,
+  setBoardBackgroundSchema,
+  setBoardPatternSchema,
 } from "./utils/validation.js";
 import { getLanIpAddress } from "./utils/network.js";
 import {
@@ -39,30 +46,83 @@ export function createApp(port: number = 3000) {
     (lanIp ? `http://${lanIp}:${port}` : `http://localhost:${port}`);
   const app = express();
   const httpServer = createServer(app);
+  // CORS configuration - restrict to allowed origins
+  const allowedOrigins = process.env.ALLOWED_ORIGINS
+    ? process.env.ALLOWED_ORIGINS.split(",")
+    : ["http://localhost:5174", "http://localhost:3000"];
+  
+  // Add LAN IP if available
+  if (lanIp) {
+    allowedOrigins.push(`http://${lanIp}:${port}`);
+    allowedOrigins.push(`http://${lanIp}:5174`);
+  }
+
   const io = new SocketIOServer(httpServer, {
     cors: {
-      origin: "*",
+      origin: allowedOrigins,
       methods: ["GET", "POST"],
+      credentials: true,
     },
   });
+
+  // Rate limiting to prevent abuse
+  const apiLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 100, // Limit each IP to 100 requests per windowMs
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: "Too many requests from this IP, please try again later.",
+  });
+
+  // Apply rate limiting to API routes
+  app.use("/api/", apiLimiter);
 
   // Single game instance (in-memory)
   const gameManager = new GameManager();
 
   // Map socket.id to clientId
   const socketToClient = new Map<string, string>();
+  
+  // Socket event rate limiting (per socket)
+  const socketEventCounts = new Map<string, { count: number; resetTime: number }>();
+  const SOCKET_EVENT_LIMIT = 50; // 50 events per window
+  const SOCKET_EVENT_WINDOW = 10 * 1000; // 10 seconds
+  
+  function checkSocketRateLimit(socketId: string): boolean {
+    const now = Date.now();
+    const record = socketEventCounts.get(socketId);
+    
+    if (!record || now > record.resetTime) {
+      socketEventCounts.set(socketId, { count: 1, resetTime: now + SOCKET_EVENT_WINDOW });
+      return true;
+    }
+    
+    if (record.count >= SOCKET_EVENT_LIMIT) {
+      return false;
+    }
+    
+    record.count++;
+    return true;
+  }
 
-  // Helper: Validate client is registered (middleware pattern)
+  // Helper: Validate client is registered (middleware pattern with async support + rate limiting)
   type SocketCallback = (clientId: string) => void | Promise<void>;
 
-  function withClientId(socket: any, callback: SocketCallback): void {
+  async function withClientId(socket: any, callback: SocketCallback): Promise<void> {
+    // Check rate limit first
+    if (!checkSocketRateLimit(socket.id)) {
+      socket.emit("error", { message: "Too many requests. Please slow down." });
+      logger.warn("Socket rate limit exceeded", { socketId: socket.id });
+      return;
+    }
+    
     const clientId = socketToClient.get(socket.id);
     if (!clientId) {
       socket.emit("error", { message: "Please join the game first" });
       return;
     }
     try {
-      callback(clientId);
+      await callback(clientId);
     } catch (error) {
       // Handle specific error types
       if (error instanceof ValidationError) {
@@ -98,6 +158,22 @@ export function createApp(port: number = 3000) {
   // API endpoint to get server URL
   app.get("/api/server-info", (req, res) => {
     res.json({ serverUrl });
+  });
+
+  // Health check endpoint
+  app.get("/api/health", (req, res) => {
+    res.status(200).json({
+      status: "healthy",
+      timestamp: new Date().toISOString(),
+      uptime: process.uptime(),
+      players: gameManager.getRoomState().players.length,
+      phase: gameManager.getRoomState().phase,
+    });
+  });
+
+  // Simple ping endpoint
+  app.get("/ping", (req, res) => {
+    res.status(200).send("pong");
   });
 
   // Fallback to index.html for SPA routing
@@ -182,7 +258,7 @@ npm start</pre>
 
   // Socket.IO event handlers
   io.on("connection", (socket) => {
-    console.log("Client connected:", socket.id);
+    logger.debug("Client connected", { socketId: socket.id });
 
     // Send initial room state immediately so QR code shows correct URL
     broadcastRoomState();
@@ -190,16 +266,12 @@ npm start</pre>
     // Handle reconnection - allows client to re-register their socket with their clientId
     socket.on("reconnect", (data) => {
       try {
-        const { clientId } = data;
-
-        if (!clientId) {
-          socket.emit("error", { message: "clientId is required" });
-          return;
-        }
+        const parsed = reconnectSchema.parse(data);
+        const { clientId } = parsed;
 
         // Re-register the socket (works for both players and spectators)
         socketToClient.set(socket.id, clientId);
-        console.log(`Socket re-registered for clientId: ${clientId}`);
+        logger.info("Socket re-registered", { clientId, socketId: socket.id });
 
         // Send fresh state
         broadcastRoomState();
@@ -219,7 +291,7 @@ npm start</pre>
         const player = gameManager.addPlayer(name, clientId);
         socketToClient.set(socket.id, clientId);
 
-        console.log(`Player joined: ${name} (${clientId})`);
+        logger.playerAction(clientId, "joined game", { name });
 
         broadcastRoomState();
         sendPlayerState(socket.id, clientId);
@@ -234,12 +306,13 @@ npm start</pre>
 
     socket.on("joinSpectator", (data) => {
       try {
-        const { clientId } = data;
+        const parsed = joinSpectatorSchema.parse(data);
+        const { clientId } = parsed;
 
         // Register the spectator's socket with their actual clientId
         socketToClient.set(socket.id, clientId);
 
-        console.log(`Spectator joined (${clientId})`);
+        logger.info("Spectator joined", { clientId });
 
         broadcastRoomState();
         socket.emit("joinSuccess", { playerId: clientId });
@@ -254,10 +327,8 @@ npm start</pre>
 
     socket.on("adminSetAllowPlayerUploads", (data) => {
       withClientId(socket, (clientId) => {
-        const { allow } = data;
-        if (typeof allow !== "boolean") {
-          throw new Error("Invalid data: allow must be a boolean");
-        }
+        const parsed = adminSetAllowPlayerUploadsSchema.parse(data);
+        const { allow } = parsed;
 
         gameManager.setAllowPlayerUploads(allow, clientId);
 
@@ -274,12 +345,30 @@ npm start</pre>
       });
     });
 
+    socket.on("adminSetBoardBackground", (data) => {
+      withClientId(socket, (clientId) => {
+        const { imageData } = setBoardBackgroundSchema.parse(data);
+        gameManager.setBoardBackgroundImage(imageData, clientId);
+
+        broadcastRoomState();
+      });
+    });
+
+    socket.on("adminSetBoardPattern", (data) => {
+      withClientId(socket, (clientId) => {
+        const { pattern } = setBoardPatternSchema.parse(data);
+        gameManager.setBoardPattern(pattern, clientId);
+
+        broadcastRoomState();
+      });
+    });
+
     socket.on("uploadImage", (data) => {
       withClientId(socket, (clientId) => {
         const { imageData } = uploadImageSchema.parse(data);
         const card = gameManager.uploadImage(imageData, clientId);
 
-        console.log(`Image uploaded by ${clientId}: ${card.id}`);
+        logger.playerAction(clientId, "uploaded image", { cardId: card.id });
 
         broadcastRoomState();
       });
@@ -291,7 +380,7 @@ npm start</pre>
         const deleted = gameManager.deleteImage(imageId, clientId);
 
         if (deleted) {
-          console.log(`Image deleted by ${clientId}: ${imageId}`);
+          logger.playerAction(clientId, "deleted image", { imageId });
         }
 
         broadcastRoomState();
@@ -419,7 +508,8 @@ npm start</pre>
 
     socket.on("uploadTokenImage", (data) => {
       withClientId(socket, (clientId) => {
-        const { imageData } = data;
+        const parsed = uploadTokenImageSchema.parse(data);
+        const { imageData } = parsed;
         gameManager.setPlayerTokenImage(clientId, imageData);
 
         broadcastRoomState();
@@ -482,7 +572,7 @@ npm start</pre>
       try {
         const clientId = socketToClient.get(socket.id);
         if (clientId) {
-          console.log(`Player/Spectator leaving: ${clientId}`);
+          logger.info("Player/Spectator leaving", { clientId });
 
           // Permanently remove player (leavePlayer will only remove if they're in players list)
           gameManager.leavePlayer(clientId);
@@ -500,13 +590,14 @@ npm start</pre>
     socket.on("disconnect", () => {
       const clientId = socketToClient.get(socket.id);
       if (clientId) {
-        console.log(`Player disconnected: ${clientId}`);
+        logger.info("Player disconnected", { clientId, socketId: socket.id });
         gameManager.removePlayer(clientId);
         socketToClient.delete(socket.id);
+        socketEventCounts.delete(socket.id); // Cleanup rate limit tracking
         broadcastRoomState();
       }
     });
   });
 
-  return { app, httpServer, io };
+  return { app, httpServer, io, gameManager };
 }

@@ -2,6 +2,7 @@ import { nanoid } from 'nanoid';
 import { Card } from './types.js';
 import { loadDefaultImages } from '../utils/defaultImages.js';
 import { GAME_CONSTANTS } from './constants.js';
+import { logger } from '../utils/logger.js';
 
 export class DeckManager {
   private deck: Card[] = [];
@@ -83,9 +84,9 @@ export class DeckManager {
       throw new Error('Only the host can upload images');
     }
 
-    // Check per-player limit
+    // Check per-player limit (admins have unlimited uploads)
     const currentCount = this.imageCountByPlayer.get(playerId) || 0;
-    if (currentCount >= GAME_CONSTANTS.MAX_IMAGES_PER_PLAYER) {
+    if (!isAdmin && currentCount >= GAME_CONSTANTS.MAX_IMAGES_PER_PLAYER) {
       throw new Error(`Maximum ${GAME_CONSTANTS.MAX_IMAGES_PER_PLAYER} images per player`);
     }
 
@@ -142,7 +143,10 @@ export class DeckManager {
    */
   returnCards(cards: Card[]): void {
     this.deck.push(...cards);
-    console.log(`Returned ${cards.length} cards to deck (deck now has ${this.deck.length} cards)`);
+    logger.debug("Returned cards to deck", { 
+      returnedCount: cards.length, 
+      deckSize: this.deck.length 
+    });
   }
 
   shuffle(): void {
@@ -177,10 +181,13 @@ export class DeckManager {
     // Get all images from this player (for logging)
     const playerImages = this.deck.filter(card => card.uploadedBy === playerId);
     
-    // Log each image being removed
-    playerImages.forEach(card => {
-      console.log(`  → Deleting image ${card.id} (owner: ${playerId})`);
-    });
+    // Log images being removed
+    if (playerImages.length > 0) {
+      logger.debug("Removing player images", { 
+        playerId, 
+        imageCount: playerImages.length 
+      });
+    }
     
     // Remove the images
     this.deck = this.deck.filter(card => card.uploadedBy !== playerId);
@@ -214,7 +221,13 @@ export class DeckManager {
     this.imageCountByPlayer.delete(fromPlayerId);
     this.imageCountByPlayer.set(toPlayerId, toCount + fromCount);
     
-    console.log(`Transferred ${transferredCount} images from ${fromPlayerId} to ${toPlayerId}`);
+    if (transferredCount > 0) {
+      logger.debug("Transferred images between players", { 
+        fromPlayerId, 
+        toPlayerId, 
+        transferredCount 
+      });
+    }
     
     return transferredCount;
   }
@@ -235,7 +248,10 @@ export class DeckManager {
       this.deck.push(card);
     }
     
-    console.log(`Added ${defaultImages.length} default images to deck. Total: ${this.deck.length}`);
+    logger.info("Added default images to deck", { 
+      defaultImagesCount: defaultImages.length, 
+      totalDeckSize: this.deck.length 
+    });
   }
 }
 

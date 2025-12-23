@@ -1,7 +1,4 @@
-const MAX_DIMENSION = 1024;
-const TARGET_SIZE = 500 * 1024; // 500KB
-const INITIAL_QUALITY = 0.9;
-const PARALLEL_BATCH_SIZE = 4; // Process 4 images at a time
+import { IMAGE_CONSTANTS } from './imageConstants';
 
 export async function resizeAndCompressImage(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -16,13 +13,13 @@ export async function resizeAndCompressImage(file: File): Promise<string> {
           let width = img.width;
           let height = img.height;
 
-          if (width > MAX_DIMENSION || height > MAX_DIMENSION) {
+          if (width > IMAGE_CONSTANTS.MAX_DIMENSION || height > IMAGE_CONSTANTS.MAX_DIMENSION) {
             if (width > height) {
-              height = (height / width) * MAX_DIMENSION;
-              width = MAX_DIMENSION;
+              height = (height / width) * IMAGE_CONSTANTS.MAX_DIMENSION;
+              width = IMAGE_CONSTANTS.MAX_DIMENSION;
             } else {
-              width = (width / height) * MAX_DIMENSION;
-              height = MAX_DIMENSION;
+              width = (width / height) * IMAGE_CONSTANTS.MAX_DIMENSION;
+              height = IMAGE_CONSTANTS.MAX_DIMENSION;
             }
           }
 
@@ -41,13 +38,12 @@ export async function resizeAndCompressImage(file: File): Promise<string> {
           ctx.drawImage(img, 0, 0, width, height);
 
           // Try to compress to target size
-          let quality = INITIAL_QUALITY;
+          let quality = IMAGE_CONSTANTS.INITIAL_QUALITY;
           let result = canvas.toDataURL('image/jpeg', quality);
 
           // Iteratively reduce quality if needed
-          while (result.length > TARGET_SIZE * 1.37 && quality > 0.1) {
-            // base64 is ~1.37x the binary size
-            quality -= 0.1;
+          while (result.length > IMAGE_CONSTANTS.TARGET_SIZE * IMAGE_CONSTANTS.BASE64_SIZE_MULTIPLIER && quality > IMAGE_CONSTANTS.MIN_QUALITY) {
+            quality -= IMAGE_CONSTANTS.QUALITY_STEP;
             result = canvas.toDataURL('image/jpeg', quality);
           }
 
@@ -82,8 +78,8 @@ export async function resizeAndCompressImages(
   const results: Array<{ file: File; imageData: string; error?: string }> = [];
   
   // Process files in batches
-  for (let i = 0; i < files.length; i += PARALLEL_BATCH_SIZE) {
-    const batch = files.slice(i, Math.min(i + PARALLEL_BATCH_SIZE, files.length));
+  for (let i = 0; i < files.length; i += IMAGE_CONSTANTS.PARALLEL_BATCH_SIZE) {
+    const batch = files.slice(i, Math.min(i + IMAGE_CONSTANTS.PARALLEL_BATCH_SIZE, files.length));
     
     const batchPromises = batch.map(async (file) => {
       // Validate file first
@@ -117,8 +113,8 @@ export function validateImageFile(file: File): string | null {
     return 'File must be an image';
   }
 
-  if (file.size > 10 * 1024 * 1024) {
-    return 'File too large (max 10MB)';
+  if (file.size > IMAGE_CONSTANTS.MAX_FILE_SIZE) {
+    return `File too large (max ${IMAGE_CONSTANTS.MAX_FILE_SIZE / 1024 / 1024}MB)`;
   }
 
   return null;

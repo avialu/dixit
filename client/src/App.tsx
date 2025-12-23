@@ -29,6 +29,8 @@ function App() {
                 onUploadImage={actions.uploadImage}
                 onDeleteImage={actions.deleteImage}
                 onSetAllowPlayerUploads={actions.setAllowPlayerUploads}
+                onSetBoardBackground={actions.setBoardBackground}
+                onSetBoardPattern={actions.setBoardPattern}
                 onStartGame={actions.startGame}
                 onChangeName={actions.changeName}
                 onStorytellerSubmit={actions.storytellerSubmit}

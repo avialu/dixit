@@ -8,6 +8,7 @@ export class Player implements IPlayer {
   hand: Card[];
   score: number;
   tokenImage: string | null;
+  lastSeen: number; // Timestamp for cleanup
 
   constructor(id: string, name: string, isAdmin: boolean = false) {
     this.id = id;
@@ -17,6 +18,7 @@ export class Player implements IPlayer {
     this.hand = [];
     this.score = 0;
     this.tokenImage = null;
+    this.lastSeen = Date.now();
   }
 
   addCards(cards: Card[]): void {
@@ -41,10 +43,12 @@ export class Player implements IPlayer {
 
   disconnect(): void {
     this.isConnected = false;
+    this.lastSeen = Date.now();
   }
 
   reconnect(): void {
     this.isConnected = true;
+    this.lastSeen = Date.now();
   }
 
   setTokenImage(imageData: string | null): void {

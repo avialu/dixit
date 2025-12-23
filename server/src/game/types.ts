@@ -23,6 +23,7 @@ export interface Player {
   hand: Card[];
   score: number;
   tokenImage: string | null;
+  lastSeen: number; // Timestamp for cleanup
   // Methods from Player class
   addCards(cards: Card[]): void;
   removeCard(cardId: string): Card | null;
@@ -44,6 +45,8 @@ export interface Vote {
   cardId: string;
 }
 
+export type BoardPattern = "snake" | "spiral";
+
 export interface GameState {
   phase: GamePhase;
   players: Map<string, Player>;
@@ -51,6 +54,8 @@ export interface GameState {
   allowPlayerUploads: boolean; // If true, players can upload images. Admin can always upload.
   deckLocked: boolean;
   winTarget: number | null; // Points to win (1-100 range, or null for unlimited)
+  boardBackgroundImage: string | null; // Custom board background image (base64 data URL)
+  boardPattern: BoardPattern; // Snake (zigzag) or Spiral (snail) pattern
   currentRound: number;
   storytellerId: string | null;
   currentClue: string | null;
@@ -75,6 +80,8 @@ export interface RoomState {
   deckSize: number;
   deckLocked: boolean;
   winTarget: number | null; // Points to win (1-100 range, or null for unlimited)
+  boardBackgroundImage: string | null; // Custom board background image (base64 data URL)
+  boardPattern: BoardPattern; // Snake (zigzag) or Spiral (snail) pattern
   deckImages: {
     id: string;
     uploadedBy: string;

@@ -3,6 +3,7 @@ import { Player } from "./Player.js";
 import { DeckManager } from "./DeckManager.js";
 import { ScoringEngine } from "./ScoringEngine.js";
 import { GAME_CONSTANTS } from "./constants.js";
+import { logger } from "../utils/logger.js";
 import {
   GamePhase,
   GameState,
@@ -11,6 +12,7 @@ import {
   SubmittedCard,
   Vote,
   Card,
+  BoardPattern,
 } from "./types.js";
 
 export class GameManager {
@@ -26,6 +28,8 @@ export class GameManager {
       allowPlayerUploads: true, // Players can upload by default
       deckLocked: false,
       winTarget: GAME_CONSTANTS.DEFAULT_WIN_TARGET, // Default: 30 points to win (1-30 scale)
+      boardBackgroundImage: null, // No custom background by default
+      boardPattern: "snake", // Default: snake (zigzag) pattern
       currentRound: 0,
       storytellerId: null,
       currentClue: null,
@@ -48,13 +52,11 @@ export class GameManager {
       this.handleAdminConflictOnReconnect(player, clientId);
 
       if (player.isAdmin) {
-        console.log(`${player.name} (${clientId}) reconnected as admin`);
+        logger.info("Player reconnected as admin", { playerName: player.name, clientId });
       } else if (wasAdmin && !player.isAdmin) {
         // Already logged in handleAdminConflictOnReconnect
       } else {
-        console.log(
-          `${player.name} (${clientId}) reconnected as regular player`
-        );
+        logger.info("Player reconnected as regular player", { playerName: player.name, clientId });
       }
 
       player.reconnect();
@@ -85,13 +87,13 @@ export class GameManager {
     this.state.players.set(clientId, player);
 
     if (shouldBeAdmin) {
-      console.log(`${name} (${clientId}) joined as admin`);
+      logger.info("Player joined as admin", { name, clientId });
       // Update deck manager with admin ID only if this is the first player
       if (this.state.players.size === 1) {
         this.deckManager = new DeckManager(clientId);
       }
     } else {
-      console.log(`${name} (${clientId}) joined as regular player`);
+      logger.info("Player joined as regular player", { name, clientId });
     }
 
     return player;
@@ -117,7 +119,7 @@ export class GameManager {
       for (const [pid, p] of this.state.players.entries()) {
         if (pid !== clientId) {
           p.isAdmin = true;
-          console.log(`Transferred admin role to ${p.name} (${pid})`);
+          logger.info("Transferred admin role", { playerName: p.name, newAdminId: pid });
           break;
         }
       }
@@ -131,9 +133,11 @@ export class GameManager {
     // Transfer images to current admin (if any images exist)
     if (playerImages.length > 0) {
       const userName = player ? player.name : "Spectator";
-      console.log(
-        `Transferring ${playerImages.length} images from ${userName} (${clientId}) who logged out to admin`
-      );
+      logger.info("Transferring images from leaving player", { 
+        userName, 
+        clientId, 
+        imageCount: playerImages.length 
+      });
 
       // Find current admin to transfer images to
       let newOwnerId = "";
@@ -152,7 +156,7 @@ export class GameManager {
 
     if (!player) {
       // Not a player (spectator or already removed)
-      console.log(`Spectator logged out: ${clientId}`);
+      logger.info("Spectator logged out", { clientId });
       return;
     }
 
@@ -161,9 +165,10 @@ export class GameManager {
       this.state.phase === GamePhase.DECK_BUILDING &&
       player.hand.length > 0
     ) {
-      console.log(
-        `Returning ${player.hand.length} cards from ${player.name} back to deck`
-      );
+      logger.info("Returning cards from leaving player to deck", { 
+        playerName: player.name, 
+        cardCount: player.hand.length 
+      });
       this.deckManager.returnCards(player.hand);
       player.hand = [];
     }
@@ -171,7 +176,7 @@ export class GameManager {
     // Remove from players map
     this.state.players.delete(clientId);
 
-    console.log(`Player permanently removed: ${clientId} (${player.name})`);
+    logger.info("Player permanently removed", { clientId, playerName: player.name });
   }
 
   kickPlayer(adminId: string, targetPlayerId: string): void {
@@ -198,9 +203,10 @@ export class GameManager {
       adminId
     );
     if (transferredCount > 0) {
-      console.log(
-        `Transferred ${transferredCount} images from kicked player ${targetPlayer.name} to admin`
-      );
+      logger.info("Transferred images from kicked player", { 
+        playerName: targetPlayer.name, 
+        transferredCount 
+      });
     }
 
     // Return their cards to the deck if game hasn't started
@@ -208,9 +214,10 @@ export class GameManager {
       this.state.phase === GamePhase.DECK_BUILDING &&
       targetPlayer.hand.length > 0
     ) {
-      console.log(
-        `Returning ${targetPlayer.hand.length} cards from kicked ${targetPlayer.name} back to deck`
-      );
+      logger.info("Returning cards from kicked player to deck", { 
+        playerName: targetPlayer.name, 
+        cardCount: targetPlayer.hand.length 
+      });
       this.deckManager.returnCards(targetPlayer.hand);
       targetPlayer.hand = [];
     }
@@ -218,7 +225,7 @@ export class GameManager {
     // Remove the player completely
     this.state.players.delete(targetPlayerId);
 
-    console.log(`Player kicked: ${targetPlayerId} (${targetPlayer.name})`);
+    logger.info("Player kicked", { targetPlayerId, playerName: targetPlayer.name });
   }
 
   changeName(playerId: string, newName: string): void {
@@ -234,9 +241,11 @@ export class GameManager {
       }
     }
 
-    console.log(
-      `Changing player ${playerId} name from "${player.name}" to "${newName}"`
-    );
+    logger.info("Changing player name", { 
+      playerId, 
+      oldName: player.name, 
+      newName 
+    });
     player.name = newName;
   }
 
@@ -284,11 +293,11 @@ export class GameManager {
 
     // Demote current admin to regular player
     currentAdmin.isAdmin = false;
-    console.log(`${currentAdmin.name} (${adminId}) is no longer admin`);
+    logger.info("Admin demoted", { playerName: currentAdmin.name, adminId });
 
     // Promote target player
     targetPlayer.isAdmin = true;
-    console.log(`${targetPlayer.name} (${targetPlayerId}) is now admin`);
+    logger.info("Player promoted to admin", { playerName: targetPlayer.name, targetPlayerId });
   }
 
   reconnectPlayer(clientId: string): Player | null {
@@ -301,6 +310,68 @@ export class GameManager {
       return player;
     }
     return null;
+  }
+
+  /**
+   * Clean up disconnected players who have been offline for too long
+   * @param maxDisconnectedTime Maximum time in milliseconds a player can be disconnected (default: 30 minutes)
+   * @returns Number of players cleaned up
+   */
+  cleanupDisconnectedPlayers(maxDisconnectedTime: number = 30 * 60 * 1000): number {
+    const now = Date.now();
+    let cleanedCount = 0;
+    const playersToRemove: string[] = [];
+
+    for (const [id, player] of this.state.players.entries()) {
+      // Only cleanup disconnected players
+      if (!player.isConnected && (now - player.lastSeen) > maxDisconnectedTime) {
+        playersToRemove.push(id);
+      }
+    }
+
+    // Remove the players
+    for (const id of playersToRemove) {
+      const player = this.state.players.get(id);
+      if (player) {
+        const offlineMinutes = Math.round((now - player.lastSeen) / 1000 / 60);
+        logger.info("Cleaning up disconnected player", { 
+          playerName: player.name, 
+          playerId: id, 
+          offlineMinutes 
+        });
+        
+        // Transfer their images to admin before removal
+        let adminId = "";
+        for (const [pid, p] of this.state.players.entries()) {
+          if (p.isAdmin && pid !== id) {
+            adminId = pid;
+            break;
+          }
+        }
+        
+        if (adminId) {
+          const transferredCount = this.deckManager.transferImages(id, adminId);
+          if (transferredCount > 0) {
+            logger.info("Transferred images from cleaned player", { transferredCount });
+          }
+        }
+
+        // Return cards to deck if in deck building phase
+        if (this.state.phase === GamePhase.DECK_BUILDING && player.hand.length > 0) {
+          this.deckManager.returnCards(player.hand);
+          logger.info("Returned cards from cleaned player", { cardCount: player.hand.length });
+        }
+
+        this.state.players.delete(id);
+        cleanedCount++;
+      }
+    }
+
+    if (cleanedCount > 0) {
+      logger.info("Memory cleanup completed", { cleanedCount });
+    }
+
+    return cleanedCount;
   }
 
   getPlayer(clientId: string): Player {
@@ -327,6 +398,46 @@ export class GameManager {
     }
 
     this.state.winTarget = target;
+  }
+
+  setBoardBackgroundImage(imageData: string | null, adminId: string): void {
+    this.validateAdmin(adminId);
+
+    if (this.state.phase !== GamePhase.DECK_BUILDING) {
+      throw new Error("Can only change board background during deck building");
+    }
+
+    // Validate image format if provided
+    if (imageData !== null) {
+      if (!imageData.startsWith('data:image/')) {
+        throw new Error('Invalid image format: must be a valid image data URL');
+      }
+      
+      const validTypes = [
+        'data:image/jpeg',
+        'data:image/jpg',
+        'data:image/png',
+        'data:image/webp',
+        'data:image/gif',
+      ];
+      if (!validTypes.some(type => imageData.startsWith(type))) {
+        throw new Error('Invalid image type: only JPEG, PNG, WebP, and GIF are supported');
+      }
+    }
+
+    this.state.boardBackgroundImage = imageData;
+    logger.info("Board background image updated", { adminId, hasImage: imageData !== null });
+  }
+
+  setBoardPattern(pattern: "snake" | "spiral", adminId: string): void {
+    this.validateAdmin(adminId);
+
+    if (this.state.phase !== GamePhase.DECK_BUILDING) {
+      throw new Error("Can only change board pattern during deck building");
+    }
+
+    this.state.boardPattern = pattern;
+    logger.info("Board pattern updated", { adminId, pattern });
   }
 
   uploadImage(imageData: string, playerId: string): Card {
@@ -361,7 +472,7 @@ export class GameManager {
     // Load default images if needed
     const currentDeckSize = this.deckManager.getDeckSize();
     if (currentDeckSize < GAME_CONSTANTS.MIN_IMAGES_TO_START) {
-      console.log(`Loading default images (current deck: ${currentDeckSize})`);
+      logger.info("Loading default images", { currentDeckSize });
       this.deckManager.loadDefaultImages();
     }
 
@@ -701,6 +812,8 @@ export class GameManager {
       deckSize: this.deckManager.getDeckSize(),
       deckLocked: this.state.deckLocked,
       winTarget: this.state.winTarget,
+      boardBackgroundImage: this.state.boardBackgroundImage,
+      boardPattern: this.state.boardPattern,
       deckImages,
       currentRound: this.state.currentRound,
       storytellerId: this.state.storytellerId,
@@ -763,9 +876,10 @@ export class GameManager {
     // If someone else is admin now, demote this reconnecting player
     if (hasOtherAdmin) {
       player.isAdmin = false;
-      console.log(
-        `${player.name} (${clientId}) reconnected but was demoted (another player is now admin)`
-      );
+      logger.info("Player reconnected but was demoted", { 
+        playerName: player.name, 
+        clientId 
+      });
     }
   }
 

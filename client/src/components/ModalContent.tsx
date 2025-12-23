@@ -20,6 +20,8 @@ interface LobbyModalProps {
   onUploadImage: (imageData: string) => void;
   onDeleteImage: (imageId: string) => void;
   onSetAllowPlayerUploads: (allow: boolean) => void;
+  onSetBoardBackground: (imageData: string | null) => void;
+  onSetBoardPattern: (pattern: "snake" | "spiral") => void;
   onUploadTokenImage: (imageData: string | null) => void;
   handleLogout: () => void;
   onKickPlayer: (playerId: string) => void;
@@ -88,6 +90,8 @@ export function LobbyModal(props: LobbyModalProps) {
     onUploadImage,
     onDeleteImage,
     onSetAllowPlayerUploads,
+    onSetBoardBackground,
+    onSetBoardPattern,
     onUploadTokenImage,
     handleLogout,
     onKickPlayer,
@@ -96,6 +100,26 @@ export function LobbyModal(props: LobbyModalProps) {
 
   const handleRemoveTokenImage = () => {
     onUploadTokenImage(null);
+  };
+
+  const handleBoardBackgroundUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Import the resize function
+    const { resizeAndCompressImage } = await import("../utils/imageResize");
+    
+    try {
+      const imageData = await resizeAndCompressImage(file);
+      onSetBoardBackground(imageData);
+    } catch (error) {
+      console.error("Failed to process background image:", error);
+      alert("Failed to upload background image. Please try again.");
+    }
+  };
+
+  const handleRemoveBoardBackground = () => {
+    onSetBoardBackground(null);
   };
 
   const header = (
@@ -254,6 +278,91 @@ export function LobbyModal(props: LobbyModalProps) {
             onSetAllowPlayerUploads={onSetAllowPlayerUploads}
           />
         </div>
+
+        {/* Board Background Settings (Admin Only) */}
+        {isAdmin && (
+          <div style={{ marginTop: "2rem", padding: "1rem", background: "rgba(255, 255, 255, 0.1)", borderRadius: "8px" }}>
+            <h3 style={{ marginBottom: "1rem" }}>
+              <Icon.Image size={IconSize.medium} /> Board Background (Admin)
+            </h3>
+            <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+              {roomState.boardBackgroundImage ? (
+                <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" }}>
+                  <img 
+                    src={roomState.boardBackgroundImage} 
+                    alt="Board background preview" 
+                    style={{ 
+                      width: "80px", 
+                      height: "60px", 
+                      objectFit: "cover", 
+                      borderRadius: "4px",
+                      border: "2px solid #fff"
+                    }}
+                  />
+                  <Button variant="secondary" size="small" onClick={handleRemoveBoardBackground}>
+                    Use Default Background
+                  </Button>
+                </div>
+              ) : (
+                <div>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleBoardBackgroundUpload}
+                    style={{ display: "none" }}
+                    id="board-background-input"
+                    ref={(input) => {
+                      if (input) {
+                        (window as any).boardBackgroundInput = input;
+                      }
+                    }}
+                  />
+                  <Button
+                    variant="primary"
+                    size="small"
+                    onClick={() => {
+                      const input = document.getElementById("board-background-input") as HTMLInputElement;
+                      input?.click();
+                    }}
+                  >
+                    <Icon.Upload size={IconSize.small} /> Upload Custom Background
+                  </Button>
+                  <p style={{ fontSize: "0.9rem", color: "#95a5a6", marginTop: "0.5rem" }}>
+                    Upload an image to customize the game board background
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Board Pattern Settings (Admin Only) */}
+        {isAdmin && (
+          <div style={{ marginTop: "1rem", padding: "1rem", background: "rgba(255, 255, 255, 0.1)", borderRadius: "8px" }}>
+            <h3 style={{ marginBottom: "1rem" }}>
+              <Icon.Settings size={IconSize.medium} /> Board Pattern (Admin)
+            </h3>
+            <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
+              <Button 
+                variant={roomState.boardPattern === "snake" ? "primary" : "secondary"}
+                size="small"
+                onClick={() => onSetBoardPattern("snake")}
+              >
+                🐍 Snake (Zigzag)
+              </Button>
+              <Button 
+                variant={roomState.boardPattern === "spiral" ? "primary" : "secondary"}
+                size="small"
+                onClick={() => onSetBoardPattern("spiral")}
+              >
+                🐌 Spiral (Snail)
+              </Button>
+            </div>
+            <p style={{ fontSize: "0.9rem", color: "#95a5a6", marginTop: "0.5rem" }}>
+              Choose how the score track is arranged on the board
+            </p>
+          </div>
+        )}
 
         {!isSpectator && (
           <p style={{ color: "#95a5a6", marginTop: "1rem" }}>

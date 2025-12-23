@@ -128,27 +128,9 @@ export function GameBoard({
   // Calculate scale factor for responsive sizing
   const scaleFactor = Math.min(viewBoxWidth, viewBoxHeight) / 100;
 
-  // Generate path positions in a winding pattern
-  const generatePathPositions = (length: number) => {
+  // Generate path positions - either snake (zigzag) or spiral (snail)
+  const generateSnakePattern = (length: number, cols: number, margin: number, topMargin: number) => {
     const positions: { x: number; y: number; index: number }[] = [];
-
-    // Determine columns based on container aspect ratio for better fit
-    let cols;
-    if (aspectRatio > 1.8) {
-      cols = 9; // Very wide desktop
-    } else if (aspectRatio > 1.4) {
-      cols = 7; // Wide desktop
-    } else if (aspectRatio > 1) {
-      cols = 6; // Medium
-    } else if (aspectRatio > 0.7) {
-      cols = 5; // Tall
-    } else {
-      cols = 4; // Very tall mobile
-    }
-
-    // Calculate spacing with comfortable padding from all sides
-    const margin = 8 * scaleFactor; // Comfortable padding from edges
-    const topMargin = 10 * scaleFactor; // Extra padding from top
     const xSpacing = (viewBoxWidth - margin * 2) / (cols - 1);
     const rows = Math.ceil(length / cols);
     const ySpacing = (viewBoxHeight - topMargin - margin) / (rows - 1);
@@ -170,6 +152,86 @@ export function GameBoard({
     }
 
     return positions;
+  };
+
+  const generateSpiralPattern = (length: number, cols: number, margin: number, topMargin: number) => {
+    const positions: { x: number; y: number; index: number }[] = [];
+    const xSpacing = (viewBoxWidth - margin * 2) / (cols - 1);
+    const rows = Math.ceil(length / cols);
+    const ySpacing = (viewBoxHeight - topMargin - margin) / (rows - 1);
+    const xOffset = margin;
+    const yOffset = topMargin;
+
+    // Create a grid to track visited positions
+    const grid: boolean[][] = Array(rows).fill(null).map(() => Array(cols).fill(false));
+    
+    let x = 0, y = 0;
+    let dx = 1, dy = 0; // Start moving right
+    
+    for (let i = 0; i < length; i++) {
+      positions.push({
+        x: x * xSpacing + xOffset,
+        y: y * ySpacing + yOffset,
+        index: i,
+      });
+      
+      grid[y][x] = true;
+      
+      // Try to continue in current direction
+      const nextX = x + dx;
+      const nextY = y + dy;
+      
+      // Check if we need to turn (hit boundary or visited cell)
+      if (
+        nextX < 0 || nextX >= cols ||
+        nextY < 0 || nextY >= rows ||
+        grid[nextY]?.[nextX]
+      ) {
+        // Turn clockwise: right -> down -> left -> up -> right
+        if (dx === 1 && dy === 0) {
+          dx = 0; dy = 1; // Turn down
+        } else if (dx === 0 && dy === 1) {
+          dx = -1; dy = 0; // Turn left
+        } else if (dx === -1 && dy === 0) {
+          dx = 0; dy = -1; // Turn up
+        } else if (dx === 0 && dy === -1) {
+          dx = 1; dy = 0; // Turn right
+        }
+      }
+      
+      x += dx;
+      y += dy;
+    }
+
+    return positions;
+  };
+
+  const generatePathPositions = (length: number) => {
+    // Determine columns based on container aspect ratio for better fit
+    let cols;
+    if (aspectRatio > 1.8) {
+      cols = 9; // Very wide desktop
+    } else if (aspectRatio > 1.4) {
+      cols = 7; // Wide desktop
+    } else if (aspectRatio > 1) {
+      cols = 6; // Medium
+    } else if (aspectRatio > 0.7) {
+      cols = 5; // Tall
+    } else {
+      cols = 4; // Very tall mobile
+    }
+
+    // Calculate spacing with comfortable padding from all sides
+    const margin = 8 * scaleFactor; // Comfortable padding from edges
+    const topMargin = 10 * scaleFactor; // Extra padding from top
+
+    // Generate pattern based on roomState.boardPattern
+    if (roomState.boardPattern === "spiral") {
+      return generateSpiralPattern(length, cols, margin, topMargin);
+    } else {
+      // Default to snake pattern
+      return generateSnakePattern(length, cols, margin, topMargin);
+    }
   };
 
   const pathPositions = generatePathPositions(trackLength);
@@ -284,7 +346,10 @@ export function GameBoard({
       {/* Decorative background */}
       <div className="board-scenic-background">
         <img
-          src="https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=1600&q=80"
+          src={
+            roomState.boardBackgroundImage ||
+            "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=1600&q=80"
+          }
           alt="Background"
           className="board-background-image"
         />
@@ -322,8 +387,9 @@ export function GameBoard({
 
           {/* Draw spaces */}
           {pathPositions.map((pos) => {
-            const scoreNumber = pos.index; // Display 0-30
-            const isWinTarget = scoreNumber === roomState.winTarget;
+            const scoreNumber = pos.index; // Display 0-30 (scoreNumber matches player.score)
+            // Mark the winning position (default is 30, can be configured by admin)
+            const isWinTarget = scoreNumber === (roomState.winTarget || 30);
 
             return (
               <g key={`space-${pos.index}`}>

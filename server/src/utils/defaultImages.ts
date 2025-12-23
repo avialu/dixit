@@ -1,6 +1,7 @@
 import { readFileSync, readdirSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
+import { logger } from './logger.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -25,10 +26,10 @@ export function loadDefaultImages(): string[] {
       return `data:${mimeType};base64,${base64}`;
     });
     
-    console.log(`Loaded ${images.length} default images`);
+    logger.info("Loaded default images", { imageCount: images.length });
     return images;
   } catch (error) {
-    console.error('Error loading default images:', error);
+    logger.error("Error loading default images", error as Error);
     return [];
   }
 }

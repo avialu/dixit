@@ -27,7 +27,9 @@ const generateMockRoomState = (
       revealedCards: [],
       votes: [],
       lastScoreDeltas: [],
-      winTarget: 29,
+      winTarget: 30,
+      boardBackgroundImage: null,
+      boardPattern: "snake",
       serverUrl: currentUrl,
     };
   }
@@ -85,6 +87,8 @@ const generateMockRoomState = (
     votes: [],
     lastScoreDeltas: [],
     winTarget: 30,
+    boardBackgroundImage: null,
+    boardPattern: "snake",
     serverUrl: currentUrl,
   };
 
@@ -352,7 +356,7 @@ export function DemoPage() {
 
   // Interactive demo state
   const [allowPlayerUploads, setAllowPlayerUploads] = useState(true);
-  const [winTarget, setWinTarget] = useState<number | null>(29);
+  const [winTarget, setWinTarget] = useState<number | null>(30);
   const [deckSize, setDeckSize] = useState(45);
   const [deckLocked, setDeckLocked] = useState(false);
   const [uploadedImages, setUploadedImages] = useState<
@@ -606,7 +610,9 @@ export function DemoPage() {
       revealedCards: [],
       votes: [],
       lastScoreDeltas: flowLastDeltas,
-      winTarget: 29,
+      winTarget: 30,
+      boardBackgroundImage: null,
+      boardPattern: "snake",
       serverUrl: detectedServerUrl || currentUrl,
     };
 
@@ -1074,7 +1080,7 @@ export function DemoPage() {
         flowPlayerScores["2"],
         flowPlayerScores["3"]
       );
-      if (maxScore >= 29) {
+      if (maxScore >= 30) {
         setFlowPhase("GAME_END");
         return;
       }
@@ -1362,6 +1368,8 @@ export function DemoPage() {
               onUploadImage={mockActions.uploadImage}
               onDeleteImage={mockActions.deleteImage}
               onSetAllowPlayerUploads={mockActions.setAllowPlayerUploads}
+              onSetBoardBackground={() => console.log("Demo: set board background")}
+              onSetBoardPattern={() => console.log("Demo: set board pattern")}
               onStartGame={mockActions.storytellerSubmit}
               onChangeName={mockActions.storytellerSubmit}
               onStorytellerSubmit={mockActions.storytellerSubmit}
@@ -1398,6 +1406,8 @@ export function DemoPage() {
               onUploadImage={() => {}}
               onDeleteImage={() => {}}
               onSetAllowPlayerUploads={() => {}}
+              onSetBoardBackground={() => {}}
+              onSetBoardPattern={() => {}}
               onStartGame={() => {}}
               onChangeName={() => {}}
               onStorytellerSubmit={flowActions.storytellerSubmit}
