@@ -4,6 +4,16 @@ import { DeckUploader } from "../components/DeckUploader";
 import { ProfileImageUpload } from "../components/ProfileImageUpload";
 import { Button, Badge, PlayerToken, getPlayerColor, Input, Icon, IconSize } from "./ui";
 
+// Helper function to format waiting message
+function formatWaitingFor(playerNames: string[]): string {
+  if (playerNames.length === 0) return "";
+  if (playerNames.length === 1) return playerNames[0];
+  if (playerNames.length === 2) return `${playerNames[0]} and ${playerNames[1]}`;
+  if (playerNames.length === 3) return `${playerNames[0]}, ${playerNames[1]} and ${playerNames[2]}`;
+  // More than 3: show first name and count
+  return `${playerNames[0]} and ${playerNames.length - 1} more`;
+}
+
 // Types for modal content props
 interface LobbyModalProps {
   roomState: RoomState;
@@ -387,7 +397,6 @@ export function StorytellerChoiceModal(props: StorytellerModalProps) {
     selectedCardId,
     clue,
     localSubmittedCardId,
-    localSubmittedClue,
     roomState,
     setSelectedCardId,
     setClue,
@@ -395,6 +404,14 @@ export function StorytellerChoiceModal(props: StorytellerModalProps) {
   } = props;
 
   const isSubmitted = localSubmittedCardId || playerState?.mySubmittedCardId;
+
+  // Calculate who we're waiting for (players who haven't submitted yet)
+  const waitingForPlayers = isSubmitted
+    ? roomState.players
+        .filter((p) => p.id !== roomState.storytellerId) // Exclude storyteller
+        .filter((p) => !roomState.submittedPlayerIds.includes(p.id)) // Haven't submitted
+        .map((p) => p.name)
+    : [];
 
   const header = (
     <>
@@ -409,14 +426,21 @@ export function StorytellerChoiceModal(props: StorytellerModalProps) {
           </>
         )}
       </h2>
-      {isSubmitted && (localSubmittedClue || roomState.currentClue) && (
-        <p className="clue-reminder">
-          <strong>Storyteller Clue:</strong>{" "}
-          <strong style={{ fontWeight: 900, fontSize: "1.1em" }}>
-            "{localSubmittedClue || roomState.currentClue}"
-          </strong>
-        </p>
-      )}
+      {isSubmitted ? (
+        <>
+          <p className="clue-reminder">
+            <strong>Your Clue:</strong>{" "}
+            <strong style={{ fontWeight: 900, fontSize: "1.1em" }}>
+              "{roomState.currentClue}"
+            </strong>
+          </p>
+          {waitingForPlayers.length > 0 && (
+            <p className="clue-reminder" style={{ color: "#95a5a6", fontSize: "0.95rem" }}>
+              ⏳ Waiting for {formatWaitingFor(waitingForPlayers)}
+            </p>
+          )}
+        </>
+      ) : null}
     </>
   );
 
@@ -505,6 +529,14 @@ export function PlayerChoiceModal(props: PlayerChoiceModalProps) {
 
   const isSubmitted = localSubmittedCardId;
 
+  // Calculate who we're waiting for (players who haven't submitted yet)
+  const waitingForPlayers = isSubmitted
+    ? roomState.players
+        .filter((p) => p.id !== roomState.storytellerId) // Exclude storyteller
+        .filter((p) => !roomState.submittedPlayerIds.includes(p.id)) // Haven't submitted
+        .map((p) => p.name)
+    : [];
+
   const header = (
     <>
       <h2>
@@ -524,6 +556,11 @@ export function PlayerChoiceModal(props: PlayerChoiceModalProps) {
           "{roomState.currentClue}"
         </strong>
       </p>
+      {isSubmitted && waitingForPlayers.length > 0 && (
+        <p className="clue-reminder" style={{ color: "#95a5a6", fontSize: "0.95rem" }}>
+          ⏳ Waiting for {formatWaitingFor(waitingForPlayers)}
+        </p>
+      )}
     </>
   );
 
@@ -589,6 +626,12 @@ export function WaitingPlayersModal(props: {
 }) {
   const { playerState, roomState } = props;
 
+  // Calculate who we're waiting for (players who haven't submitted yet)
+  const waitingForPlayers = roomState.players
+    .filter((p) => p.id !== roomState.storytellerId) // Exclude storyteller
+    .filter((p) => !roomState.submittedPlayerIds.includes(p.id)) // Haven't submitted
+    .map((p) => p.name);
+
   const header = (
     <>
       <h2>⏳ Waiting</h2>
@@ -598,6 +641,11 @@ export function WaitingPlayersModal(props: {
           "{roomState.currentClue}"
         </strong>
       </p>
+      {waitingForPlayers.length > 0 && (
+        <p className="clue-reminder" style={{ color: "#95a5a6", fontSize: "0.95rem" }}>
+          ⏳ Waiting for {formatWaitingFor(waitingForPlayers)}
+        </p>
+      )}
     </>
   );
 
@@ -662,6 +710,14 @@ export function VotingModal(props: VotingModalProps) {
   const hasVoted = localVotedCardId !== null;
   const canVote = !isStoryteller && !isSpectator && !hasVoted;
 
+  // Calculate who we're waiting for (players who haven't voted yet)
+  const votedPlayerIds = roomState.votes.map((v) => v.voterId);
+  const waitingForPlayers = hasVoted
+    ? eligiblePlayers
+        .filter((p) => !votedPlayerIds.includes(p.id))
+        .map((p) => p.name)
+    : [];
+
   const getHeaderTitle = () => {
     if (canVote)
       return (
@@ -709,6 +765,11 @@ export function VotingModal(props: VotingModalProps) {
           "{roomState.currentClue}"
         </strong>
       </p>
+      {hasVoted && waitingForPlayers.length > 0 && !allVotesIn && (
+        <p className="clue-reminder" style={{ color: "#95a5a6", fontSize: "0.95rem" }}>
+          ⏳ Waiting for {formatWaitingFor(waitingForPlayers)}
+        </p>
+      )}
     </>
   );
 
@@ -721,8 +782,10 @@ export function VotingModal(props: VotingModalProps) {
     >
       Submit Vote
     </Button>
-  ) : hasVoted && !allVotesIn ? (
-    <p style={{ color: "#95a5a6", margin: 0 }}>⏳ Waiting...</p>
+  ) : hasVoted && !allVotesIn && waitingForPlayers.length > 0 ? (
+    <p style={{ color: "#95a5a6", margin: 0 }}>
+      ⏳ Waiting for {formatWaitingFor(waitingForPlayers)}
+    </p>
   ) : null;
 
   return {

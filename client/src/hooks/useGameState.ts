@@ -31,6 +31,7 @@ export interface RoomState {
   currentRound: number;
   storytellerId: string | null;
   currentClue: string | null;
+  submittedPlayerIds: string[]; // Player IDs who have submitted cards
   revealedCards: { cardId: string; imageData: string; position: number }[];
   votes: { voterId: string; cardId: string }[];
   lastScoreDeltas: { playerId: string; delta: number }[];

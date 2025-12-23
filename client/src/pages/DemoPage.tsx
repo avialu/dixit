@@ -24,6 +24,7 @@ const generateMockRoomState = (
       currentRound: 0,
       storytellerId: "",
       currentClue: "",
+      submittedPlayerIds: [],
       revealedCards: [],
       votes: [],
       lastScoreDeltas: [],
@@ -83,6 +84,7 @@ const generateMockRoomState = (
     currentRound: 5,
     storytellerId: "1",
     currentClue: phase === "STORYTELLER_CHOICE" ? "" : "A magical journey",
+    submittedPlayerIds: [],
     revealedCards: [],
     votes: [],
     lastScoreDeltas: [],
@@ -115,12 +117,16 @@ const generateMockRoomState = (
       return {
         ...baseState,
         phase: "PLAYERS_CHOICE",
+        // Simulate: storyteller + 2 players have submitted, 2 still pending
+        submittedPlayerIds: ["1", "2", "3"], // Alice (storyteller), Bob, Charlie submitted
+        // Diana still needs to submit
       };
 
     case "VOTING":
       return {
         ...baseState,
         phase: "VOTING",
+        submittedPlayerIds: ["1", "2", "3", "4"], // All players have submitted cards
         revealedCards: [
           {
             cardId: "c1",
@@ -147,7 +153,11 @@ const generateMockRoomState = (
             playerId: "4", // Diana
           } as any,
         ],
-        votes: [], // Start with no votes, will be filled as demo progresses
+        // Simulate: Bob and Charlie have voted, Diana still needs to vote
+        votes: [
+          { voterId: "2", cardId: "c4" }, // Bob voted
+          { voterId: "3", cardId: "c4" }, // Charlie voted
+        ],
       };
 
     case "REVEAL":
@@ -171,6 +181,7 @@ const generateMockRoomState = (
         ...baseState,
         phase: "REVEAL",
         players: basePlayers, // Use basePlayers which already has custom scores
+        submittedPlayerIds: ["1", "2", "3", "4"], // All players submitted
         revealedCards: [
           {
             cardId: "c1",
@@ -607,6 +618,7 @@ export function DemoPage() {
       currentRound: flowRound,
       storytellerId,
       currentClue: flowCurrentClue,
+      submittedPlayerIds: [],
       revealedCards: [],
       votes: [],
       lastScoreDeltas: flowLastDeltas,

@@ -805,6 +805,9 @@ export class GameManager {
       this.state.lastScoreDeltas.entries()
     ).map(([playerId, delta]) => ({ playerId, delta }));
 
+    // Track which players have submitted cards (for PLAYERS_CHOICE and STORYTELLER_CHOICE phases)
+    const submittedPlayerIds = this.state.submittedCards.map((sc) => sc.playerId);
+
     return {
       phase: this.state.phase,
       players,
@@ -818,6 +821,7 @@ export class GameManager {
       currentRound: this.state.currentRound,
       storytellerId: this.state.storytellerId,
       currentClue: this.state.currentClue,
+      submittedPlayerIds,
       revealedCards,
       votes,
       lastScoreDeltas,

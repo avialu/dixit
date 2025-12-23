@@ -89,6 +89,7 @@ export interface RoomState {
   currentRound: number;
   storytellerId: string | null;
   currentClue: string | null;
+  submittedPlayerIds: string[]; // Player IDs who have submitted cards (PLAYERS_CHOICE phase)
   revealedCards: {
     cardId: string;
     imageData: string;
