@@ -739,6 +739,155 @@ If unsure about whether to create a new component or variant:
 
 ---
 
+## 🎯 BEST PRACTICES CHECKLIST
+
+These are the essential patterns used throughout the codebase. Follow these for consistency.
+
+### Error Handling
+
+- ✅ Use structured errors with severity (INFO/WARNING/ERROR/FATAL)
+- ✅ Auto-dismiss INFO/WARNING after 5s, ERROR/FATAL need manual dismiss
+- ✅ Always wrap socket handlers in try-catch
+- ✅ Emit `GameErrorData`: `{severity, message, code?, retryAction?}`
+
+```typescript
+// ✅ GOOD - Structured error
+throw new GameError(
+  "Cannot vote for own card",
+  "INVALID_VOTE",
+  400,
+  ErrorSeverity.WARNING
+);
+
+// ✅ GOOD - Socket error handling
+socket.on("someEvent", (data) => {
+  try {
+    gameManager.doSomething(data);
+    broadcastRoomState();
+  } catch (error) {
+    socket.emit("error", {
+      severity: ErrorSeverity.ERROR,
+      message: error.message,
+      code: error.code
+    });
+  }
+});
+```
+
+### State Management
+
+- ✅ Server is authoritative - NEVER modify game state on client
+- ✅ Client only reacts to server events (roomState, playerState)
+- ✅ Use React hooks (useGameState, useSocket) - don't create new patterns
+- ✅ Clean up socket listeners and timeouts on unmount
+
+```typescript
+// ✅ GOOD - Server updates state
+gameManager.playerVote(playerId, cardId);
+broadcastRoomState(); // Clients receive update
+
+// ✅ GOOD - Client reacts to server
+useEffect(() => {
+  socket.on("roomState", (state) => setRoomState(state));
+  return () => socket.off("roomState"); // Cleanup!
+}, [socket]);
+
+// ❌ BAD - Client modifies game state
+setRoomState({ ...roomState, phase: "VOTING" });
+```
+
+### Socket.IO
+
+- ✅ Persist clientId in localStorage for reconnection
+- ✅ Validate all incoming events with Zod schemas
+- ✅ Use rate limiting on server (50 events/10s per client)
+
+```typescript
+// ✅ GOOD - Event validation
+socket.on("storytellerSubmit", (data) => {
+  try {
+    const validated = storytellerSubmitSchema.parse(data);
+    // Process...
+  } catch (error) {
+    // Handle...
+  }
+});
+
+// ✅ GOOD - Client ID persistence
+localStorage.setItem("clientId", clientId);
+```
+
+### Configuration
+
+- ✅ All limits in `server/src/config/index.ts`
+- ✅ Support environment variable overrides
+- ✅ Never hardcode limits in multiple places
+
+```typescript
+// ✅ GOOD - Use config
+import { config } from '../config';
+const limit = config.game.maxPlayers;
+
+// ❌ BAD - Hardcoded
+const limit = 10;
+```
+
+### Testing
+
+- ✅ Run tests before committing: `npm test`
+- ✅ Integration tests for full flows
+- ✅ Build must pass: `npm run build`
+
+```bash
+# Before every commit
+npm test
+cd client && npm run build
+```
+
+### React Patterns
+
+- ✅ Memoize expensive calculations with useMemo
+- ✅ Stable callbacks with useCallback
+- ✅ Clean up effects (return cleanup function)
+- ✅ Never use hooks conditionally
+
+```typescript
+// ✅ GOOD - Memoization
+const sorted = useMemo(() => data.sort(), [data]);
+
+// ✅ GOOD - Stable callback
+const handleClick = useCallback(() => {
+  doSomething(id);
+}, [id]);
+
+// ✅ GOOD - Cleanup
+useEffect(() => {
+  const timer = setTimeout(() => {}, 1000);
+  return () => clearTimeout(timer);
+}, []);
+```
+
+### Component Organization
+
+- ✅ All reusable UI components in `client/src/components/ui/`
+- ✅ Import from barrel export: `import { Button, Icon } from "../components/ui"`
+- ✅ Use Icon component, not emojis for UI
+- ✅ Always use CloseButton for X buttons (single source of truth)
+
+```typescript
+// ✅ GOOD
+import { Button, Icon, IconSize } from "../components/ui";
+
+<Button variant="primary">
+  <Icon.Rocket size={IconSize.medium} /> Start
+</Button>
+
+// ❌ BAD
+<button className="btn-primary">🚀 Start</button>
+```
+
+---
+
 ## 🎓 REMEMBER
 
 > "Make it work, make it right, make it fast" - Kent Beck
