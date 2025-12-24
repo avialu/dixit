@@ -5,6 +5,7 @@ import { ScoringEngine } from "./ScoringEngine.js";
 import { GAME_CONSTANTS } from "./constants.js";
 import { gameConfig, featureFlags } from "../config/index.js";
 import { logger } from "../utils/logger.js";
+import { GameStateError, ErrorSeverity } from "../utils/errors.js";
 import {
   GamePhase,
   GameState,
@@ -495,12 +496,27 @@ export class GameManager {
     this.validateAdmin(adminId);
 
     if (this.state.phase !== GamePhase.DECK_BUILDING) {
-      throw new Error("Can only start game from DECK_BUILDING phase");
+      const phaseNames: Record<GamePhase, string> = {
+        [GamePhase.DECK_BUILDING]: "Deck Building",
+        [GamePhase.STORYTELLER_CHOICE]: "Storyteller's Turn",
+        [GamePhase.PLAYERS_CHOICE]: "Players' Turn",
+        [GamePhase.VOTING]: "Voting",
+        [GamePhase.REVEAL]: "Results",
+        [GamePhase.GAME_END]: "Game Over"
+      };
+      const currentPhaseName = phaseNames[this.state.phase] || this.state.phase;
+      throw new GameStateError(
+        `Game already started (current phase: ${currentPhaseName})`,
+        this.state.phase,
+        GamePhase.DECK_BUILDING
+      );
     }
 
     if (this.state.players.size < GAME_CONSTANTS.MIN_PLAYERS) {
-      throw new Error(
-        `Need at least ${GAME_CONSTANTS.MIN_PLAYERS} players to start`
+      throw new GameStateError(
+        `Need at least ${GAME_CONSTANTS.MIN_PLAYERS} players to start`,
+        this.state.phase,
+        GamePhase.DECK_BUILDING
       );
     }
 

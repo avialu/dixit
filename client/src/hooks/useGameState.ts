@@ -266,6 +266,10 @@ export function useGameState(socket: Socket | null) {
     socket?.emit("adminSetBoardPattern", { pattern });
   };
 
+  const dismissError = () => {
+    setError(null);
+  };
+
   return {
     roomState,
     playerState,
@@ -293,6 +297,7 @@ export function useGameState(socket: Socket | null) {
       uploadTokenImage,
       setBoardBackground,
       setBoardPattern,
+      dismissError,
     },
   };
 }

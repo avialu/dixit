@@ -333,7 +333,7 @@ const allPhases = [
 export function DemoPage() {
   // NEW: Flow test mode state
   const [demoMode, setDemoMode] = useState<"component" | "flow">("component");
-  const [flowPhase, setFlowPhase] = useState<string>("STORYTELLER_CHOICE");
+  const [flowPhase, setFlowPhase] = useState<string>("CONFIG"); // Start with config
   const [flowRound, setFlowRound] = useState(1);
   const [flowStorytellerIndex, setFlowStorytellerIndex] = useState(0);
   const [flowSubmittedCards, setFlowSubmittedCards] = useState<
@@ -343,14 +343,16 @@ export function DemoPage() {
     Array<{ voterId: string; cardId: string }>
   >([]);
   const [flowCurrentClue, setFlowCurrentClue] = useState("");
-  const [flowPlayerScores, setFlowPlayerScores] = useState({
-    "1": 0,
-    "2": 0,
-    "3": 0,
-  });
+  const [flowPlayerScores, setFlowPlayerScores] = useState<{ [key: string]: number }>({});
   const [flowLastDeltas, setFlowLastDeltas] = useState<
     Array<{ playerId: string; delta: number }>
   >([]);
+  
+  // Flow configuration
+  const [flowNumPlayers, setFlowNumPlayers] = useState(3); // Total players (including user)
+  const [flowWinTarget, setFlowWinTarget] = useState(30);
+  const [flowBoardPattern, setFlowBoardPattern] = useState<"snake" | "spiral">("spiral");
+  const [flowAllowPlayerUploads, setFlowAllowPlayerUploads] = useState(true);
 
   const [currentPhaseIndex, setCurrentPhaseIndex] = useState(0);
   const [viewMode, setViewMode] = useState<"player" | "admin" | "spectator">(
@@ -586,11 +588,28 @@ export function DemoPage() {
   };
 
   // NEW: Flow test functions
+  const aiNames = [
+    "Bob", "Charlie", "Diana", "Eve", "Frank", "Grace", "Henry", "Iris", 
+    "Jack", "Kate", "Leo", "Mia", "Noah", "Olivia", "Paul", "Quinn", "Ruby", "Sam", "Tina"
+  ];
+  
   const flowPlayers = [
     { id: "1", name: "You (Alice)", isStoryteller: false },
-    { id: "2", name: "Bob (AI)", isStoryteller: false },
-    { id: "3", name: "Charlie (AI)", isStoryteller: false },
+    ...Array.from({ length: flowNumPlayers - 1 }, (_, i) => ({
+      id: String(i + 2),
+      name: `${aiNames[i]} (AI)`,
+      isStoryteller: false,
+    })),
   ];
+  
+  // Initialize scores for all players
+  if (Object.keys(flowPlayerScores).length === 0 && flowNumPlayers > 0) {
+    const initialScores: { [key: string]: number } = {};
+    flowPlayers.forEach(p => {
+      initialScores[p.id] = 0;
+    });
+    setFlowPlayerScores(initialScores);
+  }
 
   const getFlowStorytellerId = () => {
     return flowPlayers[flowStorytellerIndex].id;
@@ -602,7 +621,7 @@ export function DemoPage() {
     const players = flowPlayers.map((p) => ({
       id: p.id,
       name: p.name,
-      score: flowPlayerScores[p.id as "1" | "2" | "3"],
+      score: flowPlayerScores[p.id] || 0,
       isAdmin: p.id === "1",
       isConnected: true,
       handSize: 6,
@@ -615,7 +634,7 @@ export function DemoPage() {
     const baseState: RoomState = {
       phase: flowPhase as any,
       players,
-      allowPlayerUploads: true,
+      allowPlayerUploads: flowAllowPlayerUploads,
       deckSize: 100,
       deckLocked: true,
       deckImages: [],
@@ -626,9 +645,9 @@ export function DemoPage() {
       revealedCards: [],
       votes: [],
       lastScoreDeltas: flowLastDeltas,
-      winTarget: 30,
-      boardBackgroundImage: null,
-      boardPattern: "spiral",
+      winTarget: flowWinTarget,
+      boardBackgroundImage: boardBackgroundImage,
+      boardPattern: flowBoardPattern,
       serverUrl: detectedServerUrl || currentUrl,
     };
 
@@ -713,10 +732,14 @@ export function DemoPage() {
       if (storytellerId === "1") {
         // Player 1 is storyteller - AI players submit cards after a delay
         setTimeout(() => {
-          const aiCards = [
-            { cardId: "ai-card-2", playerId: "2", position: 1 },
-            { cardId: "ai-card-3", playerId: "3", position: 2 },
-          ];
+          // Generate AI cards for all AI players (2 through flowNumPlayers)
+          const aiCards = flowPlayers
+            .filter(p => p.id !== "1") // Exclude player 1 (the user)
+            .map((p, idx) => ({
+              cardId: `ai-card-${p.id}`,
+              playerId: p.id,
+              position: idx + 1,
+            }));
           setFlowSubmittedCards((prev) => {
             // Shuffle all cards using a deterministic shuffle based on card IDs
             const allCards = [...prev, ...aiCards];
@@ -746,50 +769,35 @@ export function DemoPage() {
 
           // AI players vote automatically
           setTimeout(() => {
-            const stCard = { cardId, playerId: "1" };
-            const allSubmittedCards = [
-              stCard,
-              { cardId: "ai-card-2", playerId: "2" },
-              { cardId: "ai-card-3", playerId: "3" },
-            ];
-            const nonStorytellerCards = allSubmittedCards.filter(
-              (sc) => sc.playerId !== "1"
+            const nonStorytellerCards = flowSubmittedCards.filter(
+              (sc) => sc.playerId !== storytellerId
             );
 
-            // AI players vote
+            // AI players vote (all AI players except storyteller)
             const aiVotes: Array<{ voterId: string; cardId: string }> = [];
-
-            // AI player 2 votes
-            const shouldVoteCorrect2 = Math.random() > 0.5;
-            let choice2: string | undefined;
-            if (shouldVoteCorrect2) {
-              choice2 = cardId; // Vote for storyteller's card
-            } else if (nonStorytellerCards.length > 0) {
-              const randomCard =
-                nonStorytellerCards[
-                  Math.floor(Math.random() * nonStorytellerCards.length)
-                ];
-              choice2 = randomCard?.cardId;
-            }
-            if (choice2) {
-              aiVotes.push({ voterId: "2", cardId: choice2 });
-            }
-
-            // AI player 3 votes
-            const shouldVoteCorrect3 = Math.random() > 0.5;
-            let choice3: string | undefined;
-            if (shouldVoteCorrect3) {
-              choice3 = cardId; // Vote for storyteller's card
-            } else if (nonStorytellerCards.length > 0) {
-              const randomCard =
-                nonStorytellerCards[
-                  Math.floor(Math.random() * nonStorytellerCards.length)
-                ];
-              choice3 = randomCard?.cardId;
-            }
-            if (choice3) {
-              aiVotes.push({ voterId: "3", cardId: choice3 });
-            }
+            
+            flowPlayers.forEach(p => {
+              // Skip player 1 (user) and storyteller
+              if (p.id === "1" || p.id === storytellerId) return;
+              
+              // 50% chance to vote for storyteller's card, 50% for random other card
+              const shouldVoteCorrect = Math.random() > 0.5;
+              let cardChoice: string | undefined;
+              
+              if (shouldVoteCorrect) {
+                cardChoice = cardId; // Vote for storyteller's card
+              } else if (nonStorytellerCards.length > 0) {
+                const randomCard =
+                  nonStorytellerCards[
+                    Math.floor(Math.random() * nonStorytellerCards.length)
+                  ];
+                cardChoice = randomCard?.cardId;
+              }
+              
+              if (cardChoice) {
+                aiVotes.push({ voterId: p.id, cardId: cardChoice });
+              }
+            });
 
             setFlowVotes(aiVotes);
 
@@ -805,11 +813,11 @@ export function DemoPage() {
             ).length;
             const totalVoters = aiVotes.length;
 
-            const deltas: { [key: string]: number } = {
-              "1": 0,
-              "2": 0,
-              "3": 0,
-            };
+            // Initialize deltas for all players
+            const deltas: { [key: string]: number } = {};
+            flowPlayers.forEach(p => {
+              deltas[p.id] = 0;
+            });
 
             // If everyone or no one found the card, storyteller gets 0
             if (
@@ -852,11 +860,13 @@ export function DemoPage() {
             );
 
             setFlowLastDeltas(deltaArray);
-            setFlowPlayerScores((prev) => ({
-              "1": prev["1"] + deltas["1"],
-              "2": prev["2"] + deltas["2"],
-              "3": prev["3"] + deltas["3"],
-            }));
+            setFlowPlayerScores((prev) => {
+              const newScores = { ...prev };
+              flowPlayers.forEach(p => {
+                newScores[p.id] = (prev[p.id] || 0) + (deltas[p.id] || 0);
+              });
+              return newScores;
+            });
 
             setFlowPhase("REVEAL");
           }, 2000);
@@ -871,238 +881,73 @@ export function DemoPage() {
     playerSubmitCard: (cardId: string) => {
       console.log("Flow: Player submitted card", cardId);
       const storytellerId = getFlowStorytellerId();
+      const currentFlowPlayers = flowPlayers; // Capture current value
 
-      setFlowSubmittedCards((prev) => [
-        ...prev,
-        { cardId, playerId: "1", position: prev.length },
-      ]);
+      // Add player's card and AI cards together
+      setFlowSubmittedCards((prev) => {
+        // Player's card
+        const playerCard = { cardId, playerId: "1", position: prev.length };
+        
+        // Generate AI cards for all AI players except storyteller
+        const aiCards = currentFlowPlayers
+          .filter(p => p.id !== "1" && p.id !== storytellerId) // Exclude user and storyteller
+          .map((p, idx) => ({
+            cardId: `ai-card-${p.id}`,
+            playerId: p.id,
+            position: prev.length + idx + 1,
+          }));
 
-      // AI players (who are NOT the storyteller) submit after delay
-      setTimeout(() => {
-        const aiCards: Array<{
-          cardId: string;
-          playerId: string;
-          position: number;
-        }> = [];
-
-        // Only add AI player 2's card if they're not the storyteller
-        if (storytellerId !== "2") {
-          aiCards.push({
-            cardId: "ai-card-2",
-            playerId: "2",
-            position: flowSubmittedCards.length + aiCards.length + 1,
-          });
-        }
-
-        // Only add AI player 3's card if they're not the storyteller
-        if (storytellerId !== "3") {
-          aiCards.push({
-            cardId: "ai-card-3",
-            playerId: "3",
-            position: flowSubmittedCards.length + aiCards.length + 1,
-          });
-        }
-
-        setFlowSubmittedCards((prev) => {
-          const allCards = [...prev, ...aiCards];
-          // Create a deterministic seed from card IDs
-          const seed = allCards
-            .map((c) => c.cardId)
-            .sort()
-            .join("");
-          const deterministicRandom = (idx: number) => {
-            // Simple hash function for deterministic "random" ordering
-            let hash = 0;
-            const str = seed + idx;
-            for (let i = 0; i < str.length; i++) {
-              hash = (hash << 5) - hash + str.charCodeAt(i);
-              hash = hash & hash;
-            }
-            return Math.abs(hash);
-          };
-          const shuffled = allCards.sort((a, b) => {
-            const hashA = deterministicRandom(allCards.indexOf(a));
-            const hashB = deterministicRandom(allCards.indexOf(b));
-            return hashA - hashB;
-          });
-          return shuffled.map((card, idx) => ({ ...card, position: idx }));
+        // Combine all cards
+        const allCards = [...prev, playerCard, ...aiCards];
+        
+        // Shuffle all cards
+        const seed = allCards
+          .map((c) => c.cardId)
+          .sort()
+          .join("");
+        const deterministicRandom = (idx: number) => {
+          let hash = 0;
+          const str = seed + idx;
+          for (let i = 0; i < str.length; i++) {
+            hash = (hash << 5) - hash + str.charCodeAt(i);
+            hash = hash & hash;
+          }
+          return Math.abs(hash);
+        };
+        const shuffled = allCards.sort((a, b) => {
+          const hashA = deterministicRandom(allCards.indexOf(a));
+          const hashB = deterministicRandom(allCards.indexOf(b));
+          return hashA - hashB;
         });
+        
+        return shuffled.map((card, idx) => ({ ...card, position: idx }));
+      });
+      
+      // Transition to voting after delay
+      setTimeout(() => {
         setFlowPhase("VOTING");
       }, 1500);
     },
 
     playerVote: (cardId: string) => {
       console.log("Flow: Player voted for", cardId);
-
-      // Update votes with the player's vote
-      setFlowVotes((prev) => {
-        const newVotes = [...prev, { voterId: "1", cardId }];
-
-        // AI players vote after delay
-        setTimeout(() => {
-          const storytellerId = getFlowStorytellerId();
-          const storytellerCard = flowSubmittedCards.find(
-            (sc) => sc.playerId === storytellerId
-          );
-
-          // AI players randomly vote (sometimes correctly, sometimes not)
-          const aiVotes: Array<{ voterId: string; cardId: string }> = [];
-          const nonStorytellerCards = flowSubmittedCards.filter(
-            (sc) => sc.playerId !== storytellerId
-          );
-
-          // AI player 2 votes (if not storyteller)
-          if (storytellerId !== "2") {
-            // 50% chance to vote for storyteller's card, 50% for random other card
-            const shouldVoteForStoryteller = Math.random() > 0.5;
-            let cardChoice: string | undefined;
-
-            if (shouldVoteForStoryteller && storytellerCard?.cardId) {
-              cardChoice = storytellerCard.cardId;
-            } else if (nonStorytellerCards.length > 0) {
-              const randomCard =
-                nonStorytellerCards[
-                  Math.floor(Math.random() * nonStorytellerCards.length)
-                ];
-              // Don't vote for own card
-              if (randomCard.playerId !== "2") {
-                cardChoice = randomCard.cardId;
-              } else if (storytellerCard?.cardId) {
-                cardChoice = storytellerCard.cardId;
-              }
-            }
-
-            if (cardChoice) {
-              aiVotes.push({ voterId: "2", cardId: cardChoice });
-            }
-          }
-
-          // AI player 3 votes (if not storyteller)
-          if (storytellerId !== "3") {
-            // 50% chance to vote for storyteller's card, 50% for random other card
-            const shouldVoteForStoryteller = Math.random() > 0.5;
-            let cardChoice: string | undefined;
-
-            if (shouldVoteForStoryteller && storytellerCard?.cardId) {
-              cardChoice = storytellerCard.cardId;
-            } else if (nonStorytellerCards.length > 0) {
-              const randomCard =
-                nonStorytellerCards[
-                  Math.floor(Math.random() * nonStorytellerCards.length)
-                ];
-              // Don't vote for own card
-              if (randomCard.playerId !== "3") {
-                cardChoice = randomCard.cardId;
-              } else if (storytellerCard?.cardId) {
-                cardChoice = storytellerCard.cardId;
-              }
-            }
-
-            if (cardChoice) {
-              aiVotes.push({ voterId: "3", cardId: cardChoice });
-            }
-          }
-
-          // Update votes with AI votes and transition to REVEAL
-          setFlowVotes((currentVotes) => {
-            const allVotes = [...currentVotes, ...aiVotes];
-
-            // Calculate scores immediately after all votes are in
-            setTimeout(() => {
-              const stId = getFlowStorytellerId();
-              const stCard = flowSubmittedCards.find(
-                (sc) => sc.playerId === stId
-              );
-
-              const stCardId = stCard?.cardId;
-              const votesForStoryteller = allVotes.filter(
-                (v: { cardId: string }) => v.cardId === stCardId
-              ).length;
-              const totalVoters = allVotes.length;
-
-              const deltas: { [key: string]: number } = {
-                "1": 0,
-                "2": 0,
-                "3": 0,
-              };
-
-              // If everyone or no one found the card, storyteller gets 0
-              if (
-                votesForStoryteller === 0 ||
-                votesForStoryteller === totalVoters
-              ) {
-                deltas[stId] = 0;
-                // Others get 2 points
-                flowPlayers.forEach((p) => {
-                  if (p.id !== stId) {
-                    deltas[p.id] = 2;
-                  }
-                });
-              } else {
-                // Storyteller gets 3 points
-                deltas[stId] = 3;
-                // Players who found it get 3 points
-                allVotes.forEach(
-                  (vote: { cardId: string; voterId: string }) => {
-                    if (vote.cardId === stCardId) {
-                      deltas[vote.voterId] = 3;
-                    }
-                  }
-                );
-              }
-
-              // Players get 1 point for each vote on their card (not storyteller's)
-              flowSubmittedCards.forEach((sc) => {
-                if (sc.playerId !== stId) {
-                  const votesForCard = allVotes.filter(
-                    (v: { cardId: string }) => v.cardId === sc.cardId
-                  ).length;
-                  deltas[sc.playerId] =
-                    (deltas[sc.playerId] || 0) + votesForCard;
-                }
-              });
-
-              const deltaArray = Object.entries(deltas).map(
-                ([playerId, delta]) => ({
-                  playerId,
-                  delta,
-                })
-              );
-
-              setFlowLastDeltas(deltaArray);
-              setFlowPlayerScores((prev) => ({
-                "1": prev["1"] + deltas["1"],
-                "2": prev["2"] + deltas["2"],
-                "3": prev["3"] + deltas["3"],
-              }));
-
-              setFlowPhase("REVEAL");
-            }, 0);
-
-            return allVotes;
-          });
-        }, 2000);
-
-        return newVotes;
-      });
+      
+      // Just add player's vote - AI voting is handled automatically in useEffect
+      setFlowVotes((prev) => [...prev, { voterId: "1", cardId }]);
     },
 
     advanceRound: () => {
       console.log("Flow: Advancing to next round");
 
       // Check for winner
-      const maxScore = Math.max(
-        flowPlayerScores["1"],
-        flowPlayerScores["2"],
-        flowPlayerScores["3"]
-      );
-      if (maxScore >= 30) {
+      const maxScore = Math.max(...Object.values(flowPlayerScores));
+      if (maxScore >= flowWinTarget) {
         setFlowPhase("GAME_END");
         return;
       }
 
       // Rotate storyteller
-      setFlowStorytellerIndex((prev) => (prev + 1) % 3);
+      setFlowStorytellerIndex((prev) => (prev + 1) % flowNumPlayers);
       setFlowRound((prev) => prev + 1);
       setFlowPhase("STORYTELLER_CHOICE");
       setFlowSubmittedCards([]);
@@ -1119,13 +964,37 @@ export function DemoPage() {
       setFlowSubmittedCards([]);
       setFlowVotes([]);
       setFlowCurrentClue("");
-      setFlowPlayerScores({ "1": 0, "2": 0, "3": 0 });
+      const resetScores: { [key: string]: number } = {};
+      flowPlayers.forEach(p => {
+        resetScores[p.id] = 0;
+      });
+      setFlowPlayerScores(resetScores);
       setFlowLastDeltas([]);
     },
 
     newDeck: () => {
       console.log("Flow: New deck");
       flowActions.resetGame();
+    },
+    
+    setAllowPlayerUploads: (allow: boolean) => {
+      console.log("Flow: setAllowPlayerUploads", allow);
+      setFlowAllowPlayerUploads(allow);
+    },
+    
+    setWinTarget: (target: number | null) => {
+      console.log("Flow: setWinTarget", target);
+      if (target) setFlowWinTarget(target);
+    },
+    
+    setBoardBackground: (imageData: string | null) => {
+      console.log("Flow: setBoardBackground", imageData ? "set" : "cleared");
+      setBoardBackgroundImage(imageData);
+    },
+    
+    setBoardPattern: (pattern: "snake" | "spiral") => {
+      console.log("Flow: setBoardPattern", pattern);
+      setFlowBoardPattern(pattern);
     },
   };
 
@@ -1184,8 +1053,298 @@ export function DemoPage() {
     }
   }, [demoMode, flowPhase, flowStorytellerIndex]);
 
+  // AUTO AI VOTING: All AI players automatically vote when VOTING phase starts
+  useEffect(() => {
+    if (demoMode === "flow" && flowPhase === "VOTING") {
+      const storytellerId = getFlowStorytellerId();
+      const currentSubmittedCards = [...flowSubmittedCards];
+      const currentPlayers = [...flowPlayers];
+
+      console.log("AI players voting automatically...");
+
+      setTimeout(() => {
+        const storytellerCard = currentSubmittedCards.find(
+          (sc) => sc.playerId === storytellerId
+        );
+        
+        const nonStorytellerCards = currentSubmittedCards.filter(
+          (sc) => sc.playerId !== storytellerId
+        );
+
+        // Generate AI votes
+        const aiVotes: Array<{ voterId: string; cardId: string }> = [];
+        
+        currentPlayers.forEach(p => {
+          // Skip player 1 (user) and storyteller
+          if (p.id === "1" || p.id === storytellerId) return;
+          
+          // 50% chance to vote for storyteller's card, 50% for random other card
+          const shouldVoteForStoryteller = Math.random() > 0.5;
+          let cardChoice: string | undefined;
+
+          if (shouldVoteForStoryteller && storytellerCard?.cardId) {
+            cardChoice = storytellerCard.cardId;
+          } else if (nonStorytellerCards.length > 0) {
+            // Pick a random card that's not their own
+            const eligibleCards = nonStorytellerCards.filter(c => c.playerId !== p.id);
+            if (eligibleCards.length > 0) {
+              const randomCard =
+                eligibleCards[
+                  Math.floor(Math.random() * eligibleCards.length)
+                ];
+              cardChoice = randomCard.cardId;
+            } else if (storytellerCard?.cardId) {
+              cardChoice = storytellerCard.cardId;
+            }
+          }
+
+          if (cardChoice) {
+            aiVotes.push({ voterId: p.id, cardId: cardChoice });
+          }
+        });
+
+        // Add AI votes
+        setFlowVotes((currentVotes) => {
+          const allVotes = [...currentVotes, ...aiVotes];
+          
+          // Calculate scores
+          const stCard = currentSubmittedCards.find(
+            (sc) => sc.playerId === storytellerId
+          );
+          const stCardId = stCard?.cardId;
+          const votesForStoryteller = allVotes.filter(
+            (v) => v.cardId === stCardId
+          ).length;
+          const totalVoters = allVotes.length;
+
+          // Initialize deltas for all players
+          const deltas: { [key: string]: number } = {};
+          currentPlayers.forEach(p => {
+            deltas[p.id] = 0;
+          });
+
+          // Scoring logic
+          if (
+            votesForStoryteller === 0 ||
+            votesForStoryteller === totalVoters
+          ) {
+            deltas[storytellerId] = 0;
+            currentPlayers.forEach((p) => {
+              if (p.id !== storytellerId) {
+                deltas[p.id] = 2;
+              }
+            });
+          } else {
+            deltas[storytellerId] = 3;
+            allVotes.forEach((vote) => {
+              if (vote.cardId === stCardId) {
+                deltas[vote.voterId] = 3;
+              }
+            });
+          }
+
+          // Bonus points for votes on player's cards
+          currentSubmittedCards.forEach((sc) => {
+            if (sc.playerId !== storytellerId) {
+              const votesForCard = allVotes.filter(
+                (v) => v.cardId === sc.cardId
+              ).length;
+              deltas[sc.playerId] =
+                (deltas[sc.playerId] || 0) + votesForCard;
+            }
+          });
+
+          const deltaArray = Object.entries(deltas).map(
+            ([playerId, delta]) => ({ playerId, delta })
+          );
+
+          setFlowLastDeltas(deltaArray);
+          setFlowPlayerScores((prev) => {
+            const newScores = { ...prev };
+            currentPlayers.forEach(p => {
+              newScores[p.id] = (prev[p.id] || 0) + (deltas[p.id] || 0);
+            });
+            return newScores;
+          });
+
+          // Transition to REVEAL
+          setTimeout(() => {
+            setFlowPhase("REVEAL");
+          }, 500);
+
+          return allVotes;
+        });
+      }, 2500); // 2.5 second delay for AI to "vote"
+    }
+  }, [demoMode, flowPhase, flowSubmittedCards, flowPlayers]);
+
+  // Start game with selected configuration
+  const startFlowGame = () => {
+    console.log("Starting flow game with config:", {
+      players: flowNumPlayers,
+      winTarget: flowWinTarget,
+      boardPattern: flowBoardPattern,
+      allowPlayerUploads: flowAllowPlayerUploads,
+    });
+    
+    // Initialize scores
+    const initialScores: { [key: string]: number } = {};
+    flowPlayers.forEach(p => {
+      initialScores[p.id] = 0;
+    });
+    setFlowPlayerScores(initialScores);
+    
+    setFlowPhase("STORYTELLER_CHOICE");
+  };
+
   return (
     <div className="demo-page">
+      {/* Configuration Screen for Flow Mode */}
+      {demoMode === "flow" && flowPhase === "CONFIG" && (
+        <div style={{
+          position: "fixed",
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: "linear-gradient(135deg, #1a1a2e 0%, #16213e 100%)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          zIndex: 9999,
+        }}>
+          <div style={{
+            background: "rgba(255, 255, 255, 0.95)",
+            padding: "40px",
+            borderRadius: "20px",
+            maxWidth: "500px",
+            width: "90%",
+            boxShadow: "0 10px 40px rgba(0,0,0,0.3)",
+          }}>
+            <h2 style={{ marginTop: 0, color: "#1a1a2e", fontSize: "28px", marginBottom: "30px" }}>
+              🎮 Configure Demo Game
+            </h2>
+            
+            <div style={{ marginBottom: "25px" }}>
+              <label style={{ display: "block", marginBottom: "10px", color: "#1a1a2e", fontSize: "16px", fontWeight: "bold" }}>
+                Number of Players (Total: {flowNumPlayers})
+              </label>
+              <input 
+                type="range"
+                min="2"
+                max="20"
+                value={flowNumPlayers}
+                onChange={(e) => setFlowNumPlayers(Number(e.target.value))}
+                style={{ width: "100%", height: "8px" }}
+              />
+              <div style={{ display: "flex", justifyContent: "space-between", marginTop: "8px", fontSize: "14px", color: "#666" }}>
+                <span>You + 1 AI</span>
+                <span>{flowNumPlayers - 1} AI Players</span>
+                <span>You + 19 AI</span>
+              </div>
+            </div>
+            
+            <div style={{ marginBottom: "25px" }}>
+              <label style={{ display: "block", marginBottom: "10px", color: "#1a1a2e", fontSize: "16px", fontWeight: "bold" }}>
+                Win Target: {flowWinTarget} points
+              </label>
+              <input 
+                type="range"
+                min="10"
+                max="40"
+                step="1"
+                value={flowWinTarget}
+                onChange={(e) => setFlowWinTarget(Number(e.target.value))}
+                style={{ width: "100%", height: "8px" }}
+              />
+              <div style={{ display: "flex", justifyContent: "space-between", marginTop: "8px", fontSize: "14px", color: "#666" }}>
+                <span>10 pts (Quick)</span>
+                <span>20 pts</span>
+                <span>30 pts (Normal)</span>
+                <span>40 pts (Long)</span>
+              </div>
+            </div>
+            
+            <div style={{ marginBottom: "25px" }}>
+              <label style={{ display: "block", marginBottom: "10px", color: "#1a1a2e", fontSize: "16px", fontWeight: "bold" }}>
+                Board Pattern
+              </label>
+              <div style={{ display: "flex", gap: "15px" }}>
+                <button 
+                  onClick={() => setFlowBoardPattern("spiral")}
+                  style={{
+                    flex: 1,
+                    padding: "15px",
+                    border: flowBoardPattern === "spiral" ? "3px solid #4a90e2" : "2px solid #ddd",
+                    background: flowBoardPattern === "spiral" ? "#e3f2fd" : "white",
+                    borderRadius: "10px",
+                    cursor: "pointer",
+                    fontSize: "16px",
+                    fontWeight: "bold",
+                  }}
+                >
+                  🌀 Spiral
+                </button>
+                <button 
+                  onClick={() => setFlowBoardPattern("snake")}
+                  style={{
+                    flex: 1,
+                    padding: "15px",
+                    border: flowBoardPattern === "snake" ? "3px solid #4a90e2" : "2px solid #ddd",
+                    background: flowBoardPattern === "snake" ? "#e3f2fd" : "white",
+                    borderRadius: "10px",
+                    cursor: "pointer",
+                    fontSize: "16px",
+                    fontWeight: "bold",
+                  }}
+                >
+                  🐍 Snake
+                </button>
+              </div>
+            </div>
+            
+            <div style={{ marginBottom: "30px" }}>
+              <label style={{ display: "flex", alignItems: "center", gap: "10px", cursor: "pointer" }}>
+                <input 
+                  type="checkbox"
+                  checked={flowAllowPlayerUploads}
+                  onChange={(e) => setFlowAllowPlayerUploads(e.target.checked)}
+                  style={{ width: "20px", height: "20px" }}
+                />
+                <span style={{ color: "#1a1a2e", fontSize: "16px" }}>
+                  Allow player uploads
+                </span>
+              </label>
+            </div>
+            
+            <button 
+              onClick={startFlowGame}
+              style={{
+                width: "100%",
+                padding: "18px",
+                background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+                color: "white",
+                border: "none",
+                borderRadius: "12px",
+                fontSize: "20px",
+                fontWeight: "bold",
+                cursor: "pointer",
+                boxShadow: "0 4px 15px rgba(102, 126, 234, 0.4)",
+                transition: "transform 0.2s",
+              }}
+              onMouseOver={(e) => {
+                e.currentTarget.style.transform = "translateY(-2px)";
+              }}
+              onMouseOut={(e) => {
+                e.currentTarget.style.transform = "translateY(0)";
+              }}
+            >
+              🎲 Start Demo Game
+            </button>
+          </div>
+        </div>
+      )}
+      
       {/* Minimized Combined Controls */}
       <div
         className="demo-controls-mini"
@@ -1205,9 +1364,14 @@ export function DemoPage() {
       >
         {/* Mode Toggle */}
         <button
-          onClick={() =>
-            setDemoMode(demoMode === "component" ? "flow" : "component")
-          }
+          onClick={() => {
+            if (demoMode === "component") {
+              setDemoMode("flow");
+              setFlowPhase("CONFIG"); // Show config screen when switching to flow
+            } else {
+              setDemoMode("component");
+            }
+          }}
           style={{
             padding: "4px 8px",
             borderRadius: "6px",
@@ -1346,25 +1510,41 @@ export function DemoPage() {
           </>
         )}
 
-        {demoMode === "flow" && (
-          <span
-            style={{
-              padding: "4px 6px",
-              color: "#fff",
-              fontSize: "10px",
-              whiteSpace: "nowrap",
-              display: "flex",
-              alignItems: "center",
-              gap: "8px",
-            }}
-          >
-            <span>R{flowRound}</span>
-            <span>|</span>
-            <span>
-              {flowPlayerScores["1"]}/{flowPlayerScores["2"]}/
-              {flowPlayerScores["3"]}
+        {demoMode === "flow" && flowPhase !== "CONFIG" && (
+          <>
+            <span
+              style={{
+                padding: "4px 6px",
+                color: "#fff",
+                fontSize: "10px",
+                whiteSpace: "nowrap",
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+              }}
+            >
+              <span>👥{flowNumPlayers}</span>
+              <span>|</span>
+              <span>R{flowRound}</span>
+              <span>|</span>
+              <span>🎯{flowWinTarget}</span>
             </span>
-          </span>
+            <button
+              onClick={() => setFlowPhase("CONFIG")}
+              style={{
+                padding: "4px 8px",
+                borderRadius: "6px",
+                border: "1px solid #555",
+                background: "rgba(74, 144, 226, 0.2)",
+                color: "#fff",
+                cursor: "pointer",
+                fontSize: "11px",
+              }}
+              title="Back to Config"
+            >
+              ⚙️
+            </button>
+          </>
         )}
       </div>
 
@@ -1429,12 +1609,12 @@ export function DemoPage() {
               onJoin={() => {}}
               onJoinSpectator={() => {}}
               onLeave={() => {}}
-              onUploadImage={() => {}}
-              onDeleteImage={() => {}}
-              onSetAllowPlayerUploads={() => {}}
-              onSetBoardBackground={() => {}}
-              onSetBoardPattern={() => {}}
-              onSetWinTarget={() => {}}
+              onUploadImage={mockActions.uploadImage}
+              onDeleteImage={mockActions.deleteImage}
+              onSetAllowPlayerUploads={flowActions.setAllowPlayerUploads}
+              onSetBoardBackground={flowActions.setBoardBackground}
+              onSetBoardPattern={flowActions.setBoardPattern}
+              onSetWinTarget={flowActions.setWinTarget}
               onStartGame={() => {}}
               onChangeName={() => {}}
               onStorytellerSubmit={flowActions.storytellerSubmit}

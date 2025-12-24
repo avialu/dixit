@@ -157,6 +157,7 @@ select {
   top: 20px;
   right: 20px;
   padding: 1rem 1.5rem;
+  padding-right: 3rem; /* Extra space for close button */
   border-radius: 8px;
   z-index: 10000;
   max-width: 400px;
@@ -165,6 +166,7 @@ select {
   gap: 0.75rem;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
   animation: slideInRight 0.3s ease-out;
+  position: relative; /* For absolute positioning of close button */
 }
 
 .error-toast .error-icon {
@@ -181,6 +183,27 @@ select {
   font-size: 0.875rem;
   opacity: 0.9;
   font-style: italic;
+}
+
+/* Close button in error toast */
+.error-toast .x-button {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 24px;
+  height: 24px;
+  min-width: 24px;
+  min-height: 24px;
+  padding: 0;
+  font-size: 16px;
+  line-height: 24px;
+  opacity: 0.8;
+  transition: opacity 0.2s;
+}
+
+.error-toast .x-button:hover {
+  opacity: 1;
+  transform: none; /* Override default x-button transform */
 }
 
 /* Severity-based colors */
@@ -213,6 +236,108 @@ select {
   to {
     transform: translateX(0);
     opacity: 1;
+  }
+}
+
+/* Connection Status Indicator */
+.connection-status {
+  position: fixed;
+  top: 20px;
+  left: 20px;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  animation: slideInLeft 0.3s ease-out;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.connection-status.reconnecting {
+  background: #ffc107;
+  color: #000;
+}
+
+.connection-status.disconnected {
+  background: #dc3545;
+  color: white;
+}
+
+.connection-status.connecting {
+  background: #17a2b8;
+  color: white;
+}
+
+.connection-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.connection-status.reconnecting .connection-dot {
+  background: #000;
+  animation: pulse-dot 1.5s ease-in-out infinite;
+}
+
+.connection-status.disconnected .connection-dot {
+  background: white;
+}
+
+.connection-status.connecting .connection-dot {
+  background: white;
+  animation: pulse-dot 1.5s ease-in-out infinite;
+}
+
+.connection-text {
+  flex: 1;
+}
+
+.connection-reconnect-btn {
+  background: white;
+  color: #dc3545;
+  border: none;
+  padding: 0.4rem 0.8rem;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 0.85rem;
+}
+
+.connection-reconnect-btn:hover {
+  background: #f8f9fa;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.connection-reconnect-btn:active {
+  transform: translateY(0);
+}
+
+@keyframes slideInLeft {
+  from {
+    transform: translateX(-100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes pulse-dot {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.5;
+    transform: scale(1.2);
   }
 }
 
@@ -1011,13 +1136,13 @@ select {
   position: relative;
 }
 
-/* Board QR Close Button - extends x-button */
-.board-qr-close-btn {
-  position: absolute;
-  top: -0.75rem;
-  right: -0.75rem;
-  width: 2rem;
-  height: 2rem;
+/* Board QR Close Button - positioned on border, overrides modal-close-button */
+.board-qr-close-btn.x-button {
+  position: absolute !important;
+  top: -0.75rem !important;
+  right: -0.75rem !important;
+  width: 2rem !important;
+  height: 2rem !important;
   font-size: 1rem;
   z-index: 10;
 }

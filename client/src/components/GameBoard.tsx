@@ -415,7 +415,11 @@ export function GameBoard({
         <div className="board-qr-code-section">
           <div className="board-qr-code-container">
             {onCloseQR && (
-              <CloseButton onClose={onCloseQR} title="Close QR code" />
+              <CloseButton
+                onClose={onCloseQR}
+                title="Close QR code"
+                className="board-qr-close-btn"
+              />
             )}
             <p className="board-qr-hint">Scan to join</p>
             <QRCode url={roomState.serverUrl} size={180} />
@@ -503,12 +507,16 @@ export function GameBoard({
           {/* Draw player tokens - static, no animation */}
           {roomState.players.map((player) => {
             // Use frozen score if available (during REVEAL modal), otherwise actual score
-            const displayScore = frozenScores?.[player.id] ?? player.score;
+            const actualScore = frozenScores?.[player.id] ?? player.score;
+            // Cap display score at win target so winners are visible together
+            const winTarget = roomState.winTarget || 30;
+            const displayScore = Math.min(actualScore, winTarget);
             const position = pathPositions[displayScore] || pathPositions[0];
 
             // Count players at same position for offset (scaled)
             const playersAtSamePosition = roomState.players.filter((p) => {
-              const pDisplayScore = frozenScores?.[p.id] ?? p.score;
+              const pActualScore = frozenScores?.[p.id] ?? p.score;
+              const pDisplayScore = Math.min(pActualScore, winTarget);
               return pDisplayScore === displayScore;
             });
             const positionIndex = playersAtSamePosition.findIndex(

@@ -11,16 +11,22 @@ export const config = {
     minPlayers: Number(process.env.MIN_PLAYERS) || 3,
 
     /** Maximum players allowed in a game */
-    maxPlayers: Number(process.env.MAX_PLAYERS) || 10,
+    maxPlayers: Number(process.env.MAX_PLAYERS) || 20,
 
     /** Number of cards each player holds */
     handSize: 6,
 
     /** Maximum deck size (prevents memory issues) */
-    maxDeckSize: Number(process.env.MAX_DECK_SIZE) || 500,
+    maxDeckSize: Number(process.env.MAX_DECK_SIZE) || 1000,
 
     /** Default win target (points needed to win) */
     defaultWinTarget: 30,
+
+    /** Maximum win target allowed */
+    maxWinTarget: Number(process.env.MAX_WIN_TARGET) || 40,
+
+    /** Minimum win target allowed */
+    minWinTarget: Number(process.env.MIN_WIN_TARGET) || 10,
 
     /**
      * Calculate minimum deck size based on game parameters
@@ -90,8 +96,8 @@ export const config = {
     /** API max requests per window */
     apiMax: Number(process.env.API_RATE_LIMIT) || 100,
 
-    /** Socket event limit per window */
-    socketMax: Number(process.env.SOCKET_RATE_LIMIT) || 50,
+    /** Socket event limit per window - increased to 100 to support bulk image uploads */
+    socketMax: Number(process.env.SOCKET_RATE_LIMIT) || 100,
 
     /** Socket event window (ms) */
     socketWindowMs: 10 * 1000, // 10 seconds

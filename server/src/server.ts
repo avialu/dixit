@@ -87,8 +87,16 @@ export function createApp(port: number = serverConfig.port) {
   // Map socket.id to clientId
   const socketToClient = new Map<string, string>();
   
+  // Disconnect grace period timers - gives players 5 seconds to reconnect
+  const disconnectTimers = new Map<string, NodeJS.Timeout>();
+  const DISCONNECT_GRACE_PERIOD = 5000; // 5 seconds
+  
   // Socket event rate limiting (per socket)
   const socketEventCounts = new Map<string, { count: number; resetTime: number }>();
+  
+  // Track last rate limit warning per socket to avoid spam
+  const lastRateLimitWarning = new Map<string, number>();
+  const RATE_LIMIT_WARNING_COOLDOWN = 5000; // Only log once per 5 seconds per socket
   
   function checkSocketRateLimit(socketId: string): boolean {
     const now = Date.now();
@@ -118,7 +126,14 @@ export function createApp(port: number = serverConfig.port) {
     if (!checkSocketRateLimit(socket.id)) {
       const error = new RateLimitError("Too many requests. Please slow down.", 10);
       socket.emit("error", error.toJSON());
-      logger.warn("Socket rate limit exceeded", { socketId: socket.id });
+      
+      // Only log rate limit warning if we haven't logged recently
+      const now = Date.now();
+      const lastWarning = lastRateLimitWarning.get(socket.id) || 0;
+      if (now - lastWarning > RATE_LIMIT_WARNING_COOLDOWN) {
+        logger.warn("Socket rate limit exceeded", { socketId: socket.id });
+        lastRateLimitWarning.set(socket.id, now);
+      }
       return;
     }
     
@@ -271,6 +286,14 @@ npm start</pre>
         const parsed = reconnectSchema.parse(data);
         const { clientId } = parsed;
 
+        // Cancel any pending disconnect timer for this client
+        const existingTimer = disconnectTimers.get(clientId);
+        if (existingTimer) {
+          clearTimeout(existingTimer);
+          disconnectTimers.delete(clientId);
+          logger.debug("Cancelled disconnect timer for reconnecting client", { clientId });
+        }
+
         // Check if this is a player (in game) or spectator (just watching)
         const player = gameManager.getPlayer(clientId);
         const isSpectator = !player;
@@ -292,7 +315,21 @@ npm start</pre>
 
           // Send fresh state
           broadcastRoomState();
+          
+          // Always send player state, especially important during game phases
+          const currentPhase = gameManager.getCurrentPhase();
           sendPlayerState(socket.id, clientId);
+          
+          // Log hand size for debugging
+          const playerState = gameManager.getPlayerState(clientId);
+          if (playerState) {
+            logger.info("Sent hand to reconnected player", { 
+              clientId, 
+              handSize: playerState.hand.length,
+              phase: currentPhase
+            });
+          }
+          
           socket.emit("reconnectSuccess", { playerId: clientId });
         }
       } catch (error) {
@@ -597,9 +634,18 @@ npm start</pre>
         if (clientId) {
           logger.info("Player/Spectator leaving", { clientId });
 
+          // Cancel any pending disconnect timer
+          const existingTimer = disconnectTimers.get(clientId);
+          if (existingTimer) {
+            clearTimeout(existingTimer);
+            disconnectTimers.delete(clientId);
+          }
+
           // Permanently remove player (leavePlayer will only remove if they're in players list)
           gameManager.leavePlayer(clientId);
           socketToClient.delete(socket.id);
+          socketEventCounts.delete(socket.id);
+          lastRateLimitWarning.delete(socket.id);
 
           broadcastRoomState();
         }
@@ -613,10 +659,43 @@ npm start</pre>
     socket.on("disconnect", () => {
       const clientId = socketToClient.get(socket.id);
       if (clientId) {
-        logger.info("Player disconnected", { clientId, socketId: socket.id });
+        logger.info("Player disconnected - starting grace period", { 
+          clientId, 
+          socketId: socket.id,
+          gracePeriodMs: DISCONNECT_GRACE_PERIOD 
+        });
+        
+        // Mark player as disconnected immediately
         gameManager.removePlayer(clientId);
+        
+        // Clean up socket tracking immediately
         socketToClient.delete(socket.id);
-        socketEventCounts.delete(socket.id); // Cleanup rate limit tracking
+        socketEventCounts.delete(socket.id);
+        lastRateLimitWarning.delete(socket.id);
+        
+        // Set a timer to fully remove player if they don't reconnect
+        const timer = setTimeout(() => {
+          // Check if player reconnected (would have a new socket mapping)
+          let hasReconnected = false;
+          for (const [_, cId] of socketToClient.entries()) {
+            if (cId === clientId) {
+              hasReconnected = true;
+              break;
+            }
+          }
+          
+          if (!hasReconnected) {
+            logger.info("Grace period expired - player did not reconnect", { clientId });
+            // Player is already marked as disconnected, just broadcast state
+            broadcastRoomState();
+          }
+          
+          disconnectTimers.delete(clientId);
+        }, DISCONNECT_GRACE_PERIOD);
+        
+        disconnectTimers.set(clientId, timer);
+        
+        // Broadcast state immediately to show player as disconnected
         broadcastRoomState();
       }
     });
