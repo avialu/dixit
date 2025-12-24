@@ -6,31 +6,67 @@ import { getMinimumDeckSize } from "../utils/imageConstants";
 
 interface GameBoardProps {
   roomState: RoomState;
-  triggerAnimation?: boolean; // External trigger for animation
   showQR?: boolean;
   onCloseQR?: () => void;
+  revealModalOpen?: boolean; // Track if REVEAL modal is open
 }
 
 export function GameBoard({
   roomState,
-  triggerAnimation = false,
   showQR = true,
   onCloseQR,
+  revealModalOpen = false,
 }: GameBoardProps) {
-  const [animatingScores, setAnimatingScores] = useState<{
-    [playerId: string]: number;
-  }>({});
-  const [isAnimating, setIsAnimating] = useState(false);
-  const lastAnimatedRound = useRef<number>(-1);
   const svgContainerRef = useRef<HTMLDivElement>(null);
   const [containerDimensions, setContainerDimensions] = useState({
     width: 0,
     height: 0,
   });
 
+  // Freeze scores at previous positions while REVEAL modal is open
+  const [frozenScores, setFrozenScores] = useState<{
+    [playerId: string]: number;
+  } | null>(null);
+  const lastRevealRound = useRef<number>(-1);
+
   // Dynamic track length based on win target (e.g., winTarget=30 → trackLength=31 for positions 0-30)
   const winTarget = roomState.winTarget || 30;
   const trackLength = winTarget + 1; // Add 1 to include position 0
+
+  // Freeze scores when REVEAL starts, unfreeze when modal closes
+  useEffect(() => {
+    if (
+      roomState.phase === "REVEAL" &&
+      roomState.lastScoreDeltas.length > 0 &&
+      lastRevealRound.current !== roomState.currentRound
+    ) {
+      // New REVEAL round - freeze scores at previous positions
+      lastRevealRound.current = roomState.currentRound;
+
+      const previousScores: { [playerId: string]: number } = {};
+      roomState.players.forEach((player) => {
+        const delta = roomState.lastScoreDeltas.find(
+          (d) => d.playerId === player.id
+        );
+        const prevScore = player.score - (delta?.delta || 0);
+        previousScores[player.id] = Math.max(0, prevScore);
+      });
+
+      setFrozenScores(previousScores);
+    } else if (roomState.phase === "REVEAL" && !revealModalOpen) {
+      // Modal closed - unfreeze scores
+      setFrozenScores(null);
+    } else if (roomState.phase !== "REVEAL") {
+      // Left REVEAL phase - clear frozen scores
+      setFrozenScores(null);
+    }
+  }, [
+    roomState.phase,
+    roomState.currentRound,
+    roomState.lastScoreDeltas,
+    roomState.players,
+    revealModalOpen,
+  ]);
 
   // Measure container on mount and after a brief delay (for layout settle)
   useEffect(() => {
@@ -52,60 +88,6 @@ export function GameBoard({
       clearTimeout(timeout);
     };
   }, []);
-
-  // Trigger animation only when triggerAnimation prop is explicitly set to true
-  useEffect(() => {
-    if (
-      roomState.phase === "REVEAL" &&
-      roomState.lastScoreDeltas.length > 0 &&
-      lastAnimatedRound.current !== roomState.currentRound &&
-      triggerAnimation // Only animate when explicitly triggered (modal closed)
-    ) {
-      lastAnimatedRound.current = roomState.currentRound;
-
-      // Calculate previous scores (current - delta)
-      const previousScores: { [playerId: string]: number } = {};
-      roomState.players.forEach((player) => {
-        const delta = roomState.lastScoreDeltas.find(
-          (d) => d.playerId === player.id
-        );
-        const prevScore = player.score - (delta?.delta || 0);
-        previousScores[player.id] = Math.max(0, prevScore); // Don't go below 0
-      });
-
-      // Set initial position (before animation)
-      setAnimatingScores(previousScores);
-      setIsAnimating(false); // Start with no animation
-
-      // Start animation to final position after a brief delay to ensure DOM update
-      const animateTimer = setTimeout(() => {
-        setIsAnimating(true); // Enable animation
-        // Update to final scores to trigger CSS transition
-        const finalScores: { [playerId: string]: number } = {};
-        roomState.players.forEach((player) => {
-          finalScores[player.id] = player.score;
-        });
-        setAnimatingScores(finalScores);
-      }, 100); // Increased delay for DOM to settle
-
-      // End animation state
-      const endTimer = setTimeout(() => {
-        setIsAnimating(false);
-        setAnimatingScores({});
-      }, 2200); // 2s animation + 200ms buffer
-
-      return () => {
-        clearTimeout(animateTimer);
-        clearTimeout(endTimer);
-      };
-    }
-  }, [
-    roomState.phase,
-    roomState.currentRound,
-    roomState.lastScoreDeltas,
-    roomState.players,
-    triggerAnimation,
-  ]);
 
   // Calculate viewBox dynamically to match container aspect ratio exactly
   const aspectRatio =
@@ -518,21 +500,16 @@ export function GameBoard({
             );
           })}
 
-          {/* Draw player tokens separately for smooth animation */}
+          {/* Draw player tokens - static, no animation */}
           {roomState.players.map((player) => {
-            const displayScore =
-              animatingScores[player.id] !== undefined
-                ? animatingScores[player.id]
-                : player.score;
+            // Use frozen score if available (during REVEAL modal), otherwise actual score
+            const displayScore = frozenScores?.[player.id] ?? player.score;
             const position = pathPositions[displayScore] || pathPositions[0];
 
             // Count players at same position for offset (scaled)
             const playersAtSamePosition = roomState.players.filter((p) => {
-              const pScore =
-                animatingScores[p.id] !== undefined
-                  ? animatingScores[p.id]
-                  : p.score;
-              return pScore === displayScore;
+              const pDisplayScore = frozenScores?.[p.id] ?? p.score;
+              return pDisplayScore === displayScore;
             });
             const positionIndex = playersAtSamePosition.findIndex(
               (p) => p.id === player.id
@@ -542,78 +519,15 @@ export function GameBoard({
                 (playersAtSamePosition.length - 1) * 1.25) *
               scaleFactor;
 
-            const delta = roomState.lastScoreDeltas.find(
-              (d) => d.playerId === player.id
-            );
-            const isMoving = isAnimating && delta && delta.delta !== 0;
-
             const tokenX = position.x + offsetX;
             const tokenY = position.y - 5 * scaleFactor;
 
-            // Get color based on point gain for delta display
-            const getDeltaColor = (points: number) => {
-              if (points >= 3) return "#f1c40f"; // Gold for 3+ points
-              if (points === 2) return "#3498db"; // Blue for 2 points
-              if (points === 1) return "#2ecc71"; // Green for 1 point
-              return "#95a5a6"; // Gray for 0 points
-            };
-
             return (
-              <g key={player.id}>
-                {/* Trail effect - simple, relaxed path */}
-                {isMoving &&
-                  delta.delta > 0 &&
-                  (() => {
-                    const prevScore = Math.max(0, player.score - delta.delta);
-                    const prevPos =
-                      pathPositions[prevScore] || pathPositions[0];
-                    const prevX = prevPos.x + offsetX;
-                    const prevY = prevPos.y - 5 * scaleFactor;
-
-                    return (
-                      <line
-                        x1={prevX}
-                        y1={prevY}
-                        x2={tokenX}
-                        y2={tokenY}
-                        stroke={getDeltaColor(delta.delta)}
-                        strokeWidth={1 * scaleFactor}
-                        opacity="0.3"
-                        className="token-trail"
-                      />
-                    );
-                  })()}
-
-                <g
-                  className={`token-group ${
-                    isAnimating ? "token-animating" : ""
-                  } ${isMoving ? "token-moving" : ""}`}
-                  style={{
-                    willChange: isAnimating ? "transform" : "auto",
-                  }}
-                >
+              <g key={player.id} style={{ pointerEvents: "none" }}>
+                <g>
                   {player.tokenImage ? (
-                    /* Token with custom image */
-                    <g
-                      transform={`translate(${tokenX}, ${tokenY})`}
-                      style={{
-                        transition: isAnimating
-                          ? "transform 2s cubic-bezier(0.4, 0.0, 0.2, 1)"
-                          : "none",
-                        willChange: isAnimating ? "transform" : "auto",
-                      }}
-                    >
-                      {/* Glow effect during animation */}
-                      {isMoving && (
-                        <circle
-                          cx="0"
-                          cy="0"
-                          r={tokenSize * scaleFactor * 1.5}
-                          fill={getDeltaColor(delta.delta)}
-                          opacity="0.3"
-                          className="token-glow"
-                        />
-                      )}
+                    /* Token with custom image - no animation */
+                    <g transform={`translate(${tokenX}, ${tokenY})`}>
                       <g
                         clipPath="url(#token-circle-mask)"
                         transform={`scale(${scaleFactor})`}
@@ -632,48 +546,22 @@ export function GameBoard({
                         cy="0"
                         r={tokenSize * scaleFactor}
                         fill="none"
-                        stroke={isMoving ? getDeltaColor(delta.delta) : "#fff"}
-                        strokeWidth={
-                          isMoving ? 1 * scaleFactor : 0.5 * scaleFactor
-                        }
+                        stroke="#fff"
+                        strokeWidth={0.5 * scaleFactor}
                         className="player-token-border"
-                        style={{
-                          transition: "stroke 0.3s, stroke-width 0.3s",
-                        }}
                       />
                     </g>
                   ) : (
-                    /* Token with color fallback */
-                    <>
-                      {/* Glow effect during animation */}
-                      {isMoving && (
-                        <circle
-                          cx={tokenX}
-                          cy={tokenY}
-                          r={tokenSize * scaleFactor * 1.5}
-                          fill={getDeltaColor(delta.delta)}
-                          opacity="0.3"
-                          className="token-glow"
-                        />
-                      )}
-                      <circle
-                        cx={tokenX}
-                        cy={tokenY}
-                        r={tokenSize * scaleFactor}
-                        fill={getPlayerColor(player.id)}
-                        stroke={isMoving ? getDeltaColor(delta.delta) : "#fff"}
-                        strokeWidth={
-                          isMoving ? 1 * scaleFactor : 0.5 * scaleFactor
-                        }
-                        className="player-token"
-                        style={{
-                          transition: isAnimating
-                            ? "cx 2s cubic-bezier(0.4, 0.0, 0.2, 1), cy 2s cubic-bezier(0.4, 0.0, 0.2, 1), stroke 0.3s, stroke-width 0.3s"
-                            : "stroke 0.3s, stroke-width 0.3s",
-                          willChange: isAnimating ? "transform" : "auto",
-                        }}
-                      />
-                    </>
+                    /* Token with color fallback - no animation */
+                    <circle
+                      cx={tokenX}
+                      cy={tokenY}
+                      r={tokenSize * scaleFactor}
+                      fill={getPlayerColor(player.id)}
+                      stroke="#fff"
+                      strokeWidth={0.5 * scaleFactor}
+                      className="player-token"
+                    />
                   )}
                   {roomState.storytellerId === player.id && (
                     <text
@@ -682,52 +570,10 @@ export function GameBoard({
                       fontSize={3 * scaleFactor}
                       textAnchor="middle"
                       dominantBaseline="middle"
-                      style={{
-                        transition: isAnimating
-                          ? "x 2s cubic-bezier(0.4, 0.0, 0.2, 1), y 2s cubic-bezier(0.4, 0.0, 0.2, 1)"
-                          : "none",
-                        pointerEvents: "none",
-                      }}
+                      style={{ pointerEvents: "none" }}
                     >
                       📖
                     </text>
-                  )}
-                  {/* Score delta display - larger and more visible */}
-                  {isMoving && (
-                    <g className="score-delta-container">
-                      {/* Background for better visibility */}
-                      <rect
-                        x={tokenX - 4 * scaleFactor}
-                        y={tokenY - 10 * scaleFactor}
-                        width={8 * scaleFactor}
-                        height={5 * scaleFactor}
-                        fill="rgba(0, 0, 0, 0.7)"
-                        rx={1 * scaleFactor}
-                        className="score-delta-bg"
-                        style={{
-                          transition: isAnimating
-                            ? "x 2s cubic-bezier(0.4, 0.0, 0.2, 1), y 2s cubic-bezier(0.4, 0.0, 0.2, 1)"
-                            : "none",
-                        }}
-                      />
-                      <text
-                        x={tokenX}
-                        y={tokenY - 7 * scaleFactor}
-                        fontSize={4 * scaleFactor}
-                        fontWeight="bold"
-                        textAnchor="middle"
-                        fill={getDeltaColor(delta.delta)}
-                        className="score-delta-floating"
-                        style={{
-                          transition: isAnimating
-                            ? "x 2s cubic-bezier(0.4, 0.0, 0.2, 1), y 2s cubic-bezier(0.4, 0.0, 0.2, 1)"
-                            : "none",
-                          filter: `drop-shadow(0 2px 4px rgba(0,0,0,0.8))`,
-                        }}
-                      >
-                        +{delta.delta}
-                      </text>
-                    </g>
                   )}
                 </g>
               </g>

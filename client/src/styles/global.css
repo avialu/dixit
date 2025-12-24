@@ -1158,12 +1158,8 @@ select {
 }
 
 .path-space {
-  transition: all 0.3s ease;
-  cursor: pointer;
-}
-
-.path-space:hover {
-  r: 3;
+  pointer-events: none;
+  cursor: default;
 }
 
 .win-space {
@@ -1194,58 +1190,7 @@ select {
   will-change: cx, cy;
 }
 
-.player-token-group {
-  transition: transform 2s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.player-token-group.animating {
-  transition: transform 2s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.token-animating circle,
-.token-animating text {
-  transition: cx 2s cubic-bezier(0.4, 0, 0.2, 1),
-    cy 2s cubic-bezier(0.4, 0, 0.2, 1), x 2s cubic-bezier(0.4, 0, 0.2, 1),
-    y 2s cubic-bezier(0.4, 0, 0.2, 1);
-  will-change: cx, cy, x, y;
-}
-
 /* Bounce animation removed for simpler, more relaxed movement */
-
-/* Glow effect during movement */
-.token-glow {
-  animation: pulse-glow-token 1s ease-in-out infinite;
-  will-change: opacity, transform;
-}
-
-@keyframes pulse-glow-token {
-  0%,
-  100% {
-    opacity: 0.2;
-    transform: scale(1);
-  }
-  50% {
-    opacity: 0.4;
-    transform: scale(1.1);
-  }
-}
-
-/* Trail effect - simple and relaxed */
-.token-trail {
-  animation: trail-fade-simple 2s ease-in-out forwards;
-}
-
-@keyframes trail-fade-simple {
-  0% {
-    opacity: 0.3;
-  }
-  50% {
-    opacity: 0.4;
-  }
-  100% {
-    opacity: 0;
-  }
-}
 
 /* Enhanced score delta animation - larger and more visible */
 .score-delta-floating {
@@ -1294,32 +1239,6 @@ select {
   }
   100% {
     opacity: 0;
-  }
-}
-
-.player-token.scoring-animation {
-  animation: token-bounce-scoring 0.5s ease-out 3;
-}
-
-@keyframes token-bounce-scoring {
-  0%,
-  100% {
-    transform: translateY(0);
-  }
-  50% {
-    transform: translateY(-2px);
-  }
-}
-
-@keyframes token-bounce {
-  0% {
-    transform: translateY(0);
-  }
-  50% {
-    transform: translateY(-5px);
-  }
-  100% {
-    transform: translateY(0);
   }
 }
 

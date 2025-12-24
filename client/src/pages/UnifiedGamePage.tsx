@@ -75,8 +75,6 @@ export function UnifiedGamePage({
   >(null);
   // Track local vote for locking UI
   const [localVotedCardId, setLocalVotedCardId] = useState<string | null>(null);
-  // Track if we should trigger board animation (when closing REVEAL modal)
-  const [triggerBoardAnimation, setTriggerBoardAnimation] = useState(false);
   // Track if user chose to be a spectator - initialize from localStorage
   const [isUserSpectator, setIsUserSpectator] = useState(
     storage.isSpectator.get()
@@ -172,11 +170,6 @@ export function UnifiedGamePage({
     if (shouldAutoOpen) {
       setModalType("cards");
       setShowModal(true);
-    }
-
-    // Reset animation trigger when phase changes away from REVEAL
-    if (phase !== "REVEAL") {
-      setTriggerBoardAnimation(false);
     }
   }, [roomState?.phase, isStoryteller, isSpectator]);
 
@@ -435,9 +428,9 @@ export function UnifiedGamePage({
       <div className="board-background">
         <GameBoard
           roomState={roomState}
-          triggerAnimation={triggerBoardAnimation}
           showQR={showQR}
           onCloseQR={() => setShowQR(false)}
+          revealModalOpen={showModal && roomState.phase === "REVEAL"}
         />
       </div>
 
@@ -692,10 +685,6 @@ export function UnifiedGamePage({
               isOpen={true}
               onClose={() => {
                 setShowModal(false);
-                // Trigger board animation when closing REVEAL modal
-                if (roomState?.phase === "REVEAL") {
-                  setTriggerBoardAnimation(true);
-                }
               }}
               header={modalContent.header}
               footer={modalContent.footer}
