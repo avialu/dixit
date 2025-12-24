@@ -1,6 +1,5 @@
 import { nanoid } from "nanoid";
 import { Card } from "./types.js";
-import { loadDefaultImages } from "../utils/defaultImages.js";
 import { GAME_CONSTANTS } from "./constants.js";
 import { logger } from "../utils/logger.js";
 
@@ -253,25 +252,4 @@ export class DeckManager {
     return transferredCount;
   }
 
-  /**
-   * Load default images into the deck
-   * Used when there aren't enough uploaded images
-   */
-  loadDefaultImages(): void {
-    const defaultImages = loadDefaultImages();
-
-    for (const imageData of defaultImages) {
-      const card: Card = {
-        id: nanoid(),
-        imageData,
-        uploadedBy: "system", // Mark as system-provided
-      };
-      this.deck.push(card);
-    }
-
-    logger.info("Added default images to deck", {
-      defaultImagesCount: defaultImages.length,
-      totalDeckSize: this.deck.length,
-    });
-  }
 }

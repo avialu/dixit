@@ -431,7 +431,6 @@ API_RATE_LIMIT=100                 # Max API requests per window
 SOCKET_RATE_LIMIT=50               # Max socket events per window
 
 # Feature Flags
-ENABLE_DEFAULT_IMAGES=true         # Load default images if needed
 ENABLE_PERIODIC_CLEANUP=true       # Clean up disconnected players
 ENABLE_DETAILED_LOGS=false         # Verbose logging
 ```

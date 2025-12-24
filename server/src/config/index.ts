@@ -120,9 +120,6 @@ export const config = {
 
   // Feature Flags
   features: {
-    /** Enable default images fallback */
-    enableDefaultImages: process.env.ENABLE_DEFAULT_IMAGES !== "false",
-
     /** Enable periodic cleanup */
     enablePeriodicCleanup: process.env.ENABLE_PERIODIC_CLEANUP !== "false",
 

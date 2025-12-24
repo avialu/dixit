@@ -479,30 +479,6 @@ export class GameManager {
     return card;
   }
 
-  /**
-   * Load default images into the deck
-   * Can be called by admin to supplement uploaded images
-   */
-  loadDefaultImages(adminId: string): void {
-    this.validateAdmin(adminId);
-
-    if (this.state.phase !== GamePhase.DECK_BUILDING) {
-      throw new Error(
-        "Can only load default images during DECK_BUILDING phase"
-      );
-    }
-
-    const currentDeckSize = this.deckManager.getDeckSize();
-    logger.info("Loading default images", { currentDeckSize });
-    this.deckManager.loadDefaultImages();
-
-    const newDeckSize = this.deckManager.getDeckSize();
-    logger.info("Loaded default images", {
-      previousSize: currentDeckSize,
-      newSize: newDeckSize,
-      addedCount: newDeckSize - currentDeckSize,
-    });
-  }
 
   deleteImage(cardId: string, playerId: string): boolean {
     return this.deckManager.deleteImage(cardId, playerId);

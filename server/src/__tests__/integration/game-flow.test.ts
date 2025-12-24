@@ -1,14 +1,14 @@
 /**
  * Integration Tests - Full Game Flow
- * 
+ *
  * These tests verify the complete game flow from player join to game end
  */
 
-import { describe, it, expect, beforeEach } from 'vitest';
-import { GameManager } from '../../game/GameManager.js';
-import { GamePhase } from '../../game/types.js';
+import { describe, it, expect, beforeEach } from "vitest";
+import { GameManager } from "../../game/GameManager.js";
+import { GamePhase } from "../../game/types.js";
 
-describe('Game Flow Integration Tests', () => {
+describe("Game Flow Integration Tests", () => {
   let gameManager: GameManager;
   let player1Id: string;
   let player2Id: string;
@@ -16,17 +16,17 @@ describe('Game Flow Integration Tests', () => {
 
   beforeEach(() => {
     gameManager = new GameManager();
-    player1Id = 'player1';
-    player2Id = 'player2';
-    player3Id = 'player3';
+    player1Id = "player1";
+    player2Id = "player2";
+    player3Id = "player3";
   });
 
-  describe('Complete Game Cycle', () => {
-    it('should complete a full game from join to end', () => {
+  describe("Complete Game Cycle", () => {
+    it("should complete a full game from join to end", () => {
       // 1. DECK_BUILDING: Players join
-      const p1 = gameManager.addPlayer('Alice', player1Id);
-      const p2 = gameManager.addPlayer('Bob', player2Id);
-      const p3 = gameManager.addPlayer('Carol', player3Id);
+      const p1 = gameManager.addPlayer("Alice", player1Id);
+      const p2 = gameManager.addPlayer("Bob", player2Id);
+      const p3 = gameManager.addPlayer("Carol", player3Id);
 
       expect(p1.isAdmin).toBe(true);
       expect(p2.isAdmin).toBe(false);
@@ -58,8 +58,12 @@ describe('Game Flow Integration Tests', () => {
       const storytellerId = updatedRoomState.storytellerId!;
       const storytellerState = gameManager.getPlayerState(storytellerId)!;
       const cardId = storytellerState.hand[0].id;
-      
-      gameManager.storytellerSubmitCard(storytellerId, cardId, 'Beautiful sunset');
+
+      gameManager.storytellerSubmitCard(
+        storytellerId,
+        cardId,
+        "Beautiful sunset"
+      );
       expect(gameManager.getCurrentPhase()).toBe(GamePhase.PLAYERS_CHOICE);
 
       // 6. Other players submit
@@ -83,8 +87,10 @@ describe('Game Flow Integration Tests', () => {
         // Vote for a random card that's not their own
         const playerState = gameManager.getPlayerState(playerId)!;
         const myCardId = playerState.mySubmittedCardId;
-        const cardsToVoteFor = revealedCards.filter((c: { cardId: string }) => c.cardId !== myCardId);
-        
+        const cardsToVoteFor = revealedCards.filter(
+          (c: { cardId: string }) => c.cardId !== myCardId
+        );
+
         if (cardsToVoteFor.length > 0) {
           gameManager.playerVote(playerId, cardsToVoteFor[0].cardId);
         }
@@ -98,17 +104,19 @@ describe('Game Flow Integration Tests', () => {
 
       // 9. Advance to next round
       gameManager.advanceToNextRound(player1Id);
-      
+
       // Should either start next round or end game
       const phase = gameManager.getCurrentPhase();
-      expect([GamePhase.STORYTELLER_CHOICE, GamePhase.GAME_END]).toContain(phase);
+      expect([GamePhase.STORYTELLER_CHOICE, GamePhase.GAME_END]).toContain(
+        phase
+      );
     });
 
-    it('should handle player disconnection gracefully', () => {
+    it("should handle player disconnection gracefully", () => {
       // Add players
-      gameManager.addPlayer('Alice', player1Id);
-      gameManager.addPlayer('Bob', player2Id);
-      gameManager.addPlayer('Carol', player3Id);
+      gameManager.addPlayer("Alice", player1Id);
+      gameManager.addPlayer("Bob", player2Id);
+      gameManager.addPlayer("Carol", player3Id);
 
       // Upload images
       for (let i = 0; i < 100; i++) {
@@ -120,25 +128,29 @@ describe('Game Flow Integration Tests', () => {
 
       // Disconnect player
       gameManager.removePlayer(player2Id);
-      
+
       const roomState = gameManager.getRoomState();
-      const bob = roomState.players.find((p: { id: string }) => p.id === player2Id);
-      
+      const bob = roomState.players.find(
+        (p: { id: string }) => p.id === player2Id
+      );
+
       expect(bob?.isConnected).toBe(false);
 
       // Reconnect
       gameManager.reconnectPlayer(player2Id);
-      
+
       const updatedRoomState = gameManager.getRoomState();
-      const reconnectedBob = updatedRoomState.players.find((p: { id: string }) => p.id === player2Id);
-      
+      const reconnectedBob = updatedRoomState.players.find(
+        (p: { id: string }) => p.id === player2Id
+      );
+
       expect(reconnectedBob?.isConnected).toBe(true);
     });
 
-    it('should handle admin transfer when admin leaves', () => {
-      const p1 = gameManager.addPlayer('Alice', player1Id);
-      const p2 = gameManager.addPlayer('Bob', player2Id);
-      
+    it("should handle admin transfer when admin leaves", () => {
+      const p1 = gameManager.addPlayer("Alice", player1Id);
+      const p2 = gameManager.addPlayer("Bob", player2Id);
+
       expect(p1.isAdmin).toBe(true);
       expect(p2.isAdmin).toBe(false);
 
@@ -146,14 +158,16 @@ describe('Game Flow Integration Tests', () => {
       gameManager.leavePlayer(player1Id);
 
       const roomState = gameManager.getRoomState();
-      const bob = roomState.players.find((p: { id: string }) => p.id === player2Id);
-      
+      const bob = roomState.players.find(
+        (p: { id: string }) => p.id === player2Id
+      );
+
       expect(bob?.isAdmin).toBe(true);
     });
 
-    it('should enforce player count minimum', () => {
-      gameManager.addPlayer('Alice', player1Id);
-      gameManager.addPlayer('Bob', player2Id);
+    it("should enforce player count minimum", () => {
+      gameManager.addPlayer("Alice", player1Id);
+      gameManager.addPlayer("Bob", player2Id);
 
       // Upload images
       for (let i = 0; i < 100; i++) {
@@ -166,10 +180,10 @@ describe('Game Flow Integration Tests', () => {
       }).toThrow();
     });
 
-    it('should enforce deck size minimum', () => {
-      gameManager.addPlayer('Alice', player1Id);
-      gameManager.addPlayer('Bob', player2Id);
-      gameManager.addPlayer('Carol', player3Id);
+    it("should enforce deck size minimum", () => {
+      gameManager.addPlayer("Alice", player1Id);
+      gameManager.addPlayer("Bob", player2Id);
+      gameManager.addPlayer("Carol", player3Id);
 
       // Only upload 50 images (need 90 for 3 players, 30 point target)
       for (let i = 0; i < 50; i++) {
@@ -177,25 +191,29 @@ describe('Game Flow Integration Tests', () => {
       }
 
       // Should fail without enough images (3 × (6 + 30/2) × 1.3 = 81.9 → 90 minimum)
-      expect(() => gameManager.startGame(player1Id)).toThrow('Need at least 90 images');
-      
-      // Load default images to reach minimum
-      gameManager.loadDefaultImages(player1Id);
-      
+      expect(() => gameManager.startGame(player1Id)).toThrow(
+        "Need at least 90 images"
+      );
+
+      // Upload more images to reach minimum (50 + 50 = 100, enough for game)
+      for (let i = 50; i < 100; i++) {
+        gameManager.uploadImage(`data:image/jpeg;base64,test${i}`, player1Id);
+      }
+
       // Now should succeed
       gameManager.startGame(player1Id);
-      
+
       const roomState = gameManager.getRoomState();
-      expect(roomState.phase).toBe('STORYTELLER_CHOICE');
+      expect(roomState.phase).toBe("STORYTELLER_CHOICE");
     });
   });
 
-  describe('Phase Transitions', () => {
+  describe("Phase Transitions", () => {
     beforeEach(() => {
       // Set up game
-      gameManager.addPlayer('Alice', player1Id);
-      gameManager.addPlayer('Bob', player2Id);
-      gameManager.addPlayer('Carol', player3Id);
+      gameManager.addPlayer("Alice", player1Id);
+      gameManager.addPlayer("Bob", player2Id);
+      gameManager.addPlayer("Carol", player3Id);
 
       for (let i = 0; i < 100; i++) {
         gameManager.uploadImage(`data:image/jpeg;base64,test${i}`, player1Id);
@@ -204,21 +222,24 @@ describe('Game Flow Integration Tests', () => {
       gameManager.startGame(player1Id);
     });
 
-    it('should prevent invalid phase transitions', () => {
+    it("should prevent invalid phase transitions", () => {
       // Cannot advance round from STORYTELLER_CHOICE
       expect(() => {
         gameManager.advanceToNextRound(player1Id);
       }).toThrow();
     });
 
-    it('should prevent non-admin from starting game', () => {
+    it("should prevent non-admin from starting game", () => {
       const newGameManager = new GameManager();
-      newGameManager.addPlayer('Alice', player1Id);
-      newGameManager.addPlayer('Bob', player2Id);
-      newGameManager.addPlayer('Carol', player3Id);
+      newGameManager.addPlayer("Alice", player1Id);
+      newGameManager.addPlayer("Bob", player2Id);
+      newGameManager.addPlayer("Carol", player3Id);
 
       for (let i = 0; i < 100; i++) {
-        newGameManager.uploadImage(`data:image/jpeg;base64,test${i}`, player1Id);
+        newGameManager.uploadImage(
+          `data:image/jpeg;base64,test${i}`,
+          player1Id
+        );
       }
 
       // Bob tries to start (not admin)
@@ -228,34 +249,36 @@ describe('Game Flow Integration Tests', () => {
     });
   });
 
-  describe('Memory and Cleanup', () => {
-    it('should clean up disconnected players after timeout', async () => {
-      gameManager.addPlayer('Alice', player1Id);
-      gameManager.addPlayer('Bob', player2Id);
-      gameManager.addPlayer('Carol', player3Id);
+  describe("Memory and Cleanup", () => {
+    it("should clean up disconnected players after timeout", async () => {
+      gameManager.addPlayer("Alice", player1Id);
+      gameManager.addPlayer("Bob", player2Id);
+      gameManager.addPlayer("Carol", player3Id);
 
       // Disconnect player
       gameManager.removePlayer(player2Id);
-      
+
       // Get the player object and manually set lastSeen to past (for testing)
       const players = (gameManager as any).state.players;
       const bobPlayer = players.get(player2Id);
       if (bobPlayer) {
-        bobPlayer.lastSeen = Date.now() - (60 * 60 * 1000); // 1 hour ago
+        bobPlayer.lastSeen = Date.now() - 60 * 60 * 1000; // 1 hour ago
       }
 
       // Clean up with 0ms timeout (immediate)
       const cleanedCount = gameManager.cleanupDisconnectedPlayers(0);
-      
+
       expect(cleanedCount).toBe(1);
-      
+
       const roomState = gameManager.getRoomState();
-      expect(roomState.players.find((p: { id: string }) => p.id === player2Id)).toBeUndefined();
+      expect(
+        roomState.players.find((p: { id: string }) => p.id === player2Id)
+      ).toBeUndefined();
     });
 
-    it('should transfer images when player is kicked', () => {
-      gameManager.addPlayer('Alice', player1Id);
-      gameManager.addPlayer('Bob', player2Id);
+    it("should transfer images when player is kicked", () => {
+      gameManager.addPlayer("Alice", player1Id);
+      gameManager.addPlayer("Bob", player2Id);
 
       // Bob uploads images
       for (let i = 0; i < 20; i++) {
@@ -282,4 +305,3 @@ describe('Game Flow Integration Tests', () => {
     });
   });
 });
-
