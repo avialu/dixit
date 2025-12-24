@@ -52,6 +52,7 @@ function App() {
                 onSetAllowPlayerUploads={actions.setAllowPlayerUploads}
                 onSetBoardBackground={actions.setBoardBackground}
                 onSetBoardPattern={actions.setBoardPattern}
+                onSetWinTarget={actions.setWinTarget}
                 onStartGame={actions.startGame}
                 onChangeName={actions.changeName}
                 onStorytellerSubmit={actions.storytellerSubmit}

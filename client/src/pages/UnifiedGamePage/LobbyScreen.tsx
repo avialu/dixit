@@ -17,6 +17,7 @@ interface LobbyScreenProps {
   onSetAllowPlayerUploads: (allow: boolean) => void;
   onSetBoardBackground: (imageData: string | null) => void;
   onSetBoardPattern: (pattern: "snake" | "spiral") => void;
+  onSetWinTarget: (target: number) => void;
   onUploadTokenImage: (imageData: string | null) => void;
   handleLogout: () => void;
   onKickPlayer: (targetPlayerId: string) => void;

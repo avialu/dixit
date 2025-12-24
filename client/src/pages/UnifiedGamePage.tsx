@@ -24,6 +24,7 @@ interface UnifiedGamePageProps {
   onSetAllowPlayerUploads: (allow: boolean) => void;
   onSetBoardBackground: (imageData: string | null) => void;
   onSetBoardPattern: (pattern: "snake" | "spiral") => void;
+  onSetWinTarget: (target: number) => void;
   onStartGame: () => void;
   onChangeName: (newName: string) => void;
   onStorytellerSubmit: (cardId: string, clue: string) => void;
@@ -49,6 +50,7 @@ export function UnifiedGamePage({
   onSetAllowPlayerUploads,
   onSetBoardBackground,
   onSetBoardPattern,
+  onSetWinTarget,
   onStartGame,
   onChangeName: _onChangeName,
   onStorytellerSubmit,
@@ -159,7 +161,8 @@ export function UnifiedGamePage({
       // Only open for non-storyteller players (who need to vote)
       shouldAutoOpen = true;
     } else if (phase === "REVEAL") {
-      // Open for everyone
+      // Open for everyone - but DON'T trigger animation yet
+      // Animation will only trigger when modal is closed
       shouldAutoOpen = true;
     } else if (phase === "GAME_END") {
       // Open for everyone to show winner
@@ -599,6 +602,7 @@ export function UnifiedGamePage({
                 onSetAllowPlayerUploads,
                 onSetBoardBackground,
                 onSetBoardPattern,
+                onSetWinTarget,
                 onUploadTokenImage,
                 handleLogout,
                 onKickPlayer: handleKickPlayer,
@@ -686,7 +690,13 @@ export function UnifiedGamePage({
           return modalContent ? (
             <Modal
               isOpen={true}
-              onClose={() => setShowModal(false)}
+              onClose={() => {
+                setShowModal(false);
+                // Trigger board animation when closing REVEAL modal
+                if (roomState?.phase === "REVEAL") {
+                  setTriggerBoardAnimation(true);
+                }
+              }}
               header={modalContent.header}
               footer={modalContent.footer}
               opaqueBackdrop={!isInGame}

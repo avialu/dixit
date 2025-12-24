@@ -42,6 +42,7 @@ interface LobbyModalProps {
   onSetAllowPlayerUploads: (allow: boolean) => void;
   onSetBoardBackground: (imageData: string | null) => void;
   onSetBoardPattern: (pattern: "snake" | "spiral") => void;
+  onSetWinTarget: (target: number) => void;
   onUploadTokenImage: (imageData: string | null) => void;
   handleLogout: () => void;
   onKickPlayer: (playerId: string) => void;
@@ -111,6 +112,7 @@ export function LobbyModal(props: LobbyModalProps) {
     onSetAllowPlayerUploads,
     onSetBoardBackground,
     onSetBoardPattern,
+    onSetWinTarget,
     onUploadTokenImage,
     handleLogout,
     onKickPlayer,
@@ -432,6 +434,45 @@ export function LobbyModal(props: LobbyModalProps) {
               }}
             >
               Choose how the score track is arranged on the board
+            </p>
+          </div>
+        )}
+
+        {/* Win Target Settings (Admin Only) */}
+        {isAdmin && (
+          <div
+            style={{
+              marginTop: "1rem",
+              padding: "1rem",
+              background: "rgba(255, 255, 255, 0.1)",
+              borderRadius: "8px",
+            }}
+          >
+            <h3 style={{ marginBottom: "1rem" }}>
+              <Icon.Trophy size={IconSize.medium} /> Win Target (Admin)
+            </h3>
+            <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
+              {[10, 20, 30, 40].map((target) => (
+                <Button
+                  key={target}
+                  variant={
+                    roomState.winTarget === target ? "primary" : "secondary"
+                  }
+                  size="small"
+                  onClick={() => onSetWinTarget(target)}
+                >
+                  {target} Points
+                </Button>
+              ))}
+            </div>
+            <p
+              style={{
+                fontSize: "0.9rem",
+                color: "#95a5a6",
+                marginTop: "0.5rem",
+              }}
+            >
+              First player to reach {roomState.winTarget || 30} points wins!
             </p>
           </div>
         )}

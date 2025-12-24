@@ -30,7 +30,7 @@ const generateMockRoomState = (
       lastScoreDeltas: [],
       winTarget: 30,
       boardBackgroundImage: null,
-      boardPattern: "snake",
+      boardPattern: "spiral",
       serverUrl: currentUrl,
     };
   }
@@ -90,7 +90,7 @@ const generateMockRoomState = (
     lastScoreDeltas: [],
     winTarget: 30,
     boardBackgroundImage: null,
-    boardPattern: "snake",
+    boardPattern: "spiral",
     serverUrl: currentUrl,
   };
 
@@ -368,6 +368,8 @@ export function DemoPage() {
   // Interactive demo state
   const [allowPlayerUploads, setAllowPlayerUploads] = useState(true);
   const [winTarget, setWinTarget] = useState<number | null>(30);
+  const [boardPattern, setBoardPattern] = useState<"snake" | "spiral">("spiral");
+  const [boardBackgroundImage, setBoardBackgroundImage] = useState<string | null>(null);
   const [deckSize, setDeckSize] = useState(45);
   const [deckLocked, setDeckLocked] = useState(false);
   const [uploadedImages, setUploadedImages] = useState<
@@ -409,6 +411,8 @@ export function DemoPage() {
   if (mockRoomState) {
     mockRoomState.allowPlayerUploads = allowPlayerUploads;
     mockRoomState.winTarget = winTarget;
+    mockRoomState.boardPattern = boardPattern;
+    mockRoomState.boardBackgroundImage = boardBackgroundImage;
     mockRoomState.deckSize = deckSize;
     mockRoomState.deckLocked = deckLocked;
     mockRoomState.deckImages = uploadedImages;
@@ -624,7 +628,7 @@ export function DemoPage() {
       lastScoreDeltas: flowLastDeltas,
       winTarget: 30,
       boardBackgroundImage: null,
-      boardPattern: "snake",
+      boardPattern: "spiral",
       serverUrl: detectedServerUrl || currentUrl,
     };
 
@@ -1380,8 +1384,18 @@ export function DemoPage() {
               onUploadImage={mockActions.uploadImage}
               onDeleteImage={mockActions.deleteImage}
               onSetAllowPlayerUploads={mockActions.setAllowPlayerUploads}
-              onSetBoardBackground={() => console.log("Demo: set board background")}
-              onSetBoardPattern={() => console.log("Demo: set board pattern")}
+              onSetBoardBackground={(imageData) => {
+                console.log("Demo: set board background", imageData ? "image set" : "image cleared");
+                setBoardBackgroundImage(imageData);
+              }}
+              onSetBoardPattern={(pattern) => {
+                console.log("Demo: set board pattern", pattern);
+                setBoardPattern(pattern);
+              }}
+              onSetWinTarget={(target) => {
+                console.log("Demo: set win target", target);
+                setWinTarget(target);
+              }}
               onStartGame={mockActions.storytellerSubmit}
               onChangeName={mockActions.storytellerSubmit}
               onStorytellerSubmit={mockActions.storytellerSubmit}
@@ -1420,6 +1434,7 @@ export function DemoPage() {
               onSetAllowPlayerUploads={() => {}}
               onSetBoardBackground={() => {}}
               onSetBoardPattern={() => {}}
+              onSetWinTarget={() => {}}
               onStartGame={() => {}}
               onChangeName={() => {}}
               onStorytellerSubmit={flowActions.storytellerSubmit}

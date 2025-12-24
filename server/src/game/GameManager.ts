@@ -31,7 +31,7 @@ export class GameManager {
       deckLocked: false,
       winTarget: GAME_CONSTANTS.DEFAULT_WIN_TARGET, // Default: 30 points to win (1-30 scale)
       boardBackgroundImage: null, // No custom background by default
-      boardPattern: "snake", // Default: snake (zigzag) pattern
+      boardPattern: "spiral", // Default: spiral (snail) pattern
       currentRound: 0,
       storytellerId: null,
       currentClue: null,
@@ -54,11 +54,17 @@ export class GameManager {
       this.handleAdminConflictOnReconnect(player, clientId);
 
       if (player.isAdmin) {
-        logger.info("Player reconnected as admin", { playerName: player.name, clientId });
+        logger.info("Player reconnected as admin", {
+          playerName: player.name,
+          clientId,
+        });
       } else if (wasAdmin && !player.isAdmin) {
         // Already logged in handleAdminConflictOnReconnect
       } else {
-        logger.info("Player reconnected as regular player", { playerName: player.name, clientId });
+        logger.info("Player reconnected as regular player", {
+          playerName: player.name,
+          clientId,
+        });
       }
 
       player.reconnect();
@@ -121,7 +127,10 @@ export class GameManager {
       for (const [pid, p] of this.state.players.entries()) {
         if (pid !== clientId) {
           p.isAdmin = true;
-          logger.info("Transferred admin role", { playerName: p.name, newAdminId: pid });
+          logger.info("Transferred admin role", {
+            playerName: p.name,
+            newAdminId: pid,
+          });
           break;
         }
       }
@@ -135,10 +144,10 @@ export class GameManager {
     // Transfer images to current admin (if any images exist)
     if (playerImages.length > 0) {
       const userName = player ? player.name : "Spectator";
-      logger.info("Transferring images from leaving player", { 
-        userName, 
-        clientId, 
-        imageCount: playerImages.length 
+      logger.info("Transferring images from leaving player", {
+        userName,
+        clientId,
+        imageCount: playerImages.length,
       });
 
       // Find current admin to transfer images to
@@ -167,9 +176,9 @@ export class GameManager {
       this.state.phase === GamePhase.DECK_BUILDING &&
       player.hand.length > 0
     ) {
-      logger.info("Returning cards from leaving player to deck", { 
-        playerName: player.name, 
-        cardCount: player.hand.length 
+      logger.info("Returning cards from leaving player to deck", {
+        playerName: player.name,
+        cardCount: player.hand.length,
       });
       this.deckManager.returnCards(player.hand);
       player.hand = [];
@@ -178,7 +187,10 @@ export class GameManager {
     // Remove from players map
     this.state.players.delete(clientId);
 
-    logger.info("Player permanently removed", { clientId, playerName: player.name });
+    logger.info("Player permanently removed", {
+      clientId,
+      playerName: player.name,
+    });
   }
 
   kickPlayer(adminId: string, targetPlayerId: string): void {
@@ -205,9 +217,9 @@ export class GameManager {
       adminId
     );
     if (transferredCount > 0) {
-      logger.info("Transferred images from kicked player", { 
-        playerName: targetPlayer.name, 
-        transferredCount 
+      logger.info("Transferred images from kicked player", {
+        playerName: targetPlayer.name,
+        transferredCount,
       });
     }
 
@@ -216,9 +228,9 @@ export class GameManager {
       this.state.phase === GamePhase.DECK_BUILDING &&
       targetPlayer.hand.length > 0
     ) {
-      logger.info("Returning cards from kicked player to deck", { 
-        playerName: targetPlayer.name, 
-        cardCount: targetPlayer.hand.length 
+      logger.info("Returning cards from kicked player to deck", {
+        playerName: targetPlayer.name,
+        cardCount: targetPlayer.hand.length,
       });
       this.deckManager.returnCards(targetPlayer.hand);
       targetPlayer.hand = [];
@@ -227,7 +239,10 @@ export class GameManager {
     // Remove the player completely
     this.state.players.delete(targetPlayerId);
 
-    logger.info("Player kicked", { targetPlayerId, playerName: targetPlayer.name });
+    logger.info("Player kicked", {
+      targetPlayerId,
+      playerName: targetPlayer.name,
+    });
   }
 
   changeName(playerId: string, newName: string): void {
@@ -243,10 +258,10 @@ export class GameManager {
       }
     }
 
-    logger.info("Changing player name", { 
-      playerId, 
-      oldName: player.name, 
-      newName 
+    logger.info("Changing player name", {
+      playerId,
+      oldName: player.name,
+      newName,
     });
     player.name = newName;
   }
@@ -299,7 +314,10 @@ export class GameManager {
 
     // Promote target player
     targetPlayer.isAdmin = true;
-    logger.info("Player promoted to admin", { playerName: targetPlayer.name, targetPlayerId });
+    logger.info("Player promoted to admin", {
+      playerName: targetPlayer.name,
+      targetPlayerId,
+    });
   }
 
   reconnectPlayer(clientId: string): Player | null {
@@ -319,14 +337,16 @@ export class GameManager {
    * @param maxDisconnectedTime Maximum time in milliseconds a player can be disconnected
    * @returns Number of players cleaned up
    */
-  cleanupDisconnectedPlayers(maxDisconnectedTime: number = gameConfig.maxDisconnectedTime): number {
+  cleanupDisconnectedPlayers(
+    maxDisconnectedTime: number = gameConfig.maxDisconnectedTime
+  ): number {
     const now = Date.now();
     let cleanedCount = 0;
     const playersToRemove: string[] = [];
 
     for (const [id, player] of this.state.players.entries()) {
       // Only cleanup disconnected players
-      if (!player.isConnected && (now - player.lastSeen) > maxDisconnectedTime) {
+      if (!player.isConnected && now - player.lastSeen > maxDisconnectedTime) {
         playersToRemove.push(id);
       }
     }
@@ -336,12 +356,12 @@ export class GameManager {
       const player = this.state.players.get(id);
       if (player) {
         const offlineMinutes = Math.round((now - player.lastSeen) / 1000 / 60);
-        logger.info("Cleaning up disconnected player", { 
-          playerName: player.name, 
-          playerId: id, 
-          offlineMinutes 
+        logger.info("Cleaning up disconnected player", {
+          playerName: player.name,
+          playerId: id,
+          offlineMinutes,
         });
-        
+
         // Transfer their images to admin before removal
         let adminId = "";
         for (const [pid, p] of this.state.players.entries()) {
@@ -350,18 +370,25 @@ export class GameManager {
             break;
           }
         }
-        
+
         if (adminId) {
           const transferredCount = this.deckManager.transferImages(id, adminId);
           if (transferredCount > 0) {
-            logger.info("Transferred images from cleaned player", { transferredCount });
+            logger.info("Transferred images from cleaned player", {
+              transferredCount,
+            });
           }
         }
 
         // Return cards to deck if in deck building phase
-        if (this.state.phase === GamePhase.DECK_BUILDING && player.hand.length > 0) {
+        if (
+          this.state.phase === GamePhase.DECK_BUILDING &&
+          player.hand.length > 0
+        ) {
           this.deckManager.returnCards(player.hand);
-          logger.info("Returned cards from cleaned player", { cardCount: player.hand.length });
+          logger.info("Returned cards from cleaned player", {
+            cardCount: player.hand.length,
+          });
         }
 
         this.state.players.delete(id);
@@ -411,24 +438,29 @@ export class GameManager {
 
     // Validate image format if provided
     if (imageData !== null) {
-      if (!imageData.startsWith('data:image/')) {
-        throw new Error('Invalid image format: must be a valid image data URL');
+      if (!imageData.startsWith("data:image/")) {
+        throw new Error("Invalid image format: must be a valid image data URL");
       }
-      
+
       const validTypes = [
-        'data:image/jpeg',
-        'data:image/jpg',
-        'data:image/png',
-        'data:image/webp',
-        'data:image/gif',
+        "data:image/jpeg",
+        "data:image/jpg",
+        "data:image/png",
+        "data:image/webp",
+        "data:image/gif",
       ];
-      if (!validTypes.some(type => imageData.startsWith(type))) {
-        throw new Error('Invalid image type: only JPEG, PNG, WebP, and GIF are supported');
+      if (!validTypes.some((type) => imageData.startsWith(type))) {
+        throw new Error(
+          "Invalid image type: only JPEG, PNG, WebP, and GIF are supported"
+        );
       }
     }
 
     this.state.boardBackgroundImage = imageData;
-    logger.info("Board background image updated", { adminId, hasImage: imageData !== null });
+    logger.info("Board background image updated", {
+      adminId,
+      hasImage: imageData !== null,
+    });
   }
 
   setBoardPattern(pattern: "snake" | "spiral", adminId: string): void {
@@ -453,20 +485,22 @@ export class GameManager {
    */
   loadDefaultImages(adminId: string): void {
     this.validateAdmin(adminId);
-    
+
     if (this.state.phase !== GamePhase.DECK_BUILDING) {
-      throw new Error("Can only load default images during DECK_BUILDING phase");
+      throw new Error(
+        "Can only load default images during DECK_BUILDING phase"
+      );
     }
-    
+
     const currentDeckSize = this.deckManager.getDeckSize();
     logger.info("Loading default images", { currentDeckSize });
     this.deckManager.loadDefaultImages();
-    
+
     const newDeckSize = this.deckManager.getDeckSize();
-    logger.info("Loaded default images", { 
-      previousSize: currentDeckSize, 
+    logger.info("Loaded default images", {
+      previousSize: currentDeckSize,
       newSize: newDeckSize,
-      addedCount: newDeckSize - currentDeckSize
+      addedCount: newDeckSize - currentDeckSize,
     });
   }
 
@@ -605,7 +639,7 @@ export class GameManager {
       // Lock to prevent double transition
       if (this.phaseTransitionLock) return;
       this.phaseTransitionLock = true;
-      
+
       try {
         this.shuffleCardsForVoting();
       } finally {
@@ -676,7 +710,7 @@ export class GameManager {
       // Lock to prevent double transition
       if (this.phaseTransitionLock) return;
       this.phaseTransitionLock = true;
-      
+
       try {
         this.transitionToReveal();
       } finally {
@@ -722,10 +756,19 @@ export class GameManager {
     }
 
     // Periodic cleanup of disconnected players (every 5 rounds)
-    if (featureFlags.enablePeriodicCleanup && this.state.currentRound > 0 && this.state.currentRound % 5 === 0) {
-      const cleanedCount = this.cleanupDisconnectedPlayers(gameConfig.maxDisconnectedTime);
+    if (
+      featureFlags.enablePeriodicCleanup &&
+      this.state.currentRound > 0 &&
+      this.state.currentRound % 5 === 0
+    ) {
+      const cleanedCount = this.cleanupDisconnectedPlayers(
+        gameConfig.maxDisconnectedTime
+      );
       if (cleanedCount > 0) {
-        logger.info("Periodic cleanup executed", { cleanedCount, round: this.state.currentRound });
+        logger.info("Periodic cleanup executed", {
+          cleanedCount,
+          round: this.state.currentRound,
+        });
       }
     }
 
@@ -872,7 +915,9 @@ export class GameManager {
     ).map(([playerId, delta]) => ({ playerId, delta }));
 
     // Track which players have submitted cards (for PLAYERS_CHOICE and STORYTELLER_CHOICE phases)
-    const submittedPlayerIds = this.state.submittedCards.map((sc) => sc.playerId);
+    const submittedPlayerIds = this.state.submittedCards.map(
+      (sc) => sc.playerId
+    );
 
     return {
       phase: this.state.phase,
@@ -946,9 +991,9 @@ export class GameManager {
     // If someone else is admin now, demote this reconnecting player
     if (hasOtherAdmin) {
       player.isAdmin = false;
-      logger.info("Player reconnected but was demoted", { 
-        playerName: player.name, 
-        clientId 
+      logger.info("Player reconnected but was demoted", {
+        playerName: player.name,
+        clientId,
       });
     }
   }

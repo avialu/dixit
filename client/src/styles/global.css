@@ -1191,20 +1191,110 @@ select {
   transition: cx 1.5s ease-in-out, cy 1.5s ease-in-out, r 0.3s ease,
     filter 0.3s ease;
   cursor: pointer;
+  will-change: cx, cy;
 }
 
 .player-token-group {
-  transition: transform 2s ease-in-out;
+  transition: transform 2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .player-token-group.animating {
-  transition: transform 2s ease-in-out;
+  transition: transform 2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .token-animating circle,
 .token-animating text {
-  transition: cx 2s ease-in-out, cy 2s ease-in-out, x 2s ease-in-out,
-    y 2s ease-in-out;
+  transition: cx 2s cubic-bezier(0.4, 0, 0.2, 1),
+    cy 2s cubic-bezier(0.4, 0, 0.2, 1), x 2s cubic-bezier(0.4, 0, 0.2, 1),
+    y 2s cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: cx, cy, x, y;
+}
+
+/* Bounce animation removed for simpler, more relaxed movement */
+
+/* Glow effect during movement */
+.token-glow {
+  animation: pulse-glow-token 1s ease-in-out infinite;
+  will-change: opacity, transform;
+}
+
+@keyframes pulse-glow-token {
+  0%,
+  100% {
+    opacity: 0.2;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.4;
+    transform: scale(1.1);
+  }
+}
+
+/* Trail effect - simple and relaxed */
+.token-trail {
+  animation: trail-fade-simple 2s ease-in-out forwards;
+}
+
+@keyframes trail-fade-simple {
+  0% {
+    opacity: 0.3;
+  }
+  50% {
+    opacity: 0.4;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+/* Enhanced score delta animation - larger and more visible */
+.score-delta-floating {
+  animation: float-up-enhanced 2.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  opacity: 0;
+  will-change: opacity, transform;
+}
+
+.score-delta-bg {
+  animation: delta-bg-fade 2.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  opacity: 0;
+  will-change: opacity;
+}
+
+@keyframes float-up-enhanced {
+  0% {
+    opacity: 0;
+    transform: translateY(2px) scale(0.8);
+  }
+  10% {
+    opacity: 1;
+    transform: translateY(0) scale(1.2);
+  }
+  20% {
+    transform: translateY(0) scale(1);
+  }
+  80% {
+    opacity: 1;
+    transform: translateY(-5px) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.8);
+  }
+}
+
+@keyframes delta-bg-fade {
+  0% {
+    opacity: 0;
+  }
+  10% {
+    opacity: 0.9;
+  }
+  80% {
+    opacity: 0.9;
+  }
+  100% {
+    opacity: 0;
+  }
 }
 
 .player-token.scoring-animation {
@@ -1218,25 +1308,6 @@ select {
   }
   50% {
     transform: translateY(-2px);
-  }
-}
-
-.score-delta-floating {
-  animation: float-up 2s ease-out;
-  opacity: 0;
-}
-
-@keyframes float-up {
-  0% {
-    opacity: 1;
-    transform: translateY(0);
-  }
-  50% {
-    opacity: 1;
-  }
-  100% {
-    opacity: 0;
-    transform: translateY(-3px);
   }
 }
 
