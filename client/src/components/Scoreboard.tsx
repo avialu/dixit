@@ -1,4 +1,5 @@
 import { Player } from '../hooks/useGameState';
+import { Icon, IconSize } from './ui';
 
 interface ScoreboardProps {
   players: Player[];
@@ -37,8 +38,8 @@ export function Scoreboard({ players, storytellerId, lastScoreDeltas }: Scoreboa
                 <td className="rank">{index + 1}</td>
                 <td className="player-name">
                   {player.name}
-                  {player.isAdmin && ' 👑'}
-                  {storytellerId === player.id && ' 📖'}
+                  {player.isAdmin && <> <Icon.Crown size={IconSize.small} /></>}
+                  {storytellerId === player.id && <> <Icon.Book size={IconSize.small} /></>}
                   {!player.isConnected && ' (DC)'}
                 </td>
                 <td className="score">{player.score}</td>

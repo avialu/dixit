@@ -739,6 +739,155 @@ If unsure about whether to create a new component or variant:
 
 ---
 
+## 🎯 BEST PRACTICES CHECKLIST
+
+These are the essential patterns used throughout the codebase. Follow these for consistency.
+
+### Error Handling
+
+- ✅ Use structured errors with severity (INFO/WARNING/ERROR/FATAL)
+- ✅ Auto-dismiss INFO/WARNING after 5s, ERROR/FATAL need manual dismiss
+- ✅ Always wrap socket handlers in try-catch
+- ✅ Emit `GameErrorData`: `{severity, message, code?, retryAction?}`
+
+```typescript
+// ✅ GOOD - Structured error
+throw new GameError(
+  "Cannot vote for own card",
+  "INVALID_VOTE",
+  400,
+  ErrorSeverity.WARNING
+);
+
+// ✅ GOOD - Socket error handling
+socket.on("someEvent", (data) => {
+  try {
+    gameManager.doSomething(data);
+    broadcastRoomState();
+  } catch (error) {
+    socket.emit("error", {
+      severity: ErrorSeverity.ERROR,
+      message: error.message,
+      code: error.code
+    });
+  }
+});
+```
+
+### State Management
+
+- ✅ Server is authoritative - NEVER modify game state on client
+- ✅ Client only reacts to server events (roomState, playerState)
+- ✅ Use React hooks (useGameState, useSocket) - don't create new patterns
+- ✅ Clean up socket listeners and timeouts on unmount
+
+```typescript
+// ✅ GOOD - Server updates state
+gameManager.playerVote(playerId, cardId);
+broadcastRoomState(); // Clients receive update
+
+// ✅ GOOD - Client reacts to server
+useEffect(() => {
+  socket.on("roomState", (state) => setRoomState(state));
+  return () => socket.off("roomState"); // Cleanup!
+}, [socket]);
+
+// ❌ BAD - Client modifies game state
+setRoomState({ ...roomState, phase: "VOTING" });
+```
+
+### Socket.IO
+
+- ✅ Persist clientId in localStorage for reconnection
+- ✅ Validate all incoming events with Zod schemas
+- ✅ Use rate limiting on server (50 events/10s per client)
+
+```typescript
+// ✅ GOOD - Event validation
+socket.on("storytellerSubmit", (data) => {
+  try {
+    const validated = storytellerSubmitSchema.parse(data);
+    // Process...
+  } catch (error) {
+    // Handle...
+  }
+});
+
+// ✅ GOOD - Client ID persistence
+localStorage.setItem("clientId", clientId);
+```
+
+### Configuration
+
+- ✅ All limits in `server/src/config/index.ts`
+- ✅ Support environment variable overrides
+- ✅ Never hardcode limits in multiple places
+
+```typescript
+// ✅ GOOD - Use config
+import { config } from '../config';
+const limit = config.game.maxPlayers;
+
+// ❌ BAD - Hardcoded
+const limit = 10;
+```
+
+### Testing
+
+- ✅ Run tests before committing: `npm test`
+- ✅ Integration tests for full flows
+- ✅ Build must pass: `npm run build`
+
+```bash
+# Before every commit
+npm test
+cd client && npm run build
+```
+
+### React Patterns
+
+- ✅ Memoize expensive calculations with useMemo
+- ✅ Stable callbacks with useCallback
+- ✅ Clean up effects (return cleanup function)
+- ✅ Never use hooks conditionally
+
+```typescript
+// ✅ GOOD - Memoization
+const sorted = useMemo(() => data.sort(), [data]);
+
+// ✅ GOOD - Stable callback
+const handleClick = useCallback(() => {
+  doSomething(id);
+}, [id]);
+
+// ✅ GOOD - Cleanup
+useEffect(() => {
+  const timer = setTimeout(() => {}, 1000);
+  return () => clearTimeout(timer);
+}, []);
+```
+
+### Component Organization
+
+- ✅ All reusable UI components in `client/src/components/ui/`
+- ✅ Import from barrel export: `import { Button, Icon } from "../components/ui"`
+- ✅ Use Icon component, not emojis for UI
+- ✅ Always use CloseButton for X buttons (single source of truth)
+
+```typescript
+// ✅ GOOD
+import { Button, Icon, IconSize } from "../components/ui";
+
+<Button variant="primary">
+  <Icon.Rocket size={IconSize.medium} /> Start
+</Button>
+
+// ❌ BAD
+<button className="btn-primary">🚀 Start</button>
+```
+
+---
+
 ## 🎓 REMEMBER
 
 > "Make it work, make it right, make it fast" - Kent Beck
@@ -752,3 +901,176 @@ If unsure about whether to create a new component or variant:
 7. **Never** commit code that doesn't build
 
 **This is a multiplayer game - performance and mobile UX are critical!**
+
+---
+
+## 🎭 DEMO PAGE REQUIREMENTS
+
+### **CRITICAL**: All Features Must Work in Demo Mode
+
+Every feature you implement MUST also work in DemoPage. This includes:
+
+### Demo Requirements Checklist
+
+When adding/modifying ANY feature:
+
+- [ ] ✅ Feature works in regular game mode
+- [ ] ✅ Feature works in DemoPage (`/demo`)
+- [ ] ✅ All UI components render correctly in demo
+- [ ] ✅ All translations display in demo
+- [ ] ✅ Language switching works in demo
+- [ ] ✅ No console errors specific to demo mode
+
+### How to Support Demo Mode
+
+1. **Check for Demo Mode**:
+```typescript
+const isDemoMode = socket === null;
+```
+
+2. **Provide Fallback Data**:
+```typescript
+// ✅ GOOD - Handles demo mode
+const language = roomState?.language || 'en';
+const { t } = useTranslation(language);
+
+// ❌ BAD - Will break in demo
+const { t } = useTranslation(roomState.language); // roomState might have mock data
+```
+
+3. **Mock Data for Demo**:
+- DemoPage provides mock `roomState` and `playerState`
+- Ensure mock data includes ALL new fields you add
+- Update `generateMockRoomState()` in DemoPage when adding state fields
+
+4. **Test Demo After Changes**:
+```bash
+# Start dev server
+npm run dev
+
+# Visit http://localhost:5174/demo
+# Test all scenarios in demo mode
+```
+
+### Common Demo Issues
+
+**❌ DON'T:**
+- Assume socket connection exists
+- Skip demo when adding features
+- Forget to update mock data generators
+
+**✅ DO:**
+- Add new fields to mock generators
+- Test both regular and demo modes
+- Handle null/undefined gracefully
+- Provide sensible defaults
+
+### Demo Testing Scenarios
+
+Test these in DemoPage after ANY change:
+
+1. **Deck Building**: Can upload, delete images?
+2. **Language Switching**: Does Hebrew/English work?
+3. **Game Flow**: Do all phases work correctly?
+4. **UI Components**: Do all buttons/modals render?
+5. **Translations**: Are all strings translated?
+
+---
+
+## 🌍 INTERNATIONALIZATION (i18n) REQUIREMENTS
+
+### Translation System Architecture
+
+We use a **lightweight, zero-dependency** custom i18n system:
+
+- **No external libraries** (no react-i18next, no i18next)
+- **Type-safe** translations with full TypeScript support
+- **Mobile-optimized** for fast load times
+- **RTL support** for Hebrew
+
+### Adding Translations
+
+When adding ANY user-facing string:
+
+1. **Add to translation files**:
+```typescript
+// client/src/i18n/en.ts
+export const en = {
+  myFeature: {
+    title: 'My Feature',
+    description: 'Feature description'
+  }
+};
+
+// client/src/i18n/he.ts
+export const he = {
+  myFeature: {
+    title: 'התכונה שלי',
+    description: 'תיאור התכונה'
+  }
+};
+```
+
+2. **Use in components**:
+```typescript
+import { useTranslation } from '../i18n';
+
+function MyComponent({ roomState }) {
+  const { t } = useTranslation(roomState?.language);
+  
+  return <h1>{t('myFeature.title')}</h1>;
+}
+```
+
+3. **Handle Demo Mode**:
+```typescript
+// ✅ GOOD - Safe for demo
+const { t } = useTranslation(roomState?.language || 'en');
+
+// ❌ BAD - May break in demo
+const { t } = useTranslation(roomState.language);
+```
+
+### Translation Best Practices
+
+- ✅ **NEVER** hardcode user-facing strings
+- ✅ **ALWAYS** add strings to both `en.ts` and `he.ts`
+- ✅ **USE** template variables for dynamic content: `t('key', { name: 'Alice' })`
+- ✅ **TEST** both English and Hebrew after changes
+- ✅ **VERIFY** RTL layout works correctly in Hebrew
+
+### RTL (Right-to-Left) Support
+
+When adding CSS:
+
+```css
+/* ✅ GOOD - RTL-aware */
+.my-element {
+  padding-inline-start: 1rem; /* Automatically flips for RTL */
+}
+
+[dir="rtl"] .my-element {
+  /* RTL-specific overrides */
+}
+
+/* ❌ BAD - Not RTL-aware */
+.my-element {
+  padding-left: 1rem; /* Won't flip for RTL */
+}
+```
+
+### Translation Coverage Requirements
+
+Before marking a feature complete:
+
+- [ ] All buttons translated
+- [ ] All labels translated
+- [ ] All error messages translated
+- [ ] All tooltips translated
+- [ ] All modal content translated
+- [ ] Tested in Hebrew (UI flips to RTL)
+- [ ] Tested in English (UI stays LTR)
+- [ ] Works in both regular game and demo mode
+
+---
+

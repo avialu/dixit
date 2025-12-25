@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react';
-import { Socket } from 'socket.io-client';
+import { useState, useEffect } from "react";
+import { Socket } from "socket.io-client";
+import { storage } from "../utils/storage";
 
 export interface Card {
   id: string;
@@ -24,10 +25,14 @@ export interface RoomState {
   deckSize: number;
   deckLocked: boolean;
   winTarget: number | null;
-  deckImages: { id: string; uploadedBy: string }[];
+  boardBackgroundImage: string | null; // Custom board background image (base64 data URL)
+  boardPattern: "snake" | "spiral"; // Snake (zigzag) or Spiral (snail) pattern
+  language: "en" | "he"; // Room language preference (admin sets, players can override locally)
+  deckImages: { id: string; uploadedBy: string; imageData: string }[];
   currentRound: number;
   storytellerId: string | null;
   currentClue: string | null;
+  submittedPlayerIds: string[]; // Player IDs who have submitted cards
   revealedCards: { cardId: string; imageData: string; position: number }[];
   votes: { voterId: string; cardId: string }[];
   lastScoreDeltas: { playerId: string; delta: number }[];
@@ -41,142 +46,233 @@ export interface PlayerState {
   myVote: string | null;
 }
 
+export interface GameErrorData {
+  message: string;
+  code?: string;
+  severity?: "info" | "warning" | "error" | "fatal";
+  retryable?: boolean;
+  retryAfter?: number;
+}
+
 export function useGameState(socket: Socket | null) {
   const [roomState, setRoomState] = useState<RoomState | null>(null);
   const [playerState, setPlayerState] = useState<PlayerState | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<GameErrorData | null>(null);
 
   useEffect(() => {
     if (!socket) return;
 
-    socket.on('roomState', (state: RoomState) => {
+    // Track active error dismiss timeout to clean up on unmount
+    let errorDismissTimeout: NodeJS.Timeout | null = null;
+
+    socket.on("roomState", (state: RoomState) => {
       setRoomState(state);
     });
 
-    socket.on('playerState', (state: PlayerState) => {
+    socket.on("playerState", (state: PlayerState) => {
       setPlayerState(state);
     });
 
-    socket.on('error', (data: { message: string }) => {
-      setError(data.message);
-      setTimeout(() => setError(null), 5000);
-    });
+    // Enhanced error handling with severity-based auto-dismiss
+    const handleError = (data: GameErrorData) => {
+      // Clear any existing timeout before setting new error
+      if (errorDismissTimeout) {
+        clearTimeout(errorDismissTimeout);
+        errorDismissTimeout = null;
+      }
 
-    socket.on('kicked', (data: { message: string }) => {
+      setError(data);
+
+      // Auto-dismiss only INFO and WARNING errors
+      const severity = data.severity || "error";
+      if (severity === "info" || severity === "warning") {
+        const dismissTime = data.retryAfter ? data.retryAfter * 1000 : 5000;
+        errorDismissTimeout = setTimeout(() => {
+          setError(null);
+          errorDismissTimeout = null;
+        }, dismissTime);
+      }
+      // ERROR and FATAL require manual dismiss (user clicks away)
+    };
+
+    socket.on("error", handleError);
+    socket.on("gameError", handleError);
+    socket.on("validationError", handleError);
+    socket.on("permissionError", handleError);
+    socket.on("rateLimitError", handleError);
+
+    socket.on("kicked", (data: { message: string }) => {
       // Show alert to user
       alert(data.message);
-      
-      // Clear local storage to prevent auto-reconnect
-      localStorage.removeItem('dixit-clientId');
-      
+
+      // Clear all local storage to prevent auto-reconnect
+      storage.clientId.remove();
+      storage.hasJoined.remove();
+      storage.isSpectator.remove();
+
       // Reload page to return to join screen
       window.location.reload();
     });
 
-    socket.on('phaseChanged', (data: { phase: string }) => {
-      console.log('Phase changed to:', data.phase);
+    // Mark as joined when successfully joining as player
+    socket.on("joinSuccess", (data: { playerId: string }) => {
+      console.log("Join successful:", data.playerId);
+      storage.hasJoined.set(true);
+    });
+
+    // Mark as joined when successfully joining as spectator
+    socket.on("joinSpectatorSuccess", (data: { spectatorId: string }) => {
+      console.log("Spectator join successful:", data.spectatorId);
+      storage.hasJoined.set(true);
+    });
+
+    socket.on("phaseChanged", (data: { phase: string }) => {
+      console.log("Phase changed to:", data.phase);
     });
 
     return () => {
-      socket.off('roomState');
-      socket.off('playerState');
-      socket.off('error');
-      socket.off('kicked');
-      socket.off('phaseChanged');
+      // Clear any pending error dismiss timeout to prevent state updates on unmounted component
+      if (errorDismissTimeout) {
+        clearTimeout(errorDismissTimeout);
+        errorDismissTimeout = null;
+      }
+
+      socket.off("roomState");
+      socket.off("playerState");
+      socket.off("error");
+      socket.off("gameError");
+      socket.off("validationError");
+      socket.off("permissionError");
+      socket.off("rateLimitError");
+      socket.off("kicked");
+      socket.off("joinSuccess");
+      socket.off("joinSpectatorSuccess");
+      socket.off("phaseChanged");
     };
   }, [socket]);
 
   // Actions
   const join = (name: string, clientId: string) => {
-    console.log('Emitting join event:', { name, clientId, socketConnected: socket?.connected });
+    console.log("Emitting join event:", {
+      name,
+      clientId,
+      socketConnected: socket?.connected,
+    });
     if (!socket?.connected) {
-      console.error('Socket not connected!');
-      setError('Not connected to server. Please refresh the page.');
+      console.error("Socket not connected!");
+      setError({
+        message: "Not connected to server. Please refresh the page.",
+        severity: "error",
+        code: "SOCKET_NOT_CONNECTED",
+      });
       return;
     }
-    socket.emit('join', { name, clientId });
+    socket.emit("join", { name, clientId });
   };
 
   const joinSpectator = (clientId: string) => {
-    console.log('Emitting joinSpectator event:', { clientId, socketConnected: socket?.connected });
+    console.log("Emitting joinSpectator event:", {
+      clientId,
+      socketConnected: socket?.connected,
+    });
     if (!socket?.connected) {
-      console.error('Socket not connected!');
-      setError('Not connected to server. Please refresh the page.');
+      console.error("Socket not connected!");
+      setError({
+        message: "Not connected to server. Please refresh the page.",
+        severity: "error",
+        code: "SOCKET_NOT_CONNECTED",
+      });
       return;
     }
-    socket.emit('joinSpectator', { clientId });
+    socket.emit("joinSpectator", { clientId });
   };
 
   const setAllowPlayerUploads = (allow: boolean) => {
-    socket?.emit('adminSetAllowPlayerUploads', { allow });
+    socket?.emit("adminSetAllowPlayerUploads", { allow });
   };
 
   const setWinTarget = (target: number | null) => {
-    socket?.emit('adminSetWinTarget', { target });
+    socket?.emit("adminSetWinTarget", { target });
   };
 
   const uploadImage = (imageData: string) => {
-    socket?.emit('uploadImage', { imageData });
+    socket?.emit("uploadImage", { imageData });
   };
 
   const deleteImage = (imageId: string) => {
-    socket?.emit('deleteImage', { imageId });
+    socket?.emit("deleteImage", { imageId });
   };
 
   const lockDeck = () => {
-    socket?.emit('lockDeck');
+    socket?.emit("lockDeck");
   };
 
   const startGame = () => {
-    socket?.emit('startGame');
+    socket?.emit("startGame");
   };
 
   const storytellerSubmit = (cardId: string, clue: string) => {
-    socket?.emit('storytellerSubmit', { cardId, clue });
+    socket?.emit("storytellerSubmit", { cardId, clue });
   };
 
   const playerSubmitCard = (cardId: string) => {
-    socket?.emit('playerSubmitCard', { cardId });
+    socket?.emit("playerSubmitCard", { cardId });
   };
 
   const playerVote = (cardId: string) => {
-    socket?.emit('playerVote', { cardId });
+    socket?.emit("playerVote", { cardId });
   };
 
   const advanceRound = () => {
-    socket?.emit('advanceRound');
+    socket?.emit("advanceRound");
   };
 
   const resetGame = () => {
-    socket?.emit('adminResetGame');
+    socket?.emit("adminResetGame");
   };
 
   const newDeck = () => {
-    socket?.emit('adminNewDeck');
+    socket?.emit("adminNewDeck");
   };
 
   const changeName = (newName: string) => {
-    socket?.emit('changeName', { newName });
+    socket?.emit("changeName", { newName });
   };
 
   const kickPlayer = (targetPlayerId: string) => {
-    socket?.emit('adminKickPlayer', { targetPlayerId });
+    socket?.emit("adminKickPlayer", { targetPlayerId });
   };
 
   const unlockDeck = () => {
-    socket?.emit('adminUnlockDeck');
+    socket?.emit("adminUnlockDeck");
   };
 
   const promotePlayer = (targetPlayerId: string) => {
-    socket?.emit('adminPromotePlayer', { targetPlayerId });
+    socket?.emit("adminPromotePlayer", { targetPlayerId });
   };
 
   const leave = () => {
-    socket?.emit('leave');
+    socket?.emit("leave");
   };
 
   const uploadTokenImage = (imageData: string | null) => {
-    socket?.emit('uploadTokenImage', { imageData });
+    socket?.emit("uploadTokenImage", { imageData });
+  };
+
+  const setBoardBackground = (imageData: string | null) => {
+    socket?.emit("adminSetBoardBackground", { imageData });
+  };
+
+  const setBoardPattern = (pattern: "snake" | "spiral") => {
+    socket?.emit("adminSetBoardPattern", { pattern });
+  };
+
+  const setLanguage = (language: "en" | "he") => {
+    socket?.emit("adminSetLanguage", { language });
+  };
+
+  const dismissError = () => {
+    setError(null);
   };
 
   return {
@@ -204,7 +300,10 @@ export function useGameState(socket: Socket | null) {
       promotePlayer,
       leave,
       uploadTokenImage,
+      setBoardBackground,
+      setBoardPattern,
+      setLanguage,
+      dismissError,
     },
   };
 }
-

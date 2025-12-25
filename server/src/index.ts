@@ -1,9 +1,21 @@
 import { createApp } from "./server.js";
 import { getLanIpAddress } from "./utils/network.js";
+import { logger } from "./utils/logger.js";
 
 const PORT = Number(process.env.PORT || 3000);
 
-const { httpServer } = createApp(PORT);
+const { httpServer, gameManager } = createApp(PORT);
+
+// Periodic cleanup of disconnected players (every 15 minutes)
+const CLEANUP_INTERVAL = 15 * 60 * 1000; // 15 minutes
+const MAX_DISCONNECT_TIME = 30 * 60 * 1000; // 30 minutes
+
+setInterval(() => {
+  const cleaned = gameManager.cleanupDisconnectedPlayers(MAX_DISCONNECT_TIME);
+  if (cleaned > 0) {
+    logger.info("Periodic cleanup completed", { cleanedCount: cleaned });
+  }
+}, CLEANUP_INTERVAL);
 
 // Listen on all interfaces (0.0.0.0) to accept connections from other devices
 httpServer.listen(PORT, "0.0.0.0", () => {

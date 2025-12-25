@@ -84,13 +84,14 @@ describe('GameManager', () => {
     });
 
     it('should not start without minimum images', () => {
-      expect(() => gameManager.startGame('admin')).toThrow('at least 100 images');
+      // With 3 players and default 30 point target: 3 × (6 + 30/2) × 1.3 = 81.9 → rounds to 90 images minimum
+      expect(() => gameManager.startGame('admin')).toThrow('Need at least 90 images');
     });
 
     it('should start game with sufficient images', () => {
-      // Add 100 images
-      for (let i = 0; i < 100; i++) {
-        gameManager.uploadImage(mockImage, `player${i % 2 + 1}`);
+      // Add 90 images (minimum for 3 players, 30 point target)
+      for (let i = 0; i < 90; i++) {
+        gameManager.uploadImage(mockImage, 'admin');
       }
 
       gameManager.startGame('admin');
@@ -104,7 +105,7 @@ describe('GameManager', () => {
 
     it('should deal 6 cards to each player', () => {
       for (let i = 0; i < 100; i++) {
-        gameManager.uploadImage(mockImage, `player${i % 2 + 1}`);
+        gameManager.uploadImage(mockImage, 'admin');
       }
 
       gameManager.startGame('admin');
@@ -126,7 +127,7 @@ describe('GameManager', () => {
       gameManager.addPlayer('Charlie', 'player2');
       
       for (let i = 0; i < 100; i++) {
-        gameManager.uploadImage(mockImage, `player${i % 2 + 1}`);
+        gameManager.uploadImage(mockImage, 'admin');
       }
       gameManager.startGame('admin');
     });
@@ -163,7 +164,7 @@ describe('GameManager', () => {
       gameManager.addPlayer('Charlie', 'player2');
       
       for (let i = 0; i < 100; i++) {
-        gameManager.uploadImage(mockImage, `player${i % 2 + 1}`);
+        gameManager.uploadImage(mockImage, 'admin');
       }
       gameManager.startGame('admin');
 
@@ -207,7 +208,7 @@ describe('GameManager', () => {
       gameManager.addPlayer('Charlie', 'player2');
       
       for (let i = 0; i < 100; i++) {
-        gameManager.uploadImage(mockImage, `player${i % 2 + 1}`);
+        gameManager.uploadImage(mockImage, 'admin');
       }
       gameManager.startGame('admin');
 
@@ -261,11 +262,14 @@ describe('GameManager', () => {
     });
 
     it('should reset game but keep deck', () => {
+      // Admin can upload unlimited
       for (let i = 0; i < 100; i++) {
-        gameManager.uploadImage(mockImage, 'player1');
+        gameManager.uploadImage(mockImage, 'admin');
       }
 
       gameManager.startGame('admin');
+      const deckSizeBeforeReset = gameManager.getRoomState().deckSize;
+      
       gameManager.resetGame('admin');
 
       expect(gameManager.getCurrentPhase()).toBe(GamePhase.DECK_BUILDING);
@@ -273,11 +277,15 @@ describe('GameManager', () => {
       const roomState = gameManager.getRoomState();
       expect(roomState.currentRound).toBe(0);
       expect(roomState.players.every(p => p.score === 0)).toBe(true);
+      // Verify deck is preserved (all cards returned to deck)
+      expect(roomState.deckSize).toBe(100); // All cards back in deck
+      expect(roomState.deckImages.length).toBe(100); // All images preserved
     });
 
     it('should clear everything with new deck', () => {
+      // Admin can upload unlimited
       for (let i = 0; i < 50; i++) {
-        gameManager.uploadImage(mockImage, 'player1');
+        gameManager.uploadImage(mockImage, 'admin');
       }
 
       gameManager.newDeck('admin');

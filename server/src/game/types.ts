@@ -23,6 +23,7 @@ export interface Player {
   hand: Card[];
   score: number;
   tokenImage: string | null;
+  lastSeen: number; // Timestamp for cleanup
   // Methods from Player class
   addCards(cards: Card[]): void;
   removeCard(cardId: string): Card | null;
@@ -44,13 +45,20 @@ export interface Vote {
   cardId: string;
 }
 
+export type BoardPattern = "snake" | "spiral";
+
+export type Language = "en" | "he";
+
 export interface GameState {
   phase: GamePhase;
   players: Map<string, Player>;
   deck: Card[];
   allowPlayerUploads: boolean; // If true, players can upload images. Admin can always upload.
   deckLocked: boolean;
-  winTarget: number | null; // 29, 49, or null (unlimited) - 0-based scoring
+  winTarget: number | null; // Points to win (1-100 range, or null for unlimited)
+  boardBackgroundImage: string | null; // Custom board background image (base64 data URL)
+  boardPattern: BoardPattern; // Snake (zigzag) or Spiral (snail) pattern
+  language: Language; // Room language preference set by admin
   currentRound: number;
   storytellerId: string | null;
   currentClue: string | null;
@@ -74,7 +82,10 @@ export interface RoomState {
   allowPlayerUploads: boolean; // If true, players can upload images. Admin can always upload.
   deckSize: number;
   deckLocked: boolean;
-  winTarget: number | null; // 29, 49, or null (unlimited) - 0-based scoring
+  winTarget: number | null; // Points to win (1-100 range, or null for unlimited)
+  boardBackgroundImage: string | null; // Custom board background image (base64 data URL)
+  boardPattern: BoardPattern; // Snake (zigzag) or Spiral (snail) pattern
+  language: Language; // Room language preference set by admin
   deckImages: {
     id: string;
     uploadedBy: string;
@@ -82,6 +93,7 @@ export interface RoomState {
   currentRound: number;
   storytellerId: string | null;
   currentClue: string | null;
+  submittedPlayerIds: string[]; // Player IDs who have submitted cards (PLAYERS_CHOICE phase)
   revealedCards: {
     cardId: string;
     imageData: string;

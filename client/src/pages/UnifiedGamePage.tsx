@@ -6,7 +6,10 @@ import { Modal } from "../components/Modal";
 import * as ModalContent from "../components/ModalContent";
 import { ProfileImageUpload } from "../components/ProfileImageUpload";
 import { Button, Icon, IconSize } from "../components/ui";
-import { useNotifications } from "../hooks/useNotifications";
+import { storage } from "../utils/storage";
+import { ConfirmModal } from "../components/ConfirmModal";
+import { getMinimumDeckSize } from "../utils/imageConstants";
+import { useTranslation } from "../i18n";
 
 interface UnifiedGamePageProps {
   roomState: RoomState | null;
@@ -20,6 +23,10 @@ interface UnifiedGamePageProps {
   onUploadImage: (imageData: string) => void;
   onDeleteImage: (imageId: string) => void;
   onSetAllowPlayerUploads: (allow: boolean) => void;
+  onSetBoardBackground: (imageData: string | null) => void;
+  onSetBoardPattern: (pattern: "snake" | "spiral") => void;
+  onSetLanguage: (language: "en" | "he") => void;
+  onSetWinTarget: (target: number) => void;
   onStartGame: () => void;
   onChangeName: (newName: string) => void;
   onStorytellerSubmit: (cardId: string, clue: string) => void;
@@ -43,6 +50,10 @@ export function UnifiedGamePage({
   onUploadImage: _onUploadImage,
   onDeleteImage: _onDeleteImage,
   onSetAllowPlayerUploads,
+  onSetBoardBackground,
+  onSetBoardPattern,
+  onSetLanguage,
+  onSetWinTarget,
   onStartGame,
   onChangeName: _onChangeName,
   onStorytellerSubmit,
@@ -53,11 +64,13 @@ export function UnifiedGamePage({
   onNewDeck,
   onUploadTokenImage,
 }: UnifiedGamePageProps) {
+  const { t } = useTranslation(roomState?.language);
   const [name, setName] = useState("");
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
   const [clue, setClue] = useState("");
   const [showModal, setShowModal] = useState(false);
   const [modalType, setModalType] = useState<"settings" | "cards">("cards");
+  const [manuallyClosedModal, setManuallyClosedModal] = useState(false);
   const [detectedServerUrl, setDetectedServerUrl] = useState<string | null>(
     null
   );
@@ -65,13 +78,13 @@ export function UnifiedGamePage({
   const [localSubmittedCardId, setLocalSubmittedCardId] = useState<
     string | null
   >(null);
-  const [localSubmittedClue, setLocalSubmittedClue] = useState<string>("");
   // Track local vote for locking UI
   const [localVotedCardId, setLocalVotedCardId] = useState<string | null>(null);
-  // Track if we should trigger board animation (when closing REVEAL modal)
-  const [triggerBoardAnimation, setTriggerBoardAnimation] = useState(false);
-  // Track if user chose to be a spectator
-  const [isUserSpectator, setIsUserSpectator] = useState(false);
+  // Track if user chose to be a spectator - initialize from localStorage
+  // BUT in demo mode (socket === null), always start as non-spectator
+  const [isUserSpectator, setIsUserSpectator] = useState(
+    socket === null ? false : storage.isSpectator.get()
+  );
   // Track name editing state - which player ID is being edited
   const [editingPlayerId, setEditingPlayerId] = useState<string | null>(null);
   const [newName, setNewName] = useState("");
@@ -79,25 +92,20 @@ export function UnifiedGamePage({
   const [profileImage, setProfileImage] = useState<string | null>(null);
   // Track QR code visibility
   const [showQR, setShowQR] = useState(true);
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+  }>({
+    isOpen: false,
+    title: "",
+    message: "",
+    onConfirm: () => {},
+  });
 
   // Detect demo mode (no socket connection)
   const isDemoMode = socket === null;
-
-  // Handle notification clicks - open appropriate modal
-  const handleNotificationClick = (action: "openCards" | "openResults") => {
-    console.log("Notification click handler - Action:", action);
-    if (action === "openCards") {
-      setModalType("cards");
-      setShowModal(true);
-    } else if (action === "openResults") {
-      setModalType("cards");
-      setShowModal(true);
-    }
-  };
-
-  // Enable notifications for mobile/background play
-  const { notificationPermission, requestNotificationPermission } =
-    useNotifications(roomState, playerState, playerId, handleNotificationClick);
 
   // Fetch server URL on mount (for cases where we need it before roomState is available)
   useEffect(() => {
@@ -115,7 +123,6 @@ export function UnifiedGamePage({
     // Clear local submissions when leaving STORYTELLER_CHOICE or PLAYERS_CHOICE
     if (phase !== "STORYTELLER_CHOICE") {
       setLocalSubmittedCardId(null);
-      setLocalSubmittedClue("");
     }
     if (phase !== "PLAYERS_CHOICE") {
       setLocalSubmittedCardId(null);
@@ -124,6 +131,8 @@ export function UnifiedGamePage({
     if (phase !== "VOTING") {
       setLocalVotedCardId(null);
     }
+    // Reset manual close flag when phase changes (allow auto-open again)
+    setManuallyClosedModal(false);
   }, [roomState?.phase]);
 
   const isSpectator = isUserSpectator;
@@ -158,20 +167,24 @@ export function UnifiedGamePage({
       // Only open for non-storyteller players (who need to vote)
       shouldAutoOpen = true;
     } else if (phase === "REVEAL") {
-      // Open for everyone
+      // Open for everyone - but DON'T trigger animation yet
+      // Animation will only trigger when modal is closed
+      shouldAutoOpen = true;
+    } else if (phase === "GAME_END") {
+      // Open for everyone to show winner
       shouldAutoOpen = true;
     }
 
-    if (shouldAutoOpen) {
+    if (shouldAutoOpen && !manuallyClosedModal) {
+      // Only auto-open if user hasn't manually closed it
       setModalType("cards");
       setShowModal(true);
+    } else if (phase === "DECK_BUILDING") {
+      // When returning to deck building (e.g., after game reset), close modal
+      setShowModal(false);
+      setManuallyClosedModal(false);
     }
-
-    // Reset animation trigger when phase changes away from REVEAL
-    if (phase !== "REVEAL") {
-      setTriggerBoardAnimation(false);
-    }
-  }, [roomState?.phase, isStoryteller, isSpectator]);
+  }, [roomState?.phase, isStoryteller, isSpectator, manuallyClosedModal]);
 
   // Auto-join spectators when they connect (only if not already joined)
   useEffect(() => {
@@ -197,6 +210,7 @@ export function UnifiedGamePage({
 
   const handleSpectatorJoin = () => {
     setIsUserSpectator(true);
+    storage.isSpectator.set(true);
     _onJoinSpectator(clientId);
   };
 
@@ -206,31 +220,34 @@ export function UnifiedGamePage({
       roomState?.deckImages.filter((img) => img.uploadedBy === playerId) || [];
     const imageCount = myImages.length;
 
+    const performLogout = () => {
+      // Emit leave event so server removes the player immediately
+      onLeave();
+      // Clear all stored flags so they don't auto-rejoin
+      storage.clientId.remove();
+      storage.hasJoined.remove();
+      storage.isSpectator.remove();
+      // Reset spectator state
+      setIsUserSpectator(false);
+      // Small delay to ensure leave event is processed before reload
+      setTimeout(() => {
+        window.location.reload();
+      }, 100);
+    };
+
     // Warning if user has uploaded images
     if (imageCount > 0) {
-      const confirmed = window.confirm(
-        `⚠️ Warning: You have ${imageCount} uploaded image${
+      setConfirmModal({
+        isOpen: true,
+        title: "⚠️ Logout Warning",
+        message: `You have ${imageCount} uploaded image${
           imageCount !== 1 ? "s" : ""
-        } in the deck.\n\n` +
-          `If you logout, these images will be permanently removed from the game.\n\n` +
-          `Are you sure you want to logout?`
-      );
-
-      if (!confirmed) {
-        return; // User cancelled logout
-      }
+        } in the deck. If you logout, these images will be permanently removed from the game. Are you sure you want to logout?`,
+        onConfirm: performLogout,
+      });
+    } else {
+      performLogout();
     }
-
-    // Emit leave event so server removes the player immediately
-    onLeave();
-    // Clear the stored clientId so they don't auto-rejoin
-    localStorage.removeItem("dixit-clientId");
-    // Reset spectator state
-    setIsUserSpectator(false);
-    // Small delay to ensure leave event is processed before reload
-    setTimeout(() => {
-      window.location.reload();
-    }, 100);
   };
 
   const handleStartEditName = (playerId: string, currentName: string) => {
@@ -267,15 +284,39 @@ export function UnifiedGamePage({
   };
 
   const handleKickPlayer = (targetPlayerId: string) => {
-    if (socket) {
-      socket.emit("adminKickPlayer", { targetPlayerId });
-    }
+    const targetPlayer = roomState?.players.find(
+      (p) => p.id === targetPlayerId
+    );
+    if (!targetPlayer) return;
+
+    setConfirmModal({
+      isOpen: true,
+      title: "Kick Player",
+      message: `Kick ${targetPlayer.name}? Their images will be transferred to you.`,
+      onConfirm: () => {
+        if (socket) {
+          socket.emit("adminKickPlayer", { targetPlayerId });
+        }
+      },
+    });
   };
 
   const handlePromotePlayer = (targetPlayerId: string) => {
-    if (socket) {
-      socket.emit("adminPromotePlayer", { targetPlayerId });
-    }
+    const targetPlayer = roomState?.players.find(
+      (p) => p.id === targetPlayerId
+    );
+    if (!targetPlayer) return;
+
+    setConfirmModal({
+      isOpen: true,
+      title: "Make Admin",
+      message: `Make ${targetPlayer.name} the admin? You will become a regular player.`,
+      onConfirm: () => {
+        if (socket) {
+          socket.emit("adminPromotePlayer", { targetPlayerId });
+        }
+      },
+    });
   };
 
   const handleStorytellerSubmit = () => {
@@ -283,7 +324,6 @@ export function UnifiedGamePage({
       onStorytellerSubmit(selectedCardId, clue.trim());
       // Store locally for UI locking
       setLocalSubmittedCardId(selectedCardId);
-      setLocalSubmittedClue(clue.trim());
       setSelectedCardId(null);
       setClue("");
       setShowModal(false);
@@ -313,6 +353,7 @@ export function UnifiedGamePage({
   const openCards = () => {
     setModalType("cards");
     setShowModal(true);
+    setManuallyClosedModal(false); // Clear manual close flag when user opens it
   };
 
   // JOIN SCREEN (before joining)
@@ -341,9 +382,9 @@ export function UnifiedGamePage({
         <div className="join-container">
           <div className="join-box">
             <h1>
-              <Icon.Sparkles size={IconSize.xlarge} /> DIXIT
+              <Icon.Sparkles size={IconSize.xlarge} /> {t("join.title")}
             </h1>
-            <p className="tagline">A game of creative storytelling</p>
+            <p className="tagline">{t("join.tagline")}</p>
 
             <form onSubmit={handleJoin} className="join-form">
               {/* Profile Image Upload */}
@@ -355,12 +396,12 @@ export function UnifiedGamePage({
                   playerColor={getPlayerColor()}
                   size="large"
                 />
-                <p className="join-profile-hint">Add your profile photo</p>
+                <p className="join-profile-hint">{t("join.addPhoto")}</p>
               </div>
 
               <input
                 type="text"
-                placeholder="Enter your name"
+                placeholder={t("join.enterName")}
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 maxLength={50}
@@ -373,7 +414,7 @@ export function UnifiedGamePage({
                 size="large"
                 disabled={!name.trim()}
               >
-                <Icon.Rocket size={IconSize.medium} /> Join Game
+                <Icon.Rocket size={IconSize.medium} /> {t("join.joinButton")}
               </Button>
               <Button
                 type="button"
@@ -381,11 +422,11 @@ export function UnifiedGamePage({
                 size="large"
                 onClick={handleSpectatorJoin}
               >
-                👀 Join as Spectator
+                👀 {t("join.spectator")}
               </Button>
             </form>
             <div className="qr-code-section">
-              <p className="qr-hint">Scan to join from mobile</p>
+              <p className="qr-hint">{t("join.scanToJoin")}</p>
               <QRCode url={serverUrl} size={180} />
             </div>
           </div>
@@ -401,113 +442,11 @@ export function UnifiedGamePage({
       <div className="board-background">
         <GameBoard
           roomState={roomState}
-          triggerAnimation={triggerBoardAnimation}
           showQR={showQR}
           onCloseQR={() => setShowQR(false)}
+          revealModalOpen={showModal && roomState.phase === "REVEAL"}
         />
       </div>
-
-      {/* Notification Permission Banner */}
-      {notificationPermission === "default" && isJoined && (
-        <div className="notification-banner">
-          <div className="notification-banner-content">
-            <Icon.Info size={IconSize.medium} />
-            <div className="notification-instructions-simple">
-              <span>
-                <strong>Get notified when it's your turn!</strong>
-              </span>
-              <span className="notification-explainer">
-                When you tap "Enable", Safari will ask:{" "}
-                <strong>"Allow notifications?"</strong>
-                <br />→ Tap <strong>"Allow"</strong> ✅ (You'll get alerts even
-                when screen is locked)
-                <br />→ If you tap "Don't Allow" ❌, we'll show you how to fix
-                it in Settings
-              </span>
-            </div>
-            <Button
-              variant="primary"
-              size="small"
-              onClick={requestNotificationPermission}
-              title="This will show Safari's permission dialog"
-            >
-              Enable Notifications
-            </Button>
-            <Button
-              variant="icon"
-              onClick={() => {
-                // Hide banner permanently for this session
-                const banner = document.querySelector(
-                  ".notification-banner"
-                ) as HTMLElement;
-                if (banner) banner.style.display = "none";
-              }}
-              title="Dismiss"
-            >
-              ×
-            </Button>
-          </div>
-        </div>
-      )}
-
-      {/* Notification Denied - Show Instructions */}
-      {notificationPermission === "denied" && isJoined && (
-        <div className="notification-banner notification-banner-denied">
-          <div className="notification-banner-content">
-            <Icon.Warning size={IconSize.medium} />
-            <div className="notification-instructions">
-              <strong>Notifications Blocked</strong>
-              <span>To enable notifications on iPhone:</span>
-              <ol className="settings-steps">
-                <li>
-                  <strong>Step 1:</strong> Open your iPhone{" "}
-                  <strong>Settings</strong> app (gray icon with gears)
-                </li>
-                <li>
-                  <strong>Step 2:</strong> Scroll down and tap{" "}
-                  <strong>Safari</strong>
-                </li>
-                <li>
-                  <strong>Step 3:</strong> Scroll down to{" "}
-                  <strong>"Settings for Websites"</strong> section
-                </li>
-                <li>
-                  <strong>Step 4:</strong> Tap <strong>Notifications</strong>
-                </li>
-                <li>
-                  <strong>Step 5:</strong> Find{" "}
-                  <strong>{window.location.hostname}</strong> in the list
-                </li>
-                <li>
-                  <strong>Step 6:</strong> Change from <strong>"Deny"</strong>{" "}
-                  to <strong>"Allow"</strong>
-                </li>
-                <li>
-                  <strong>Step 7:</strong> Return here and{" "}
-                  <strong>refresh this page</strong>
-                </li>
-              </ol>
-              <span className="settings-note">
-                ⚠️ Note: Requires iOS 16.4 or later. If you don't see the
-                Notifications option, your iOS version doesn't support web
-                notifications yet.
-              </span>
-            </div>
-            <Button
-              variant="icon"
-              onClick={() => {
-                const banner = document.querySelectorAll(
-                  ".notification-banner"
-                )[1] as HTMLElement;
-                if (banner) banner.style.display = "none";
-              }}
-              title="Dismiss"
-            >
-              ×
-            </Button>
-          </div>
-        </div>
-      )}
 
       {/* Floating Action Buttons - For Players (not spectators) */}
       {isJoined && !isSpectator && (
@@ -530,21 +469,21 @@ export function UnifiedGamePage({
                 : "Results"
             }
           >
-            {!isInGame && <Icon.Settings size={IconSize.large} />}
-            {roomState.phase === "STORYTELLER_CHOICE" && (
+            {!isInGame ? (
+              <Icon.Settings size={IconSize.large} />
+            ) : roomState.phase === "STORYTELLER_CHOICE" ? (
               <Icon.Cards size={IconSize.large} />
-            )}
-            {roomState.phase === "PLAYERS_CHOICE" && (
+            ) : roomState.phase === "PLAYERS_CHOICE" ? (
               <Icon.Cards size={IconSize.large} />
-            )}
-            {roomState.phase === "VOTING" && (
+            ) : roomState.phase === "VOTING" ? (
               <Icon.Vote size={IconSize.large} />
-            )}
-            {roomState.phase === "REVEAL" && (
+            ) : roomState.phase === "REVEAL" ? (
               <Icon.Results size={IconSize.large} />
-            )}
-            {roomState.phase === "GAME_END" && (
+            ) : roomState.phase === "GAME_END" ? (
               <Icon.Trophy size={IconSize.large} />
+            ) : (
+              /* Fallback icon for any unhandled phase */
+              <Icon.Cards size={IconSize.large} />
             )}
           </button>
 
@@ -565,9 +504,32 @@ export function UnifiedGamePage({
               className="floating-action-button start-game-button"
               onClick={onStartGame}
               disabled={
-                roomState.players.length < 3 || roomState.deckSize < 100
+                roomState.players.length < 3 ||
+                roomState.deckSize <
+                  getMinimumDeckSize(
+                    roomState.players.length,
+                    roomState.winTarget
+                  )
               }
-              title="Start Game"
+              title={
+                roomState.players.length < 3
+                  ? "Need at least 3 players"
+                  : roomState.deckSize <
+                    getMinimumDeckSize(
+                      roomState.players.length,
+                      roomState.winTarget
+                    )
+                  ? `Need ${
+                      getMinimumDeckSize(
+                        roomState.players.length,
+                        roomState.winTarget
+                      ) - roomState.deckSize
+                    } more images (${roomState.deckSize}/${getMinimumDeckSize(
+                      roomState.players.length,
+                      roomState.winTarget
+                    )})`
+                  : "Start Game"
+              }
             >
               <Icon.Rocket size={IconSize.large} />
             </button>
@@ -645,10 +607,15 @@ export function UnifiedGamePage({
                 onUploadImage: _onUploadImage,
                 onDeleteImage: _onDeleteImage,
                 onSetAllowPlayerUploads,
+                onSetBoardBackground,
+                onSetBoardPattern,
+                onSetLanguage,
+                onSetWinTarget,
                 onUploadTokenImage,
                 handleLogout,
                 onKickPlayer: handleKickPlayer,
                 onPromotePlayer: handlePromotePlayer,
+                t,
               });
             }
             // STORYTELLER_CHOICE phase
@@ -659,15 +626,16 @@ export function UnifiedGamePage({
                   selectedCardId,
                   clue,
                   localSubmittedCardId,
-                  localSubmittedClue,
                   roomState,
                   setSelectedCardId,
                   setClue,
                   handleStorytellerSubmit,
+                  t,
                 });
               } else {
                 modalContent = ModalContent.WaitingStorytellerModal({
                   playerState,
+                  t,
                 });
               }
             }
@@ -681,11 +649,13 @@ export function UnifiedGamePage({
                   roomState,
                   setSelectedCardId,
                   handlePlayerSubmit,
+                  t,
                 });
               } else {
                 modalContent = ModalContent.WaitingPlayersModal({
                   playerState,
                   roomState,
+                  t,
                 });
               }
             }
@@ -700,6 +670,7 @@ export function UnifiedGamePage({
                 isSpectator,
                 setSelectedCardId,
                 handleVote,
+                t,
               });
             }
             // REVEAL phase
@@ -717,6 +688,7 @@ export function UnifiedGamePage({
                   }
                   setShowModal(false);
                 },
+                t,
               });
             }
             // GAME_END phase
@@ -726,6 +698,7 @@ export function UnifiedGamePage({
                 isAdmin,
                 onResetGame,
                 onNewDeck,
+                t,
               });
             }
           }
@@ -733,7 +706,10 @@ export function UnifiedGamePage({
           return modalContent ? (
             <Modal
               isOpen={true}
-              onClose={() => setShowModal(false)}
+              onClose={() => {
+                setShowModal(false);
+                setManuallyClosedModal(true); // Mark as manually closed
+              }}
               header={modalContent.header}
               footer={modalContent.footer}
               opaqueBackdrop={!isInGame}
@@ -742,6 +718,17 @@ export function UnifiedGamePage({
             </Modal>
           ) : null;
         })()}
+
+      {/* Confirm Modal */}
+      <ConfirmModal
+        isOpen={confirmModal.isOpen}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        confirmText="Confirm"
+        confirmVariant="danger"
+        onConfirm={confirmModal.onConfirm}
+        onCancel={() => setConfirmModal({ ...confirmModal, isOpen: false })}
+      />
     </div>
   );
 }

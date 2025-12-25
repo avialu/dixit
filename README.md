@@ -21,6 +21,13 @@ npm start
 
 **Important:** For LAN play (multiple devices), use `npm run build && npm start`, NOT `npm run dev`!
 
+## 📚 Documentation
+
+- **[Game Rules](GAME_RULES.md)** - How to play Dixit (setup, phases, scoring)
+- **[Development Guide](DEVELOPMENT.md)** - Setup, testing, debugging, and workflow
+- **[Architecture](ARCHITECTURE.md)** - System design and technical architecture
+- **[Contributing](CONTRIBUTING.md)** - How to contribute to the project
+
 ## Features
 
 - **Local Network Play**: One server, multiple devices on the same LAN
@@ -359,6 +366,8 @@ PORT=3001 npm start
 - **Server**: Authoritative game state in `GameManager`
 - **Client**: Socket events update React state via hooks
 - **Validation**: Zod schemas validate all socket payloads
+
+For more details, see [ARCHITECTURE.md](ARCHITECTURE.md) and [DEVELOPMENT.md](DEVELOPMENT.md).
 
 ## License
 

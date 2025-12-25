@@ -57,13 +57,13 @@ describe('DeckManager', () => {
       expect(deckManager.getDeckSize()).toBe(1);
     });
 
-    it('should enforce per-player limit of 20 images', () => {
-      for (let i = 0; i < 20; i++) {
+    it('should enforce per-player limit of 200 images', () => {
+      for (let i = 0; i < 200; i++) {
         deckManager.addImage(mockImage, playerId);
       }
-      expect(deckManager.getDeckSize()).toBe(20);
+      expect(deckManager.getDeckSize()).toBe(200);
 
-      expect(() => deckManager.addImage(mockImage, playerId)).toThrow('Maximum 20 images');
+      expect(() => deckManager.addImage(mockImage, playerId)).toThrow('Maximum 200 images per player');
     });
 
     it('should not allow upload when locked', () => {
@@ -111,18 +111,37 @@ describe('DeckManager', () => {
   });
 
   describe('Game Start Validation', () => {
-    it('should not allow start with < 100 images', () => {
-      for (let i = 0; i < 99; i++) {
-        deckManager.addImage(mockImage, `player-${i}`);
+    it('should calculate minimum based on players and win target', () => {
+      // For 3 players, 30 point target: 3 × (6 + 30/2) × 1.3 = 3 × 21 × 1.3 = 81.9 → rounds to 90
+      for (let i = 0; i < 89; i++) {
+        deckManager.addImage(mockImage, `player-${i % 3}`);
       }
-      expect(deckManager.canStartGame()).toBe(false);
+      expect(deckManager.canStartGame(3, 30)).toBe(false);
+      
+      deckManager.addImage(mockImage, adminId);
+      expect(deckManager.canStartGame(3, 30)).toBe(true);
     });
 
-    it('should allow start with >= 100 images', () => {
-      for (let i = 0; i < 100; i++) {
-        deckManager.addImage(mockImage, `player-${i % 10}`);
+    it('should require more cards for more players', () => {
+      // For 5 players, 30 point target: 5 × (6 + 30/2) × 1.3 = 5 × 21 × 1.3 = 136.5 → rounds to 140
+      for (let i = 0; i < 139; i++) {
+        deckManager.addImage(mockImage, `player-${i % 5}`);
       }
-      expect(deckManager.canStartGame()).toBe(true);
+      expect(deckManager.canStartGame(5, 30)).toBe(false);
+      
+      deckManager.addImage(mockImage, adminId);
+      expect(deckManager.canStartGame(5, 30)).toBe(true);
+    });
+
+    it('should require more cards for higher win target', () => {
+      // For 3 players, 50 point target: 3 × (6 + 50/2) × 1.3 = 3 × 31 × 1.3 = 120.9 → rounds to 130
+      for (let i = 0; i < 129; i++) {
+        deckManager.addImage(mockImage, `player-${i % 3}`);
+      }
+      expect(deckManager.canStartGame(3, 50)).toBe(false);
+      
+      deckManager.addImage(mockImage, adminId);
+      expect(deckManager.canStartGame(3, 50)).toBe(true);
     });
   });
 
@@ -175,11 +194,16 @@ describe('DeckManager', () => {
       deckManager.lock();
     });
 
-    it('should reset deck but keep upload settings', () => {
+    it('should reset game state but preserve deck for replay', () => {
+      // reset() should unlock and shuffle, but KEEP the uploaded images
+      expect(deckManager.getDeckSize()).toBe(1); // Image was added
+      expect(deckManager.isLocked()).toBe(true);
+      
       deckManager.reset();
-      expect(deckManager.getDeckSize()).toBe(0);
-      expect(deckManager.isLocked()).toBe(false);
-      expect(deckManager.getAllowPlayerUploads()).toBe(false);
+      
+      expect(deckManager.getDeckSize()).toBe(1); // Image preserved!
+      expect(deckManager.isLocked()).toBe(false); // Unlocked
+      expect(deckManager.getAllowPlayerUploads()).toBe(false); // Setting preserved
     });
 
     it('should clear everything including upload settings', () => {

@@ -1,0 +1,195 @@
+/**
+ * RTL (Right-to-Left) Support for Hebrew
+ * 
+ * Handles text direction, layout mirroring, and adjustments for Hebrew language.
+ * Applied when HTML has dir="rtl" attribute.
+ */
+
+/* Global RTL adjustments */
+[dir="rtl"] body {
+  direction: rtl;
+  text-align: right;
+}
+
+/* Flex direction reversals */
+[dir="rtl"] .join-form,
+[dir="rtl"] .modal-content,
+[dir="rtl"] .player-list,
+[dir="rtl"] .deck-grid {
+  direction: rtl;
+}
+
+/* Text alignment */
+[dir="rtl"] input[type="text"],
+[dir="rtl"] textarea,
+[dir="rtl"] select {
+  text-align: right;
+}
+
+[dir="rtl"] .tagline,
+[dir="rtl"] .qr-hint,
+[dir="rtl"] .join-profile-hint {
+  text-align: center; /* Keep centered text centered */
+}
+
+/* Button content alignment */
+[dir="rtl"] button {
+  direction: rtl;
+}
+
+/* Icon positioning - reverse margins */
+[dir="rtl"] .btn-primary svg,
+[dir="rtl"] .btn-secondary svg {
+  margin-right: 0;
+  margin-left: 0.5rem;
+}
+
+/* Player tokens and badges */
+[dir="rtl"] .player-item {
+  flex-direction: row-reverse;
+}
+
+[dir="rtl"] .admin-badge,
+[dir="rtl"] .you-badge,
+[dir="rtl"] .storyteller-badge {
+  margin-left: 0;
+  margin-right: 0.5rem;
+}
+
+/* Modal close button */
+[dir="rtl"] .modal-close-button,
+[dir="rtl"] .x-button {
+  left: 16px;
+  right: auto;
+}
+
+/* Game status bar */
+[dir="rtl"] .game-status-bar {
+  direction: rtl;
+  text-align: right;
+}
+
+/* QR code section */
+[dir="rtl"] .qr-code-container {
+  direction: ltr; /* QR codes should not be mirrored */
+}
+
+/* Card grid */
+[dir="rtl"] .card-grid {
+  direction: rtl;
+}
+
+/* Language selector */
+[dir="rtl"] .language-selector {
+  direction: rtl;
+}
+
+[dir="rtl"] .language-select {
+  text-align: right;
+  padding-right: 2.5rem;
+  padding-left: 0.75rem;
+  background-position: left 0.75rem center;
+}
+
+/* Settings sections */
+[dir="rtl"] .settings-section {
+  text-align: right;
+}
+
+[dir="rtl"] .setting-item {
+  flex-direction: row-reverse;
+}
+
+[dir="rtl"] .setting-label {
+  margin-left: auto;
+  margin-right: 0;
+}
+
+/* Floating action buttons */
+[dir="rtl"] .floating-action-button {
+  left: 20px;
+  right: auto;
+}
+
+[dir="rtl"] .floating-action-button.qr-button {
+  left: 90px;
+  right: auto;
+}
+
+[dir="rtl"] .floating-action-button.start-game-button {
+  left: auto;
+  right: 20px;
+}
+
+/* Error toast */
+[dir="rtl"] .error-toast {
+  left: 20px;
+  right: auto;
+  padding-left: 3rem;
+  padding-right: 1.5rem;
+}
+
+[dir="rtl"] .error-toast .x-button {
+  left: 8px;
+  right: auto;
+}
+
+/* Confirm modal */
+[dir="rtl"] .confirm-modal-content {
+  text-align: right;
+}
+
+/* Player list specific */
+[dir="rtl"] .player-name {
+  margin-right: 0;
+  margin-left: auto;
+}
+
+/* Score display */
+[dir="rtl"] .player-score {
+  margin-left: 0;
+  margin-right: auto;
+}
+
+/* Deck uploader */
+[dir="rtl"] .deck-uploader {
+  direction: rtl;
+}
+
+[dir="rtl"] .deck-preview-item {
+  direction: ltr; /* Keep image grids left-to-right */
+}
+
+/* Voting cards */
+[dir="rtl"] .voting-cards {
+  direction: rtl;
+}
+
+/* Results display */
+[dir="rtl"] .results-container {
+  direction: rtl;
+  text-align: right;
+}
+
+/* Scoreboard */
+[dir="rtl"] .scoreboard {
+  direction: rtl;
+}
+
+[dir="rtl"] .scoreboard-item {
+  flex-direction: row-reverse;
+}
+
+/* Connection status */
+[dir="rtl"] .connection-status {
+  left: 20px;
+  right: auto;
+}
+
+/* Make sure numbers stay LTR */
+[dir="rtl"] .score-value,
+[dir="rtl"] .vote-count,
+[dir="rtl"] .round-number {
+  direction: ltr;
+  display: inline-block;
+}

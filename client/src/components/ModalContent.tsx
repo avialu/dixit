@@ -2,7 +2,34 @@ import { RoomState, PlayerState } from "../hooks/useGameState";
 import { CardView } from "../components/CardView";
 import { DeckUploader } from "../components/DeckUploader";
 import { ProfileImageUpload } from "../components/ProfileImageUpload";
-import { Button, Badge, PlayerToken, getPlayerColor, Input, Icon, IconSize } from "./ui";
+import { LanguageSelector } from "../components/LanguageSelector";
+import {
+  Button,
+  Badge,
+  PlayerToken,
+  getPlayerColor,
+  Input,
+  Icon,
+  IconSize,
+} from "./ui";
+import {
+  getPlayerLanguageOverride,
+  setPlayerLanguage,
+  hasPlayerLanguageOverride,
+} from "../i18n";
+import { resizeAndCompressImage } from "../utils/imageResize";
+
+// Helper function to format waiting message
+function formatWaitingFor(playerNames: string[]): string {
+  if (playerNames.length === 0) return "";
+  if (playerNames.length === 1) return playerNames[0];
+  if (playerNames.length === 2)
+    return `${playerNames[0]} and ${playerNames[1]}`;
+  if (playerNames.length === 3)
+    return `${playerNames[0]}, ${playerNames[1]} and ${playerNames[2]}`;
+  // More than 3: show first name and count
+  return `${playerNames[0]} and ${playerNames.length - 1} more`;
+}
 
 // Types for modal content props
 interface LobbyModalProps {
@@ -20,10 +47,15 @@ interface LobbyModalProps {
   onUploadImage: (imageData: string) => void;
   onDeleteImage: (imageId: string) => void;
   onSetAllowPlayerUploads: (allow: boolean) => void;
+  onSetBoardBackground: (imageData: string | null) => void;
+  onSetBoardPattern: (pattern: "snake" | "spiral") => void;
+  onSetLanguage: (language: "en" | "he") => void;
+  onSetWinTarget: (target: number) => void;
   onUploadTokenImage: (imageData: string | null) => void;
   handleLogout: () => void;
   onKickPlayer: (playerId: string) => void;
   onPromotePlayer: (playerId: string) => void;
+  t: (key: string, values?: Record<string, string | number>) => string;
 }
 
 interface StorytellerModalProps {
@@ -31,11 +63,11 @@ interface StorytellerModalProps {
   selectedCardId: string | null;
   clue: string;
   localSubmittedCardId: string | null;
-  localSubmittedClue: string;
   roomState: RoomState;
   setSelectedCardId: (id: string | null) => void;
   setClue: (clue: string) => void;
   handleStorytellerSubmit: () => void;
+  t: (key: string, values?: Record<string, string | number>) => string;
 }
 
 interface PlayerChoiceModalProps {
@@ -45,6 +77,7 @@ interface PlayerChoiceModalProps {
   roomState: RoomState;
   setSelectedCardId: (id: string | null) => void;
   handlePlayerSubmit: () => void;
+  t: (key: string, values?: Record<string, string | number>) => string;
 }
 
 interface VotingModalProps {
@@ -56,6 +89,7 @@ interface VotingModalProps {
   isSpectator: boolean;
   setSelectedCardId: (id: string | null) => void;
   handleVote: () => void;
+  t: (key: string, values?: Record<string, string | number>) => string;
 }
 
 interface RevealModalProps {
@@ -63,6 +97,7 @@ interface RevealModalProps {
   playerState: PlayerState | null;
   isAdmin: boolean;
   onAdvanceRound: () => void;
+  t: (key: string, values?: Record<string, string | number>) => string;
 }
 
 interface GameEndModalProps {
@@ -70,6 +105,7 @@ interface GameEndModalProps {
   isAdmin: boolean;
   onResetGame: () => void;
   onNewDeck: () => void;
+  t: (key: string, values?: Record<string, string | number>) => string;
 }
 
 // Helper function to create Modal with consistent structure
@@ -88,20 +124,45 @@ export function LobbyModal(props: LobbyModalProps) {
     onUploadImage,
     onDeleteImage,
     onSetAllowPlayerUploads,
+    onSetBoardBackground,
+    onSetBoardPattern,
+    onSetLanguage,
+    onSetWinTarget,
     onUploadTokenImage,
     handleLogout,
     onKickPlayer,
     onPromotePlayer,
+    t,
   } = props;
 
   const handleRemoveTokenImage = () => {
     onUploadTokenImage(null);
   };
 
+  const handleBoardBackgroundUpload = async (
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const imageData = await resizeAndCompressImage(file);
+      onSetBoardBackground(imageData);
+    } catch (error) {
+      console.error("Failed to process background image:", error);
+      alert(t("errors.uploadFailed"));
+    }
+  };
+
+  const handleRemoveBoardBackground = () => {
+    onSetBoardBackground(null);
+  };
+
   const header = (
     <>
       <h2>
-        <Icon.People size={IconSize.large} /> Players ({roomState.players.length})
+        <Icon.People size={IconSize.large} /> {t("common.players")} (
+        {roomState.players.length})
       </h2>
     </>
   );
@@ -109,7 +170,7 @@ export function LobbyModal(props: LobbyModalProps) {
   const footer = (
     <>
       <Button variant="secondary" onClick={handleLogout}>
-        <Icon.Logout size={IconSize.medium} /> Logout & Return to Join Screen
+        <Icon.Logout size={IconSize.medium} /> {t("lobby.logoutReturn")}
       </Button>
     </>
   );
@@ -157,7 +218,7 @@ export function LobbyModal(props: LobbyModalProps) {
                       variant="inline"
                       value={newName}
                       onChange={(e) => setNewName(e.target.value)}
-                      placeholder="Enter new name"
+                      placeholder={t("join.enterName")}
                       maxLength={50}
                       autoFocus
                       onKeyDown={(e) => {
@@ -171,7 +232,7 @@ export function LobbyModal(props: LobbyModalProps) {
                         onClick={handleSaveName}
                         disabled={!newName.trim()}
                         className="btn-save"
-                        title="Save"
+                        title={t("common.save")}
                       >
                         <Icon.Checkmark size={IconSize.small} />
                       </Button>
@@ -179,7 +240,7 @@ export function LobbyModal(props: LobbyModalProps) {
                         variant="icon"
                         onClick={handleCancelEditName}
                         className="btn-cancel"
-                        title="Cancel"
+                        title={t("common.cancel")}
                       >
                         ×
                       </Button>
@@ -197,33 +258,29 @@ export function LobbyModal(props: LobbyModalProps) {
                           : null
                       }
                       title={
-                        isMe && !isSpectator ? "Click to edit your name" : ""
+                        isMe && !isSpectator ? t("lobby.clickToEditName") : ""
                       }
                     >
                       {player.name}
                     </span>
                     {player.isAdmin && (
-                      <Icon.Crown 
-                        size={IconSize.medium} 
+                      <Icon.Crown
+                        size={IconSize.medium}
                         className="admin-crown-icon"
-                        style={{ color: '#f1c40f' }}
+                        style={{ color: "#f1c40f" }}
                       />
                     )}
                     {isMe && <Badge variant="you" />}
                     {player.isAdmin && <Badge variant="admin" />}
-                    
+
                     {/* Admin controls */}
                     {isAdmin && !isMe && (
                       <div className="admin-controls">
                         {!player.isAdmin && (
                           <Button
                             variant="icon"
-                            onClick={() => {
-                              if (window.confirm(`Make ${player.name} the admin?\n\nYou will become a regular player.`)) {
-                                onPromotePlayer(player.id);
-                              }
-                            }}
-                            title="Make admin"
+                            onClick={() => onPromotePlayer(player.id)}
+                            title={t("lobby.makeAdmin")}
                             className="btn-make-admin"
                           >
                             <Icon.Crown size={IconSize.small} />
@@ -231,12 +288,8 @@ export function LobbyModal(props: LobbyModalProps) {
                         )}
                         <Button
                           variant="icon"
-                          onClick={() => {
-                            if (window.confirm(`Kick ${player.name}? Their images will be transferred to you.`)) {
-                              onKickPlayer(player.id);
-                            }
-                          }}
-                          title="Kick player"
+                          onClick={() => onKickPlayer(player.id)}
+                          title={t("lobby.kickPlayer")}
                           className="btn-kick"
                         >
                           <Icon.Trash size={IconSize.small} />
@@ -252,7 +305,7 @@ export function LobbyModal(props: LobbyModalProps) {
 
         <div style={{ marginTop: "2rem" }}>
           <h2>
-            <Icon.Images size={IconSize.large} /> Deck Images
+            <Icon.Images size={IconSize.large} /> {t("lobby.deckImages")}
           </h2>
           <DeckUploader
             roomState={roomState}
@@ -260,19 +313,260 @@ export function LobbyModal(props: LobbyModalProps) {
             onUpload={onUploadImage}
             onDelete={onDeleteImage}
             onSetAllowPlayerUploads={onSetAllowPlayerUploads}
+            t={t}
           />
+        </div>
+
+        {/* Board Background Settings (Admin Only) */}
+        {isAdmin && (
+          <div
+            style={{
+              marginTop: "2rem",
+              padding: "1rem",
+              background: "rgba(255, 255, 255, 0.1)",
+              borderRadius: "8px",
+            }}
+          >
+            <h3 style={{ marginBottom: "1rem" }}>
+              <Icon.Image size={IconSize.medium} />{" "}
+              {t("lobby.adminBoardBackgroundLabel")}
+            </h3>
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: "0.5rem",
+              }}
+            >
+              {roomState.boardBackgroundImage ? (
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "0.5rem",
+                    flexWrap: "wrap",
+                  }}
+                >
+                  <img
+                    src={roomState.boardBackgroundImage}
+                    alt="Board background preview"
+                    style={{
+                      width: "80px",
+                      height: "60px",
+                      objectFit: "cover",
+                      borderRadius: "4px",
+                      border: "2px solid #fff",
+                    }}
+                  />
+                  <Button
+                    variant="secondary"
+                    size="small"
+                    onClick={handleRemoveBoardBackground}
+                  >
+                    {t("lobby.useDefaultBackground")}
+                  </Button>
+                </div>
+              ) : (
+                <div>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleBoardBackgroundUpload}
+                    style={{ display: "none" }}
+                    id="board-background-input"
+                    ref={(input) => {
+                      if (input) {
+                        (window as any).boardBackgroundInput = input;
+                      }
+                    }}
+                  />
+                  <Button
+                    variant="primary"
+                    size="small"
+                    onClick={() => {
+                      const input = document.getElementById(
+                        "board-background-input"
+                      ) as HTMLInputElement;
+                      input?.click();
+                    }}
+                  >
+                    <Icon.Upload size={IconSize.small} />{" "}
+                    {t("lobby.uploadCustomBackground")}
+                  </Button>
+                  <p
+                    style={{
+                      fontSize: "0.9rem",
+                      color: "#95a5a6",
+                      marginTop: "0.5rem",
+                    }}
+                  >
+                    {t("lobby.uploadBackgroundDesc")}
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Board Pattern Settings (Admin Only) */}
+        {isAdmin && (
+          <div
+            style={{
+              marginTop: "1rem",
+              padding: "1rem",
+              background: "rgba(255, 255, 255, 0.1)",
+              borderRadius: "8px",
+            }}
+          >
+            <h3 style={{ marginBottom: "1rem" }}>
+              <Icon.Settings size={IconSize.medium} />{" "}
+              {t("lobby.adminBoardPatternLabel")}
+            </h3>
+            <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
+              <Button
+                variant={
+                  roomState.boardPattern === "snake" ? "primary" : "secondary"
+                }
+                size="small"
+                onClick={() => onSetBoardPattern("snake")}
+              >
+                🐍 {t("lobby.patternSnake")}
+              </Button>
+              <Button
+                variant={
+                  roomState.boardPattern === "spiral" ? "primary" : "secondary"
+                }
+                size="small"
+                onClick={() => onSetBoardPattern("spiral")}
+              >
+                🐌 {t("lobby.patternSpiral")}
+              </Button>
+            </div>
+            <p
+              style={{
+                fontSize: "0.9rem",
+                color: "#95a5a6",
+                marginTop: "0.5rem",
+              }}
+            >
+              {t("lobby.choosePatternDesc")}
+            </p>
+          </div>
+        )}
+
+        {/* Win Target Settings (Admin Only) */}
+        {isAdmin && (
+          <div
+            style={{
+              marginTop: "1rem",
+              padding: "1rem",
+              background: "rgba(255, 255, 255, 0.1)",
+              borderRadius: "8px",
+            }}
+          >
+            <h3 style={{ marginBottom: "1rem" }}>
+              <Icon.Trophy size={IconSize.medium} />{" "}
+              {t("lobby.adminWinTargetLabel")}
+            </h3>
+            <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
+              {[10, 20, 30, 40].map((target) => (
+                <Button
+                  key={target}
+                  variant={
+                    roomState.winTarget === target ? "primary" : "secondary"
+                  }
+                  size="small"
+                  onClick={() => onSetWinTarget(target)}
+                >
+                  {t("lobby.pointsLabel", { points: target })}
+                </Button>
+              ))}
+            </div>
+            <p
+              style={{
+                fontSize: "0.9rem",
+                color: "#95a5a6",
+                marginTop: "0.5rem",
+              }}
+            >
+              {t("lobby.winTargetDesc", { target: roomState.winTarget || 30 })}
+            </p>
+          </div>
+        )}
+
+        {/* Language Settings */}
+        <div
+          style={{
+            marginTop: "1rem",
+            padding: "1rem",
+            background: "rgba(255, 255, 255, 0.1)",
+            borderRadius: "8px",
+          }}
+        >
+          <h3 style={{ marginBottom: "1rem" }}>
+            <Icon.Settings size={IconSize.medium} />{" "}
+            {isAdmin
+              ? t("lobby.adminLanguageLabel")
+              : t("lobby.playerLanguageLabel")}
+          </h3>
+
+          {isAdmin && (
+            <div style={{ marginBottom: "1rem" }}>
+              <p
+                style={{
+                  fontSize: "0.9rem",
+                  color: "#95a5a6",
+                  marginBottom: "0.5rem",
+                }}
+              >
+                {t("lobby.gameLanguageDesc")}
+              </p>
+              <LanguageSelector
+                value={roomState.language}
+                onChange={onSetLanguage}
+                isAdmin={true}
+              />
+            </div>
+          )}
+
+          {!isAdmin && (
+            <div>
+              <p
+                style={{
+                  fontSize: "0.9rem",
+                  color: "#95a5a6",
+                  marginBottom: "0.5rem",
+                }}
+              >
+                {t("lobby.personalLanguageDesc")}
+              </p>
+              <LanguageSelector
+                value={getPlayerLanguageOverride() || roomState.language}
+                onChange={(lang) => {
+                  setPlayerLanguage(lang);
+                  window.location.reload(); // Reload to apply language change
+                }}
+                roomDefault={roomState.language}
+                isAdmin={false}
+                showOverrideToggle={true}
+                hasOverride={hasPlayerLanguageOverride()}
+                onClearOverride={() => {
+                  setPlayerLanguage(null);
+                  window.location.reload(); // Reload to apply language change
+                }}
+              />
+            </div>
+          )}
         </div>
 
         {!isSpectator && (
           <p style={{ color: "#95a5a6", marginTop: "1rem" }}>
-            {isAdmin
-              ? "Upload images and start when ready!"
-              : "⏳ Waiting for admin to start the game..."}
+            {isAdmin ? t("lobby.readyToStart") : t("lobby.waitingForAdmin")}
           </p>
         )}
         {isSpectator && (
           <p style={{ color: "#95a5a6", marginTop: "1rem" }}>
-            <Icon.Eye size={IconSize.medium} /> Spectating - You can upload images to help build the deck!
+            <Icon.Eye size={IconSize.medium} /> {t("lobby.spectatingHelp")}
           </p>
         )}
       </>
@@ -286,36 +580,59 @@ export function StorytellerChoiceModal(props: StorytellerModalProps) {
     selectedCardId,
     clue,
     localSubmittedCardId,
-    localSubmittedClue,
     roomState,
     setSelectedCardId,
     setClue,
     handleStorytellerSubmit,
+    t,
   } = props;
 
   const isSubmitted = localSubmittedCardId || playerState?.mySubmittedCardId;
+
+  // Calculate who we're waiting for (players who haven't submitted yet)
+  const waitingForPlayers = isSubmitted
+    ? roomState.players
+        .filter((p) => p.id !== roomState.storytellerId) // Exclude storyteller
+        .filter((p) => !roomState.submittedPlayerIds.includes(p.id)) // Haven't submitted
+        .map((p) => p.name)
+    : [];
 
   const header = (
     <>
       <h2>
         {isSubmitted ? (
           <>
-            <Icon.Checkmark size={IconSize.large} /> Submitted
+            <Icon.Checkmark size={IconSize.large} />{" "}
+            {t("storyteller.submitted")}
           </>
         ) : (
           <>
-            <Icon.Sparkles size={IconSize.large} /> Storyteller
+            <Icon.Sparkles size={IconSize.large} />{" "}
+            {t("storyteller.storyteller")}
           </>
         )}
       </h2>
-      {isSubmitted && (localSubmittedClue || roomState.currentClue) && (
-        <p className="clue-reminder">
-          <strong>Storyteller Clue:</strong>{" "}
-          <strong style={{ fontWeight: 900, fontSize: "1.1em" }}>
-            "{localSubmittedClue || roomState.currentClue}"
-          </strong>
-        </p>
-      )}
+      {isSubmitted ? (
+        <>
+          <p className="clue-reminder">
+            <strong>{t("storyteller.yourClue")}:</strong>{" "}
+            <strong style={{ fontWeight: 900, fontSize: "1.1em" }}>
+              "{roomState.currentClue}"
+            </strong>
+          </p>
+          {waitingForPlayers.length > 0 && (
+            <p
+              className="clue-reminder"
+              style={{ color: "#95a5a6", fontSize: "0.95rem" }}
+            >
+              ⏳{" "}
+              {t("storyteller.waitingFor", {
+                names: formatWaitingFor(waitingForPlayers),
+              })}
+            </p>
+          )}
+        </>
+      ) : null}
     </>
   );
 
@@ -324,7 +641,7 @@ export function StorytellerChoiceModal(props: StorytellerModalProps) {
       <Input
         type="text"
         variant="inline"
-        placeholder="Enter your clue..."
+        placeholder={t("storyteller.enterYourClue")}
         value={clue}
         onChange={(e) => setClue(e.target.value)}
         maxLength={200}
@@ -336,7 +653,7 @@ export function StorytellerChoiceModal(props: StorytellerModalProps) {
         disabled={!selectedCardId || !clue.trim()}
         className="btn-inline"
       >
-        Submit
+        {t("storyteller.submit")}
       </Button>
     </div>
   ) : null;
@@ -400,29 +717,51 @@ export function PlayerChoiceModal(props: PlayerChoiceModalProps) {
     roomState,
     setSelectedCardId,
     handlePlayerSubmit,
+    t,
   } = props;
 
   const isSubmitted = localSubmittedCardId;
+
+  // Calculate who we're waiting for (players who haven't submitted yet)
+  const waitingForPlayers = isSubmitted
+    ? roomState.players
+        .filter((p) => p.id !== roomState.storytellerId) // Exclude storyteller
+        .filter((p) => !roomState.submittedPlayerIds.includes(p.id)) // Haven't submitted
+        .map((p) => p.name)
+    : [];
 
   const header = (
     <>
       <h2>
         {isSubmitted ? (
           <>
-            <Icon.Checkmark size={IconSize.large} /> Submitted
+            <Icon.Checkmark size={IconSize.large} />{" "}
+            {t("playerChoice.submitted")}
           </>
         ) : (
           <>
-            <Icon.Cards size={IconSize.large} /> Choose Card
+            <Icon.Cards size={IconSize.large} />{" "}
+            {t("playerChoice.chooseCardTitle")}
           </>
         )}
       </h2>
       <p className="clue-reminder">
-        <strong>Storyteller Clue:</strong>{" "}
+        <strong>{t("playerChoice.storytellerClue")}:</strong>{" "}
         <strong style={{ fontWeight: 900, fontSize: "1.1em" }}>
           "{roomState.currentClue}"
         </strong>
       </p>
+      {isSubmitted && waitingForPlayers.length > 0 && (
+        <p
+          className="clue-reminder"
+          style={{ color: "#95a5a6", fontSize: "0.95rem" }}
+        >
+          ⏳{" "}
+          {t("storyteller.waitingFor", {
+            names: formatWaitingFor(waitingForPlayers),
+          })}
+        </p>
+      )}
     </>
   );
 
@@ -433,7 +772,7 @@ export function PlayerChoiceModal(props: PlayerChoiceModalProps) {
       onClick={handlePlayerSubmit}
       disabled={!selectedCardId}
     >
-      Submit Card
+      {t("playerChoice.submitCard")}
     </Button>
   ) : null;
 
@@ -456,10 +795,12 @@ export function PlayerChoiceModal(props: PlayerChoiceModalProps) {
 
 export function WaitingStorytellerModal(props: {
   playerState: PlayerState | null;
+  t: (key: string, values?: Record<string, string | number>) => string;
 }) {
+  const { t } = props;
   const header = (
     <>
-      <h2>⏳ Waiting</h2>
+      <h2>⏳ {t("common.loading")}</h2>
     </>
   );
 
@@ -485,18 +826,36 @@ export function WaitingStorytellerModal(props: {
 export function WaitingPlayersModal(props: {
   playerState: PlayerState | null;
   roomState: RoomState;
+  t: (key: string, values?: Record<string, string | number>) => string;
 }) {
-  const { playerState, roomState } = props;
+  const { playerState, roomState, t } = props;
+
+  // Calculate who we're waiting for (players who haven't submitted yet)
+  const waitingForPlayers = roomState.players
+    .filter((p) => p.id !== roomState.storytellerId) // Exclude storyteller
+    .filter((p) => !roomState.submittedPlayerIds.includes(p.id)) // Haven't submitted
+    .map((p) => p.name);
 
   const header = (
     <>
-      <h2>⏳ Waiting</h2>
+      <h2>⏳ {t("playerChoice.waitingTitle")}</h2>
       <p className="clue-reminder">
-        <strong>Storyteller Clue:</strong>{" "}
+        <strong>{t("playerChoice.storytellerClue")}:</strong>{" "}
         <strong style={{ fontWeight: 900, fontSize: "1.1em" }}>
           "{roomState.currentClue}"
         </strong>
       </p>
+      {waitingForPlayers.length > 0 && (
+        <p
+          className="clue-reminder"
+          style={{ color: "#95a5a6", fontSize: "0.95rem" }}
+        >
+          ⏳{" "}
+          {t("storyteller.waitingFor", {
+            names: formatWaitingFor(waitingForPlayers),
+          })}
+        </p>
+      )}
     </>
   );
 
@@ -552,6 +911,7 @@ export function VotingModal(props: VotingModalProps) {
     isSpectator,
     setSelectedCardId,
     handleVote,
+    t,
   } = props;
 
   const eligiblePlayers = roomState.players.filter(
@@ -561,40 +921,48 @@ export function VotingModal(props: VotingModalProps) {
   const hasVoted = localVotedCardId !== null;
   const canVote = !isStoryteller && !isSpectator && !hasVoted;
 
+  // Calculate who we're waiting for (players who haven't voted yet)
+  const votedPlayerIds = roomState.votes.map((v) => v.voterId);
+  const waitingForPlayers = hasVoted
+    ? eligiblePlayers
+        .filter((p) => !votedPlayerIds.includes(p.id))
+        .map((p) => p.name)
+    : [];
+
   const getHeaderTitle = () => {
     if (canVote)
       return (
         <>
-          <Icon.Vote size={IconSize.large} /> Vote
+          <Icon.Vote size={IconSize.large} /> {t("voting.vote")}
         </>
       );
     if (hasVoted && !allVotesIn)
       return (
         <>
-          <Icon.Checkmark size={IconSize.large} /> Voted
+          <Icon.Checkmark size={IconSize.large} /> {t("voting.voted")}
         </>
       );
     if (allVotesIn)
       return (
         <>
-          <Icon.Results size={IconSize.large} /> All Votes In
+          <Icon.Results size={IconSize.large} /> {t("voting.allVotesIn")}
         </>
       );
     if (isStoryteller)
       return (
         <>
-          <Icon.Eye size={IconSize.large} /> Watching
+          <Icon.Eye size={IconSize.large} /> {t("voting.watching")}
         </>
       );
     if (isSpectator)
       return (
         <>
-          <Icon.Eye size={IconSize.large} /> Spectating
+          <Icon.Eye size={IconSize.large} /> {t("voting.spectating")}
         </>
       );
     return (
       <>
-        <Icon.Vote size={IconSize.large} /> Vote
+        <Icon.Vote size={IconSize.large} /> {t("voting.vote")}
       </>
     );
   };
@@ -603,11 +971,22 @@ export function VotingModal(props: VotingModalProps) {
     <>
       <h2>{getHeaderTitle()}</h2>
       <p className="clue-reminder">
-        <strong>Storyteller Clue:</strong>{" "}
+        <strong>{t("voting.storytellerClue")}:</strong>{" "}
         <strong style={{ fontWeight: 900, fontSize: "1.1em" }}>
           "{roomState.currentClue}"
         </strong>
       </p>
+      {hasVoted && waitingForPlayers.length > 0 && !allVotesIn && (
+        <p
+          className="clue-reminder"
+          style={{ color: "#95a5a6", fontSize: "0.95rem" }}
+        >
+          ⏳{" "}
+          {t("storyteller.waitingFor", {
+            names: formatWaitingFor(waitingForPlayers),
+          })}
+        </p>
+      )}
     </>
   );
 
@@ -618,10 +997,15 @@ export function VotingModal(props: VotingModalProps) {
       onClick={handleVote}
       disabled={!selectedCardId}
     >
-      Submit Vote
+      {t("voting.submitVote")}
     </Button>
-  ) : hasVoted && !allVotesIn ? (
-    <p style={{ color: "#95a5a6", margin: 0 }}>⏳ Waiting...</p>
+  ) : hasVoted && !allVotesIn && waitingForPlayers.length > 0 ? (
+    <p style={{ color: "#95a5a6", margin: 0 }}>
+      ⏳{" "}
+      {t("storyteller.waitingFor", {
+        names: formatWaitingFor(waitingForPlayers),
+      })}
+    </p>
   ) : null;
 
   return {
@@ -646,7 +1030,7 @@ export function VotingModal(props: VotingModalProps) {
 }
 
 export function RevealModal(props: RevealModalProps) {
-  const { roomState, playerState, isAdmin, onAdvanceRound } = props;
+  const { roomState, playerState, isAdmin, onAdvanceRound, t } = props;
 
   const storytellerId = roomState.storytellerId;
   const storytellerCard = roomState.revealedCards.find(
@@ -662,10 +1046,10 @@ export function RevealModal(props: RevealModalProps) {
   const header = (
     <>
       <h2>
-        <Icon.Results size={IconSize.large} /> Results
+        <Icon.Results size={IconSize.large} /> {t("reveal.results")}
       </h2>
       <p className="clue-reminder">
-        <strong>Storyteller Clue:</strong>{" "}
+        <strong>{t("reveal.storytellerClue")}:</strong>{" "}
         <strong style={{ fontWeight: 900, fontSize: "1.1em" }}>
           "{roomState.currentClue}"
         </strong>
@@ -675,11 +1059,11 @@ export function RevealModal(props: RevealModalProps) {
 
   const footer = isAdmin ? (
     <Button variant="continue" onClick={onAdvanceRound}>
-      <Icon.ArrowForward size={IconSize.medium} /> Continue
+      <Icon.ArrowForward size={IconSize.medium} /> {t("reveal.continue")}
     </Button>
   ) : (
     <p style={{ color: "#95a5a6", fontStyle: "italic", margin: 0 }}>
-      ⏳ Waiting...
+      ⏳ {t("reveal.waiting")}
     </p>
   );
 
@@ -711,7 +1095,7 @@ export function RevealModal(props: RevealModalProps) {
 }
 
 export function GameEndModal(props: GameEndModalProps) {
-  const { roomState, isAdmin, onResetGame, onNewDeck } = props;
+  const { roomState, isAdmin, onResetGame, onNewDeck, t } = props;
 
   const sortedPlayers = [...roomState.players].sort(
     (a, b) => b.score - a.score
@@ -723,7 +1107,7 @@ export function GameEndModal(props: GameEndModalProps) {
   const header = (
     <>
       <h2>
-        <Icon.Trophy size={IconSize.large} /> Game Over
+        <Icon.Trophy size={IconSize.large} /> {t("gameEnd.gameOver")}
       </h2>
     </>
   );
@@ -731,10 +1115,10 @@ export function GameEndModal(props: GameEndModalProps) {
   const footer = isAdmin ? (
     <div className="game-end-actions">
       <Button variant="primary" onClick={onResetGame}>
-        Reset Game
+        {t("gameEnd.resetGame")}
       </Button>
       <Button variant="secondary" onClick={onNewDeck}>
-        New Deck
+        {t("gameEnd.newDeck")}
       </Button>
     </div>
   ) : null;
@@ -748,7 +1132,11 @@ export function GameEndModal(props: GameEndModalProps) {
           <div className="winner-crown">
             <Icon.Crown size={IconSize.xxlarge} />
           </div>
-          {wonByTarget && <p className="winner-text">{winner.name} wins!</p>}
+          {wonByTarget && (
+            <p className="winner-text">
+              {t("gameEnd.wins", { name: winner.name })}
+            </p>
+          )}
         </div>
         <div className="final-scores-list">
           {sortedPlayers.map((player, index) => (
@@ -756,9 +1144,13 @@ export function GameEndModal(props: GameEndModalProps) {
               key={player.id}
               className={`final-score-item ${index === 0 ? "winner" : ""}`}
             >
-              <span className="rank">{index + 1}.</span>
+              <span className="rank">
+                {t("gameEnd.rank", { rank: index + 1 })}
+              </span>
               <span className="name">{player.name}</span>
-              <span className="score">{player.score} pts</span>
+              <span className="score">
+                {t("gameEnd.points", { score: player.score })}
+              </span>
             </div>
           ))}
         </div>
