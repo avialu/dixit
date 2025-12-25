@@ -24,6 +24,7 @@ import {
   uploadTokenImageSchema,
   setBoardBackgroundSchema,
   setBoardPatternSchema,
+  adminSetLanguageSchema,
 } from "./utils/validation.js";
 import { getLanIpAddress } from "./utils/network.js";
 import {
@@ -419,6 +420,16 @@ npm start</pre>
         const { pattern } = setBoardPatternSchema.parse(data);
         gameManager.setBoardPattern(pattern, clientId);
 
+        broadcastRoomState();
+      });
+    });
+
+    socket.on("adminSetLanguage", (data) => {
+      withClientId(socket, (clientId) => {
+        const { language } = adminSetLanguageSchema.parse(data);
+        gameManager.setLanguage(language, clientId);
+
+        logger.playerAction(clientId, "set language", { language });
         broadcastRoomState();
       });
     });

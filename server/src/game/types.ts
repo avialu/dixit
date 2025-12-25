@@ -47,6 +47,8 @@ export interface Vote {
 
 export type BoardPattern = "snake" | "spiral";
 
+export type Language = "en" | "he";
+
 export interface GameState {
   phase: GamePhase;
   players: Map<string, Player>;
@@ -56,6 +58,7 @@ export interface GameState {
   winTarget: number | null; // Points to win (1-100 range, or null for unlimited)
   boardBackgroundImage: string | null; // Custom board background image (base64 data URL)
   boardPattern: BoardPattern; // Snake (zigzag) or Spiral (snail) pattern
+  language: Language; // Room language preference set by admin
   currentRound: number;
   storytellerId: string | null;
   currentClue: string | null;
@@ -82,6 +85,7 @@ export interface RoomState {
   winTarget: number | null; // Points to win (1-100 range, or null for unlimited)
   boardBackgroundImage: string | null; // Custom board background image (base64 data URL)
   boardPattern: BoardPattern; // Snake (zigzag) or Spiral (snail) pattern
+  language: Language; // Room language preference set by admin
   deckImages: {
     id: string;
     uploadedBy: string;

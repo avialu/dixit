@@ -9,6 +9,7 @@ const STORAGE_KEYS = {
   CLIENT_ID: "dixit-clientId",
   HAS_JOINED: "dixit-hasJoined",
   IS_SPECTATOR: "dixit-isSpectator",
+  PLAYER_LANGUAGE: "dixit-playerLanguage",
 } as const;
 
 /**
@@ -108,10 +109,43 @@ export const isSpectatorStorage = {
 };
 
 /**
+ * Storage wrapper for player language preference (overrides room default)
+ */
+export const playerLanguageStorage = {
+  get: (): 'en' | 'he' | null => {
+    try {
+      const lang = localStorage.getItem(STORAGE_KEYS.PLAYER_LANGUAGE);
+      if (lang === 'en' || lang === 'he') return lang;
+      return null;
+    } catch (error) {
+      console.error("Failed to get player language from storage:", error);
+      return null;
+    }
+  },
+
+  set: (language: 'en' | 'he'): void => {
+    try {
+      localStorage.setItem(STORAGE_KEYS.PLAYER_LANGUAGE, language);
+    } catch (error) {
+      console.error("Failed to save player language to storage:", error);
+    }
+  },
+
+  remove: (): void => {
+    try {
+      localStorage.removeItem(STORAGE_KEYS.PLAYER_LANGUAGE);
+    } catch (error) {
+      console.error("Failed to remove player language from storage:", error);
+    }
+  },
+};
+
+/**
  * Unified storage object for convenience
  */
 export const storage = {
   clientId: clientIdStorage,
   hasJoined: hasJoinedStorage,
   isSpectator: isSpectatorStorage,
+  playerLanguage: playerLanguageStorage,
 };

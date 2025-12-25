@@ -27,6 +27,7 @@ export interface RoomState {
   winTarget: number | null;
   boardBackgroundImage: string | null; // Custom board background image (base64 data URL)
   boardPattern: "snake" | "spiral"; // Snake (zigzag) or Spiral (snail) pattern
+  language: "en" | "he"; // Room language preference (admin sets, players can override locally)
   deckImages: { id: string; uploadedBy: string; imageData: string }[];
   currentRound: number;
   storytellerId: string | null;
@@ -266,6 +267,10 @@ export function useGameState(socket: Socket | null) {
     socket?.emit("adminSetBoardPattern", { pattern });
   };
 
+  const setLanguage = (language: "en" | "he") => {
+    socket?.emit("adminSetLanguage", { language });
+  };
+
   const dismissError = () => {
     setError(null);
   };
@@ -297,6 +302,7 @@ export function useGameState(socket: Socket | null) {
       uploadTokenImage,
       setBoardBackground,
       setBoardPattern,
+      setLanguage,
       dismissError,
     },
   };

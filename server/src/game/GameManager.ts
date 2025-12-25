@@ -33,6 +33,7 @@ export class GameManager {
       winTarget: GAME_CONSTANTS.DEFAULT_WIN_TARGET, // Default: 30 points to win (1-30 scale)
       boardBackgroundImage: null, // No custom background by default
       boardPattern: "spiral", // Default: spiral (snail) pattern
+      language: "en", // Default language: English
       currentRound: 0,
       storytellerId: null,
       currentClue: null,
@@ -473,6 +474,16 @@ export class GameManager {
 
     this.state.boardPattern = pattern;
     logger.info("Board pattern updated", { adminId, pattern });
+  }
+
+  /**
+   * Set game language (admin only)
+   */
+  setLanguage(language: "en" | "he", adminId: string): void {
+    this.validateAdmin(adminId);
+
+    this.state.language = language;
+    logger.info("Game language updated", { adminId, language });
   }
 
   uploadImage(imageData: string, playerId: string): Card {
@@ -920,6 +931,7 @@ export class GameManager {
       winTarget: this.state.winTarget,
       boardBackgroundImage: this.state.boardBackgroundImage,
       boardPattern: this.state.boardPattern,
+      language: this.state.language,
       deckImages,
       currentRound: this.state.currentRound,
       storytellerId: this.state.storytellerId,

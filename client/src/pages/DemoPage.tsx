@@ -31,6 +31,7 @@ const generateMockRoomState = (
       winTarget: 30,
       boardBackgroundImage: null,
       boardPattern: "spiral",
+      language: "en",
       serverUrl: currentUrl,
     };
   }
@@ -91,6 +92,7 @@ const generateMockRoomState = (
     winTarget: 30,
     boardBackgroundImage: null,
     boardPattern: "spiral",
+    language: "en",
     serverUrl: currentUrl,
   };
 
@@ -648,6 +650,7 @@ export function DemoPage() {
       winTarget: flowWinTarget,
       boardBackgroundImage: boardBackgroundImage,
       boardPattern: flowBoardPattern,
+      language: "en",
       serverUrl: detectedServerUrl || currentUrl,
     };
 
@@ -1572,6 +1575,9 @@ export function DemoPage() {
                 console.log("Demo: set board pattern", pattern);
                 setBoardPattern(pattern);
               }}
+              onSetLanguage={(language) => {
+                console.log("Demo: set language", language);
+              }}
               onSetWinTarget={(target) => {
                 console.log("Demo: set win target", target);
                 setWinTarget(target);
@@ -1614,6 +1620,7 @@ export function DemoPage() {
               onSetAllowPlayerUploads={flowActions.setAllowPlayerUploads}
               onSetBoardBackground={flowActions.setBoardBackground}
               onSetBoardPattern={flowActions.setBoardPattern}
+              onSetLanguage={() => console.log("Flow: set language")}
               onSetWinTarget={flowActions.setWinTarget}
               onStartGame={() => {}}
               onChangeName={() => {}}

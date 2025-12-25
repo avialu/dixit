@@ -901,3 +901,176 @@ import { Button, Icon, IconSize } from "../components/ui";
 7. **Never** commit code that doesn't build
 
 **This is a multiplayer game - performance and mobile UX are critical!**
+
+---
+
+## 🎭 DEMO PAGE REQUIREMENTS
+
+### **CRITICAL**: All Features Must Work in Demo Mode
+
+Every feature you implement MUST also work in DemoPage. This includes:
+
+### Demo Requirements Checklist
+
+When adding/modifying ANY feature:
+
+- [ ] ✅ Feature works in regular game mode
+- [ ] ✅ Feature works in DemoPage (`/demo`)
+- [ ] ✅ All UI components render correctly in demo
+- [ ] ✅ All translations display in demo
+- [ ] ✅ Language switching works in demo
+- [ ] ✅ No console errors specific to demo mode
+
+### How to Support Demo Mode
+
+1. **Check for Demo Mode**:
+```typescript
+const isDemoMode = socket === null;
+```
+
+2. **Provide Fallback Data**:
+```typescript
+// ✅ GOOD - Handles demo mode
+const language = roomState?.language || 'en';
+const { t } = useTranslation(language);
+
+// ❌ BAD - Will break in demo
+const { t } = useTranslation(roomState.language); // roomState might have mock data
+```
+
+3. **Mock Data for Demo**:
+- DemoPage provides mock `roomState` and `playerState`
+- Ensure mock data includes ALL new fields you add
+- Update `generateMockRoomState()` in DemoPage when adding state fields
+
+4. **Test Demo After Changes**:
+```bash
+# Start dev server
+npm run dev
+
+# Visit http://localhost:5174/demo
+# Test all scenarios in demo mode
+```
+
+### Common Demo Issues
+
+**❌ DON'T:**
+- Assume socket connection exists
+- Skip demo when adding features
+- Forget to update mock data generators
+
+**✅ DO:**
+- Add new fields to mock generators
+- Test both regular and demo modes
+- Handle null/undefined gracefully
+- Provide sensible defaults
+
+### Demo Testing Scenarios
+
+Test these in DemoPage after ANY change:
+
+1. **Deck Building**: Can upload, delete images?
+2. **Language Switching**: Does Hebrew/English work?
+3. **Game Flow**: Do all phases work correctly?
+4. **UI Components**: Do all buttons/modals render?
+5. **Translations**: Are all strings translated?
+
+---
+
+## 🌍 INTERNATIONALIZATION (i18n) REQUIREMENTS
+
+### Translation System Architecture
+
+We use a **lightweight, zero-dependency** custom i18n system:
+
+- **No external libraries** (no react-i18next, no i18next)
+- **Type-safe** translations with full TypeScript support
+- **Mobile-optimized** for fast load times
+- **RTL support** for Hebrew
+
+### Adding Translations
+
+When adding ANY user-facing string:
+
+1. **Add to translation files**:
+```typescript
+// client/src/i18n/en.ts
+export const en = {
+  myFeature: {
+    title: 'My Feature',
+    description: 'Feature description'
+  }
+};
+
+// client/src/i18n/he.ts
+export const he = {
+  myFeature: {
+    title: 'התכונה שלי',
+    description: 'תיאור התכונה'
+  }
+};
+```
+
+2. **Use in components**:
+```typescript
+import { useTranslation } from '../i18n';
+
+function MyComponent({ roomState }) {
+  const { t } = useTranslation(roomState?.language);
+  
+  return <h1>{t('myFeature.title')}</h1>;
+}
+```
+
+3. **Handle Demo Mode**:
+```typescript
+// ✅ GOOD - Safe for demo
+const { t } = useTranslation(roomState?.language || 'en');
+
+// ❌ BAD - May break in demo
+const { t } = useTranslation(roomState.language);
+```
+
+### Translation Best Practices
+
+- ✅ **NEVER** hardcode user-facing strings
+- ✅ **ALWAYS** add strings to both `en.ts` and `he.ts`
+- ✅ **USE** template variables for dynamic content: `t('key', { name: 'Alice' })`
+- ✅ **TEST** both English and Hebrew after changes
+- ✅ **VERIFY** RTL layout works correctly in Hebrew
+
+### RTL (Right-to-Left) Support
+
+When adding CSS:
+
+```css
+/* ✅ GOOD - RTL-aware */
+.my-element {
+  padding-inline-start: 1rem; /* Automatically flips for RTL */
+}
+
+[dir="rtl"] .my-element {
+  /* RTL-specific overrides */
+}
+
+/* ❌ BAD - Not RTL-aware */
+.my-element {
+  padding-left: 1rem; /* Won't flip for RTL */
+}
+```
+
+### Translation Coverage Requirements
+
+Before marking a feature complete:
+
+- [ ] All buttons translated
+- [ ] All labels translated
+- [ ] All error messages translated
+- [ ] All tooltips translated
+- [ ] All modal content translated
+- [ ] Tested in Hebrew (UI flips to RTL)
+- [ ] Tested in English (UI stays LTR)
+- [ ] Works in both regular game and demo mode
+
+---
+

@@ -81,3 +81,7 @@ export const setBoardBackgroundSchema = z.object({
 export const setBoardPatternSchema = z.object({
   pattern: z.enum(["snake", "spiral"]), // snake (zigzag) or spiral (snail) pattern
 });
+
+export const adminSetLanguageSchema = z.object({
+  language: z.enum(["en", "he"]), // English or Hebrew
+});

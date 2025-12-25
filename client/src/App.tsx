@@ -1,18 +1,36 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { useEffect } from "react";
 import { useSocket } from "./hooks/useSocket";
 import { useGameState } from "./hooks/useGameState";
 import { UnifiedGamePage } from "./pages/UnifiedGamePage";
 import { DemoPage } from "./pages/DemoPage";
 import { CloseButton } from "./components/ui";
+import { useTranslation, getTextDirection } from "./i18n";
 
 function App() {
-  const { socket, clientId, getClientId, isConnected, isReconnecting, needsManualReconnect, manualReconnect } = useSocket();
+  const {
+    socket,
+    clientId,
+    getClientId,
+    isConnected,
+    isReconnecting,
+    needsManualReconnect,
+    manualReconnect,
+  } = useSocket();
   const { roomState, playerState, error, actions } = useGameState(socket);
+  const { language } = useTranslation(roomState?.language);
+
+  // Update HTML lang and dir attributes when language changes
+  useEffect(() => {
+    const html = document.documentElement;
+    html.lang = language;
+    html.dir = getTextDirection(language);
+  }, [language]);
 
   // Get error severity class
   const getErrorClass = () => {
-    if (!error) return '';
-    const severity = error.severity || 'error';
+    if (!error) return "";
+    const severity = error.severity || "error";
     return `error-toast error-${severity}`;
   };
 
@@ -21,14 +39,24 @@ function App() {
       <div className="app">
         {/* Connection Status Indicator */}
         {(!isConnected || isReconnecting || needsManualReconnect) && (
-          <div className={`connection-status ${isReconnecting ? 'reconnecting' : needsManualReconnect ? 'disconnected' : 'connecting'}`}>
+          <div
+            className={`connection-status ${
+              isReconnecting
+                ? "reconnecting"
+                : needsManualReconnect
+                ? "disconnected"
+                : "connecting"
+            }`}
+          >
             <span className="connection-dot"></span>
-            {isReconnecting && <span className="connection-text">Reconnecting...</span>}
+            {isReconnecting && (
+              <span className="connection-text">Reconnecting...</span>
+            )}
             {needsManualReconnect && (
               <>
                 <span className="connection-text">Connection Lost</span>
-                <button 
-                  className="connection-reconnect-btn" 
+                <button
+                  className="connection-reconnect-btn"
                   onClick={manualReconnect}
                 >
                   Reconnect
@@ -41,11 +69,11 @@ function App() {
         {error && (
           <div className={getErrorClass()}>
             <span className="error-icon">
-              {error.severity === 'info' && 'ℹ️'}
-              {error.severity === 'warning' && '⚠️'}
-              {error.severity === 'error' && '❌'}
-              {error.severity === 'fatal' && '🚨'}
-              {!error.severity && '❌'}
+              {error.severity === "info" && "ℹ️"}
+              {error.severity === "warning" && "⚠️"}
+              {error.severity === "error" && "❌"}
+              {error.severity === "fatal" && "🚨"}
+              {!error.severity && "❌"}
             </span>
             <span className="error-message">{error.message}</span>
             {error.retryable && error.retryAfter && (
@@ -73,6 +101,7 @@ function App() {
                 onSetAllowPlayerUploads={actions.setAllowPlayerUploads}
                 onSetBoardBackground={actions.setBoardBackground}
                 onSetBoardPattern={actions.setBoardPattern}
+                onSetLanguage={actions.setLanguage}
                 onSetWinTarget={actions.setWinTarget}
                 onStartGame={actions.startGame}
                 onChangeName={actions.changeName}

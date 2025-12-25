@@ -3,6 +3,7 @@ import { RoomState } from "../hooks/useGameState";
 import { QRCode } from "./QRCode";
 import { CloseButton } from "./ui";
 import { getMinimumDeckSize } from "../utils/imageConstants";
+import { useTranslation } from "../i18n";
 
 interface GameBoardProps {
   roomState: RoomState;
@@ -17,6 +18,7 @@ export function GameBoard({
   onCloseQR,
   revealModalOpen = false,
 }: GameBoardProps) {
+  const { t } = useTranslation(roomState.language);
   const svgContainerRef = useRef<HTMLDivElement>(null);
   const [containerDimensions, setContainerDimensions] = useState({
     width: 0,
@@ -327,7 +329,7 @@ export function GameBoard({
     const storyteller = roomState.players.find(
       (p) => p.id === roomState.storytellerId
     );
-    const storytellerName = storyteller?.name || "Storyteller";
+    const storytellerName = storyteller?.name || t("common.storyteller");
 
     switch (roomState.phase) {
       case "DECK_BUILDING": {
@@ -340,42 +342,51 @@ export function GameBoard({
           icon: "🎴",
           text:
             roomState.players.length < 3
-              ? "Waiting for players to join..."
+              ? t("status.waitingForPlayers")
               : needMore > 0
-              ? `Need ${needMore} more images to start`
-              : "Ready to start!",
-          subtext: `${roomState.players.length} players | ${roomState.deckSize}/${minRequired} images`,
+              ? t("status.needMoreImages", { count: needMore })
+              : t("status.readyToStart"),
+          subtext:
+            t("lobby.imageCount", {
+              current: roomState.deckSize,
+              required: minRequired,
+            }) +
+            ` | ${roomState.players.length} ${t(
+              "common.players"
+            ).toLowerCase()}`,
         };
       }
       case "STORYTELLER_CHOICE":
         return {
           icon: "🎭",
-          text: `${storytellerName} is choosing a card...`,
-          subtext: "Waiting for storyteller to provide a clue",
+          text: t("status.storytellerChoosing", { name: storytellerName }),
+          subtext: t("status.waitingForStoryteller"),
         };
       case "PLAYERS_CHOICE":
         return {
           icon: "✍️",
-          text: "Players are choosing their cards...",
-          subtext: `Match the clue: "${roomState.currentClue}"`,
+          text: t("status.playersChoosing"),
+          subtext: t("status.matchTheClue", {
+            clue: roomState.currentClue || "",
+          }),
         };
       case "REVEAL":
         return {
           icon: "🎊",
-          text: "Cards revealed!",
-          subtext: "Get ready to vote",
+          text: t("status.cardsRevealed"),
+          subtext: t("status.readyToVote"),
         };
       case "VOTING":
         return {
           icon: "🗳️",
-          text: "Players are voting...",
-          subtext: "Which card belongs to the storyteller?",
+          text: t("status.playersVoting"),
+          subtext: t("status.whichCardIsStoryteller"),
         };
       case "SCORING":
         return {
           icon: "🏆",
-          text: "Round complete!",
-          subtext: "Calculating scores...",
+          text: t("status.roundComplete"),
+          subtext: t("status.calculatingScores"),
         };
       case "GAME_END":
         const winner = [...roomState.players].sort(
@@ -383,8 +394,11 @@ export function GameBoard({
         )[0];
         return {
           icon: "👑",
-          text: `${winner.name} wins!`,
-          subtext: `Final score: ${winner.score} points`,
+          text: t("status.winnerIs", {
+            name: winner.name,
+            score: winner.score,
+          }),
+          subtext: `${t("gameEnd.finalScores")}`,
         };
       default:
         return {

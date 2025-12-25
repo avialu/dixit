@@ -9,6 +9,7 @@ import { Button, Icon, IconSize } from "../components/ui";
 import { storage } from "../utils/storage";
 import { ConfirmModal } from "../components/ConfirmModal";
 import { getMinimumDeckSize } from "../utils/imageConstants";
+import { useTranslation } from "../i18n";
 
 interface UnifiedGamePageProps {
   roomState: RoomState | null;
@@ -24,6 +25,7 @@ interface UnifiedGamePageProps {
   onSetAllowPlayerUploads: (allow: boolean) => void;
   onSetBoardBackground: (imageData: string | null) => void;
   onSetBoardPattern: (pattern: "snake" | "spiral") => void;
+  onSetLanguage: (language: "en" | "he") => void;
   onSetWinTarget: (target: number) => void;
   onStartGame: () => void;
   onChangeName: (newName: string) => void;
@@ -50,6 +52,7 @@ export function UnifiedGamePage({
   onSetAllowPlayerUploads,
   onSetBoardBackground,
   onSetBoardPattern,
+  onSetLanguage,
   onSetWinTarget,
   onStartGame,
   onChangeName: _onChangeName,
@@ -61,11 +64,13 @@ export function UnifiedGamePage({
   onNewDeck,
   onUploadTokenImage,
 }: UnifiedGamePageProps) {
+  const { t } = useTranslation(roomState?.language);
   const [name, setName] = useState("");
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
   const [clue, setClue] = useState("");
   const [showModal, setShowModal] = useState(false);
   const [modalType, setModalType] = useState<"settings" | "cards">("cards");
+  const [manuallyClosedModal, setManuallyClosedModal] = useState(false);
   const [detectedServerUrl, setDetectedServerUrl] = useState<string | null>(
     null
   );
@@ -76,8 +81,9 @@ export function UnifiedGamePage({
   // Track local vote for locking UI
   const [localVotedCardId, setLocalVotedCardId] = useState<string | null>(null);
   // Track if user chose to be a spectator - initialize from localStorage
+  // BUT in demo mode (socket === null), always start as non-spectator
   const [isUserSpectator, setIsUserSpectator] = useState(
-    storage.isSpectator.get()
+    socket === null ? false : storage.isSpectator.get()
   );
   // Track name editing state - which player ID is being edited
   const [editingPlayerId, setEditingPlayerId] = useState<string | null>(null);
@@ -125,6 +131,8 @@ export function UnifiedGamePage({
     if (phase !== "VOTING") {
       setLocalVotedCardId(null);
     }
+    // Reset manual close flag when phase changes (allow auto-open again)
+    setManuallyClosedModal(false);
   }, [roomState?.phase]);
 
   const isSpectator = isUserSpectator;
@@ -167,11 +175,16 @@ export function UnifiedGamePage({
       shouldAutoOpen = true;
     }
 
-    if (shouldAutoOpen) {
+    if (shouldAutoOpen && !manuallyClosedModal) {
+      // Only auto-open if user hasn't manually closed it
       setModalType("cards");
       setShowModal(true);
+    } else if (phase === "DECK_BUILDING") {
+      // When returning to deck building (e.g., after game reset), close modal
+      setShowModal(false);
+      setManuallyClosedModal(false);
     }
-  }, [roomState?.phase, isStoryteller, isSpectator]);
+  }, [roomState?.phase, isStoryteller, isSpectator, manuallyClosedModal]);
 
   // Auto-join spectators when they connect (only if not already joined)
   useEffect(() => {
@@ -340,6 +353,7 @@ export function UnifiedGamePage({
   const openCards = () => {
     setModalType("cards");
     setShowModal(true);
+    setManuallyClosedModal(false); // Clear manual close flag when user opens it
   };
 
   // JOIN SCREEN (before joining)
@@ -368,9 +382,9 @@ export function UnifiedGamePage({
         <div className="join-container">
           <div className="join-box">
             <h1>
-              <Icon.Sparkles size={IconSize.xlarge} /> DIXIT
+              <Icon.Sparkles size={IconSize.xlarge} /> {t("join.title")}
             </h1>
-            <p className="tagline">A game of creative storytelling</p>
+            <p className="tagline">{t("join.tagline")}</p>
 
             <form onSubmit={handleJoin} className="join-form">
               {/* Profile Image Upload */}
@@ -382,12 +396,12 @@ export function UnifiedGamePage({
                   playerColor={getPlayerColor()}
                   size="large"
                 />
-                <p className="join-profile-hint">Add your profile photo</p>
+                <p className="join-profile-hint">{t("join.addPhoto")}</p>
               </div>
 
               <input
                 type="text"
-                placeholder="Enter your name"
+                placeholder={t("join.enterName")}
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 maxLength={50}
@@ -400,7 +414,7 @@ export function UnifiedGamePage({
                 size="large"
                 disabled={!name.trim()}
               >
-                <Icon.Rocket size={IconSize.medium} /> Join Game
+                <Icon.Rocket size={IconSize.medium} /> {t("join.joinButton")}
               </Button>
               <Button
                 type="button"
@@ -408,11 +422,11 @@ export function UnifiedGamePage({
                 size="large"
                 onClick={handleSpectatorJoin}
               >
-                👀 Join as Spectator
+                👀 {t("join.spectator")}
               </Button>
             </form>
             <div className="qr-code-section">
-              <p className="qr-hint">Scan to join from mobile</p>
+              <p className="qr-hint">{t("join.scanToJoin")}</p>
               <QRCode url={serverUrl} size={180} />
             </div>
           </div>
@@ -455,21 +469,21 @@ export function UnifiedGamePage({
                 : "Results"
             }
           >
-            {!isInGame && <Icon.Settings size={IconSize.large} />}
-            {roomState.phase === "STORYTELLER_CHOICE" && (
+            {!isInGame ? (
+              <Icon.Settings size={IconSize.large} />
+            ) : roomState.phase === "STORYTELLER_CHOICE" ? (
               <Icon.Cards size={IconSize.large} />
-            )}
-            {roomState.phase === "PLAYERS_CHOICE" && (
+            ) : roomState.phase === "PLAYERS_CHOICE" ? (
               <Icon.Cards size={IconSize.large} />
-            )}
-            {roomState.phase === "VOTING" && (
+            ) : roomState.phase === "VOTING" ? (
               <Icon.Vote size={IconSize.large} />
-            )}
-            {roomState.phase === "REVEAL" && (
+            ) : roomState.phase === "REVEAL" ? (
               <Icon.Results size={IconSize.large} />
-            )}
-            {roomState.phase === "GAME_END" && (
+            ) : roomState.phase === "GAME_END" ? (
               <Icon.Trophy size={IconSize.large} />
+            ) : (
+              /* Fallback icon for any unhandled phase */
+              <Icon.Cards size={IconSize.large} />
             )}
           </button>
 
@@ -595,11 +609,13 @@ export function UnifiedGamePage({
                 onSetAllowPlayerUploads,
                 onSetBoardBackground,
                 onSetBoardPattern,
+                onSetLanguage,
                 onSetWinTarget,
                 onUploadTokenImage,
                 handleLogout,
                 onKickPlayer: handleKickPlayer,
                 onPromotePlayer: handlePromotePlayer,
+                t,
               });
             }
             // STORYTELLER_CHOICE phase
@@ -614,10 +630,12 @@ export function UnifiedGamePage({
                   setSelectedCardId,
                   setClue,
                   handleStorytellerSubmit,
+                  t,
                 });
               } else {
                 modalContent = ModalContent.WaitingStorytellerModal({
                   playerState,
+                  t,
                 });
               }
             }
@@ -631,11 +649,13 @@ export function UnifiedGamePage({
                   roomState,
                   setSelectedCardId,
                   handlePlayerSubmit,
+                  t,
                 });
               } else {
                 modalContent = ModalContent.WaitingPlayersModal({
                   playerState,
                   roomState,
+                  t,
                 });
               }
             }
@@ -650,6 +670,7 @@ export function UnifiedGamePage({
                 isSpectator,
                 setSelectedCardId,
                 handleVote,
+                t,
               });
             }
             // REVEAL phase
@@ -667,6 +688,7 @@ export function UnifiedGamePage({
                   }
                   setShowModal(false);
                 },
+                t,
               });
             }
             // GAME_END phase
@@ -676,6 +698,7 @@ export function UnifiedGamePage({
                 isAdmin,
                 onResetGame,
                 onNewDeck,
+                t,
               });
             }
           }
@@ -685,6 +708,7 @@ export function UnifiedGamePage({
               isOpen={true}
               onClose={() => {
                 setShowModal(false);
+                setManuallyClosedModal(true); // Mark as manually closed
               }}
               header={modalContent.header}
               footer={modalContent.footer}

@@ -11,6 +11,7 @@ interface DeckUploaderProps {
   onUpload: (imageData: string) => void;
   onDelete: (imageId: string) => void;
   onSetAllowPlayerUploads: (allow: boolean) => void;
+  t: (key: string, values?: Record<string, string | number>) => string;
 }
 
 export function DeckUploader({
@@ -19,6 +20,7 @@ export function DeckUploader({
   onUpload,
   onDelete,
   onSetAllowPlayerUploads,
+  t,
 }: DeckUploaderProps) {
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState("");
@@ -72,8 +74,8 @@ export function DeckUploader({
     if (fileArray.length > remainingSlots) {
       setConfirmModal({
         isOpen: true,
-        title: "Too Many Images",
-        message: `You can only upload ${remainingSlots} more images. The first ${remainingSlots} images will be processed.`,
+        title: t('deckUploader.tooManyImages'),
+        message: t('deckUploader.tooManyImagesMessage', { remaining: remainingSlots }),
         onConfirm: () => {
           fileArray.splice(remainingSlots);
           processUpload(fileArray);
@@ -120,23 +122,23 @@ export function DeckUploader({
         const messages = [];
         if (uploadedCount > 0) {
           messages.push(
-            `✅ Uploaded ${uploadedCount} image${
-              uploadedCount === 1 ? "" : "s"
-            }`
+            uploadedCount === 1 
+              ? t('deckUploader.uploadedSuccessSingular', { count: uploadedCount })
+              : t('deckUploader.uploadedSuccess', { count: uploadedCount })
           );
         }
         if (failedCount > 0) {
           messages.push(
-            `❌ ${failedCount} image${
-              failedCount === 1 ? "" : "s"
-            } failed to process`
+            failedCount === 1
+              ? t('deckUploader.failedToProcessSingular', { count: failedCount })
+              : t('deckUploader.failedToProcess', { count: failedCount })
           );
         }
         alert(messages.join("\n"));
       }
     } catch (err) {
       console.error("Upload error:", err);
-      alert("An error occurred during upload. Please try again.");
+      alert(t('deckUploader.uploadError'));
     } finally {
       setUploading(false);
       setUploadProgress("");
@@ -157,8 +159,8 @@ export function DeckUploader({
 
     setConfirmModal({
       isOpen: true,
-      title: "Delete All Images",
-      message: `Are you sure you want to delete all ${myImages.length} images?`,
+      title: t('deckUploader.deleteAllImages'),
+      message: t('deckUploader.deleteAllConfirm', { count: myImages.length }),
       onConfirm: () => {
         // Delete all images
         myImages.forEach((img) => {
@@ -177,19 +179,19 @@ export function DeckUploader({
           <div className="upload-stats">
             <span className="stat-icon">📦</span>
             <span className="stat-text">
-              Deck: <strong>{roomState.deckSize}</strong>
+              {t('deckUploader.deck')}: <strong>{roomState.deckSize}</strong>
               <span style={{ color: '#95a5a6', fontSize: '0.9em' }}>
                 /{getMinimumDeckSize(roomState.players.length, roomState.winTarget)}
               </span>
               {roomState.deckSize < getMinimumDeckSize(roomState.players.length, roomState.winTarget) && (
                 <span style={{ color: '#f39c12', marginLeft: '0.5rem' }}>
-                  (Need {getMinimumDeckSize(roomState.players.length, roomState.winTarget) - roomState.deckSize} more)
+                  ({t('deckUploader.needMore', { count: getMinimumDeckSize(roomState.players.length, roomState.winTarget) - roomState.deckSize })})
                 </span>
               )}
             </span>
             <span className="stat-divider">•</span>
             <span className="stat-text">
-              My images: <strong>{myImages.length}/200</strong>
+              {t('deckUploader.myImages')}: <strong>{myImages.length}/200</strong>
             </span>
           </div>
 
@@ -205,8 +207,8 @@ export function DeckUploader({
                 />
                 <span className="toggle-text-small">
                   {roomState.allowPlayerUploads
-                    ? "🔓 Players can upload"
-                    : "🔒 Only admin uploads"}
+                    ? `🔓 ${t('deckUploader.playersCanUpload')}`
+                    : `🔒 ${t('deckUploader.onlyAdminUploads')}`}
                 </span>
               </label>
             </div>
@@ -244,17 +246,17 @@ export function DeckUploader({
             onClick={() => fileInputRef.current?.click()}
             disabled={uploading || myImages.length >= 200 || !canUpload}
             className="btn-upload"
-            title="Select one or multiple image files"
+            title={t('deckUploader.selectFiles')}
           >
             {uploading ? (
               <>
                 <span className="btn-icon">⏳</span>
-                <span>Uploading...</span>
+                <span>{t('deckUploader.uploading')}</span>
               </>
             ) : (
               <>
                 <span className="btn-icon">📁</span>
-                <span>Upload Images</span>
+                <span>{t('deckUploader.uploadImages')}</span>
               </>
             )}
           </Button>
@@ -264,17 +266,17 @@ export function DeckUploader({
               onClick={() => folderInputRef.current?.click()}
               disabled={uploading || myImages.length >= 200 || !canUpload}
               className="btn-upload"
-              title="Select an entire folder of images"
+              title={t('deckUploader.selectFolder')}
             >
               {uploading ? (
                 <>
                   <span className="btn-icon">⏳</span>
-                  <span>Uploading...</span>
+                  <span>{t('deckUploader.uploading')}</span>
                 </>
               ) : (
                 <>
                   <span className="btn-icon">📂</span>
-                  <span>Upload Folder</span>
+                  <span>{t('deckUploader.uploadFolder')}</span>
                 </>
               )}
             </Button>
@@ -283,7 +285,7 @@ export function DeckUploader({
 
         {!canUpload && !isAdmin && (
           <p className="upload-disabled-message">
-            🔒 Only the host can upload images
+            🔒 {t('deckUploader.onlyHostCanUpload')}
           </p>
         )}
 
@@ -301,8 +303,8 @@ export function DeckUploader({
               />
             </div>
             <div className="progress-stats">
-              {uploadStats.completed} of {uploadStats.total} processed
-              {uploadStats.failed > 0 && ` (${uploadStats.failed} failed)`}
+              {t('deckUploader.processed', { completed: uploadStats.completed, total: uploadStats.total })}
+              {uploadStats.failed > 0 && ` (${t('deckUploader.failed', { count: uploadStats.failed })})`}
             </div>
           </div>
         )}
@@ -314,10 +316,10 @@ export function DeckUploader({
           <Button
             onClick={handleDeleteAll}
             className="btn-delete-all"
-            title="Delete all your images"
+            title={t('deckUploader.deleteAllImages')}
           >
             <span className="btn-icon">🗑️</span>
-            <span>Delete All ({myImages.length})</span>
+            <span>{t('deckUploader.deleteAll', { count: myImages.length })}</span>
           </Button>
         </div>
       )}
@@ -326,7 +328,7 @@ export function DeckUploader({
         {myImages.length === 0 ? (
           <div className="no-images-message">
             <span className="empty-icon">🖼️</span>
-            <p>No images uploaded yet</p>
+            <p>{t('deckUploader.noImagesYet')}</p>
           </div>
         ) : (
           <div className="images-preview-grid">
@@ -335,7 +337,7 @@ export function DeckUploader({
                 {img.imageData ? (
                   <img
                     src={img.imageData}
-                    alt="Uploaded image"
+                    alt={t('deckUploader.uploadedImage')}
                     className="preview-image"
                   />
                 ) : (
@@ -346,7 +348,7 @@ export function DeckUploader({
                 <Button
                   onClick={() => onDelete(img.id)}
                   className="x-button preview-delete-btn"
-                  title="Delete image"
+                  title={t('deckUploader.deleteImageTitle')}
                 >
                   ×
                 </Button>
