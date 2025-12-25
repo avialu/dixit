@@ -115,6 +115,7 @@ export interface PlayerState {
   playerId: string;
   hand: Card[];
   mySubmittedCardId: string | null;
+  mySubmittedCardImage: string | null;
   myVote: string | null;
 }
 

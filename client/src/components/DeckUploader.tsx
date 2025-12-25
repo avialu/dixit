@@ -1,13 +1,16 @@
 import { useState, useRef, useEffect } from "react";
+import type { Socket } from "socket.io-client";
 import { resizeAndCompressImages } from "../utils/imageResize";
 import { RoomState } from "../hooks/useGameState";
 import { Button } from "./ui";
 import { ConfirmModal } from "./ConfirmModal";
 import { getMinimumDeckSize } from "../utils/imageConstants";
+import { uploadImageWithRetry, UploadProgress } from "../utils/uploadRetry";
 
 interface DeckUploaderProps {
   roomState: RoomState;
   playerId: string;
+  socket?: Socket | null;  // Optional socket for retry support
   onUpload: (imageData: string) => void;
   onDelete: (imageId: string) => void;
   onSetAllowPlayerUploads: (allow: boolean) => void;
@@ -17,6 +20,7 @@ interface DeckUploaderProps {
 export function DeckUploader({
   roomState,
   playerId,
+  socket,
   onUpload,
   onDelete,
   onSetAllowPlayerUploads,
@@ -29,6 +33,7 @@ export function DeckUploader({
     total: 0,
     failed: 0,
   });
+  const [retryStatus, setRetryStatus] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const folderInputRef = useRef<HTMLInputElement>(null);
   const [isMobile, setIsMobile] = useState(false);
@@ -101,21 +106,59 @@ export function DeckUploader({
         }
       );
 
-      // Upload successful results
+      // Upload successful results with retry support
       let failedCount = 0;
       let uploadedCount = 0;
+      const uploadErrors: string[] = [];
 
-      for (const result of results) {
+      for (let i = 0; i < results.length; i++) {
+        const result = results[i];
+        
         if (result.error) {
           console.error(`Failed to process ${result.file.name}:`, result.error);
           failedCount++;
+          uploadErrors.push(`${result.file.name}: ${result.error}`);
+          continue;
+        }
+
+        // If socket is available, use retry logic
+        if (socket?.connected) {
+          try {
+            await uploadImageWithRetry(
+              socket,
+              result.imageData,
+              (progress: UploadProgress) => {
+                if (progress.status === 'retrying') {
+                  setRetryStatus(
+                    t('deckUploader.retrying', { 
+                      attempt: progress.attempt, 
+                      max: progress.maxAttempts,
+                      name: result.file.name
+                    })
+                  );
+                } else {
+                  setRetryStatus(null);
+                }
+              }
+            );
+            uploadedCount++;
+            setUploadStats((prev) => ({ ...prev, completed: prev.completed + 1 }));
+          } catch (error) {
+            console.error(`Upload failed for ${result.file.name}:`, error);
+            failedCount++;
+            uploadErrors.push(
+              `${result.file.name}: ${error instanceof Error ? error.message : 'Upload failed'}`
+            );
+          }
         } else {
+          // Fallback to original non-retry behavior
           onUpload(result.imageData);
           uploadedCount++;
         }
       }
 
       setUploadStats((prev) => ({ ...prev, failed: failedCount }));
+      setRetryStatus(null);
 
       // Show summary if there were any failures
       if (failedCount > 0) {
@@ -291,7 +334,9 @@ export function DeckUploader({
 
         {uploading && uploadProgress && (
           <div className="upload-progress">
-            <div className="progress-text">{uploadProgress}</div>
+            <div className="progress-text">
+              {retryStatus || uploadProgress}
+            </div>
             <div className="progress-bar-container">
               <div
                 className="progress-bar"

@@ -16,6 +16,7 @@ export const en: TranslationKeys = {
     joinButton: 'Join Game',
     spectator: 'Join as Spectator',
     scanToJoin: 'Scan to join from mobile',
+    joining: 'Joining...',
   },
 
   // Common UI elements
@@ -122,6 +123,8 @@ export const en: TranslationKeys = {
     selectFiles: 'Select one or multiple image files',
     selectFolder: 'Select an entire folder of images',
     uploadedImage: 'Uploaded image',
+    retrying: 'Retrying {name} ({attempt}/{max})...',
+    uploadFailed: 'Upload failed after {attempts} attempts',
   },
 
   // Game Phases
@@ -278,5 +281,25 @@ export const en: TranslationKeys = {
   languages: {
     english: 'English',
     hebrew: 'עברית',
+  },
+
+  // Connection Status
+  connection: {
+    connecting: 'Connecting...',
+    reconnecting: 'Reconnecting...',
+    disconnected: 'Connection lost',
+    retry: 'Tap to reconnect',
+  },
+
+  // Admin Settings (available during game)
+  adminSettings: {
+    title: 'Admin Settings',
+    playerManagement: 'Player Management',
+    gameSettings: 'Game Settings',
+    lobbyOnlyNote: 'Some settings are only available in the lobby',
+    cantKickStoryteller: "Can't kick during turn",
+    wouldEndGame: 'This would end the game!',
+    winTargetWarningTitle: '⚠️ End Game Early?',
+    winTargetWarningMessage: 'Setting win target to {target} points will end the game! {winners} already has enough points to win. Continue?',
   },
 };

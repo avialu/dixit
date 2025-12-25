@@ -51,6 +51,9 @@ import {
   Sparkles,
   GalleryHorizontalEnd,
   BookOpen,
+  Loader2,
+  WifiOff,
+  Wifi,
 } from "lucide-react";
 
 /**
@@ -120,6 +123,11 @@ export const Icon = {
   EyeOff,
   Info,
   Warning: AlertTriangle,
+  
+  // Loading & Connection
+  Loader: Loader2,
+  WifiOff,
+  Wifi,
 };
 
 /**

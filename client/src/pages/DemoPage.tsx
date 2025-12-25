@@ -309,14 +309,38 @@ const generateMockPlayerState = (
   // Player 2 (Bob, regular player) behavior
   const isStoryteller = playerId === "1";
 
+  // Determine if player has submitted based on phase and role
+  // Storyteller submits during STORYTELLER_CHOICE, players submit during PLAYERS_CHOICE
+  // Both should show submitted card after they've submitted (in later phases too)
+  let submittedCardId: string | null = null;
+  
+  if (isStoryteller) {
+    // Storyteller has submitted if we're past STORYTELLER_CHOICE phase
+    if (phase !== "DECK_BUILDING" && phase !== "STORYTELLER_CHOICE") {
+      submittedCardId = "h1"; // Storyteller submitted h1
+    }
+  } else {
+    // Regular player has submitted if we're past PLAYERS_CHOICE phase or during VOTING/REVEAL
+    if (phase === "VOTING" || phase === "REVEAL" || phase === "GAME_END") {
+      submittedCardId = "h2"; // Player submitted h2
+    }
+  }
+  
+  // Remove submitted card from hand (simulating server behavior)
+  const hand = submittedCardId 
+    ? baseHand.filter(c => c.id !== submittedCardId)
+    : baseHand;
+  
+  // Get submitted card's image data
+  const submittedCard = submittedCardId 
+    ? baseHand.find(c => c.id === submittedCardId) 
+    : null;
+
   return {
     playerId: playerId,
-    hand: baseHand,
-    // Only non-storytellers submit cards during PLAYERS_CHOICE
-    mySubmittedCardId:
-      (phase === "PLAYERS_CHOICE" || phase === "VOTING") && !isStoryteller
-        ? "h2"
-        : null,
+    hand,
+    mySubmittedCardId: submittedCardId,
+    mySubmittedCardImage: submittedCard?.imageData || null,
     // Only non-storytellers vote during VOTING
     myVote: phase === "VOTING" && !isStoryteller ? "c1" : null,
   };
@@ -675,42 +699,58 @@ export function DemoPage() {
   };
 
   const generateFlowPlayerState = (): PlayerState => {
+    const mySubmission = flowSubmittedCards.find((sc) => sc.playerId === "1");
+    const submittedCardId = mySubmission?.cardId || null;
+    
+    // Full hand of cards
+    const fullHand = [
+      {
+        id: "h1",
+        imageData: "https://picsum.photos/seed/hand1/400/600",
+        uploadedBy: "1",
+      },
+      {
+        id: "h2",
+        imageData: "https://picsum.photos/seed/hand2/400/600",
+        uploadedBy: "1",
+      },
+      {
+        id: "h3",
+        imageData: "https://picsum.photos/seed/hand3/400/600",
+        uploadedBy: "1",
+      },
+      {
+        id: "h4",
+        imageData: "https://picsum.photos/seed/hand4/400/600",
+        uploadedBy: "1",
+      },
+      {
+        id: "h5",
+        imageData: "https://picsum.photos/seed/hand5/400/600",
+        uploadedBy: "1",
+      },
+      {
+        id: "h6",
+        imageData: "https://picsum.photos/seed/hand6/400/600",
+        uploadedBy: "1",
+      },
+    ];
+    
+    // Remove submitted card from hand (simulating server behavior)
+    const hand = submittedCardId 
+      ? fullHand.filter(c => c.id !== submittedCardId)
+      : fullHand;
+    
+    // Get the image data for the submitted card
+    const submittedCard = submittedCardId 
+      ? fullHand.find(c => c.id === submittedCardId) 
+      : null;
+    
     return {
       playerId: "1",
-      hand: [
-        {
-          id: "h1",
-          imageData: "https://picsum.photos/seed/hand1/400/600",
-          uploadedBy: "1",
-        },
-        {
-          id: "h2",
-          imageData: "https://picsum.photos/seed/hand2/400/600",
-          uploadedBy: "1",
-        },
-        {
-          id: "h3",
-          imageData: "https://picsum.photos/seed/hand3/400/600",
-          uploadedBy: "1",
-        },
-        {
-          id: "h4",
-          imageData: "https://picsum.photos/seed/hand4/400/600",
-          uploadedBy: "1",
-        },
-        {
-          id: "h5",
-          imageData: "https://picsum.photos/seed/hand5/400/600",
-          uploadedBy: "1",
-        },
-        {
-          id: "h6",
-          imageData: "https://picsum.photos/seed/hand6/400/600",
-          uploadedBy: "1",
-        },
-      ],
-      mySubmittedCardId:
-        flowSubmittedCards.find((sc) => sc.playerId === "1")?.cardId || null,
+      hand,
+      mySubmittedCardId: submittedCardId,
+      mySubmittedCardImage: submittedCard?.imageData || null,
       myVote: flowVotes.find((v) => v.voterId === "1")?.cardId || null,
     };
   };
@@ -1561,6 +1601,7 @@ export function DemoPage() {
               playerId={currentPlayerId}
               clientId="demo-client-123"
               socket={null}
+              isDemoMode={true}
               onJoin={mockActions.storytellerSubmit}
               onJoinSpectator={() => console.log("Demo: spectator join")}
               onLeave={() => console.log("Demo: leave")}
@@ -1603,15 +1644,8 @@ export function DemoPage() {
               playerState={generateFlowPlayerState()}
               playerId="1"
               clientId="flow-test-client"
-              socket={
-                {
-                  emit: (event: string) => {
-                    if (event === "advanceRound") {
-                      flowActions.advanceRound();
-                    }
-                  },
-                } as any
-              }
+              socket={null}
+              isDemoMode={true}
               onJoin={() => {}}
               onJoinSpectator={() => {}}
               onLeave={() => {}}

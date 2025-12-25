@@ -13,6 +13,16 @@ const RECONNECTION_CONFIG = {
   BACKOFF_MULTIPLIER: 2,
 };
 
+// Latency thresholds for connection quality indicator
+export const LATENCY_THRESHOLDS = {
+  GOOD: 100,     // < 100ms = good (green)
+  MEDIUM: 300,   // 100-300ms = medium (yellow)
+  // > 300ms = poor (red)
+};
+
+// Ping interval for latency measurement
+const PING_INTERVAL = 5000; // 5 seconds
+
 // Get or create clientId outside component to persist
 let clientId = storage.clientId.get();
 if (!clientId) {
@@ -20,14 +30,19 @@ if (!clientId) {
   storage.clientId.set(clientId);
 }
 
+export type ConnectionQuality = 'good' | 'medium' | 'poor' | 'unknown';
+
 export function useSocket() {
   const [socket, setSocket] = useState<Socket | null>(null);
   const [isConnected, setIsConnected] = useState(false);
   const [isReconnecting, setIsReconnecting] = useState(false);
   const [needsManualReconnect, setNeedsManualReconnect] = useState(false);
+  const [latency, setLatency] = useState<number | null>(null);
   const reconnectAttempts = useRef(0);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const consecutiveFailures = useRef(0);
+  const pingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const pingStartTimeRef = useRef<number | null>(null);
 
   useEffect(() => {
     // Connect to socket with reconnection disabled (we'll handle it manually)
@@ -51,6 +66,32 @@ export function useSocket() {
       if (clientId && storage.hasJoined.get()) {
         console.log('Auto-reconnecting with clientId:', clientId);
         newSocket.emit('reconnect', { clientId });
+      }
+
+      // Start latency measurement
+      const measureLatency = () => {
+        if (newSocket.connected) {
+          pingStartTimeRef.current = Date.now();
+          newSocket.volatile.emit('clientPing'); // volatile = drop if can't send
+        }
+      };
+
+      // Clear any existing interval
+      if (pingIntervalRef.current) {
+        clearInterval(pingIntervalRef.current);
+      }
+
+      // Measure immediately and then every PING_INTERVAL
+      measureLatency();
+      pingIntervalRef.current = setInterval(measureLatency, PING_INTERVAL);
+    });
+
+    // Listen for pong response to calculate latency
+    newSocket.on('clientPong', () => {
+      if (pingStartTimeRef.current) {
+        const rtt = Date.now() - pingStartTimeRef.current;
+        setLatency(rtt);
+        pingStartTimeRef.current = null;
       }
     });
 
@@ -113,6 +154,9 @@ export function useSocket() {
       if (reconnectTimeoutRef.current) {
         clearTimeout(reconnectTimeoutRef.current);
       }
+      if (pingIntervalRef.current) {
+        clearInterval(pingIntervalRef.current);
+      }
       newSocket.disconnect();
     };
   }, []);
@@ -128,6 +172,14 @@ export function useSocket() {
     }
   };
 
+  // Calculate connection quality based on latency
+  const getConnectionQuality = (): ConnectionQuality => {
+    if (!isConnected || latency === null) return 'unknown';
+    if (latency < LATENCY_THRESHOLDS.GOOD) return 'good';
+    if (latency < LATENCY_THRESHOLDS.MEDIUM) return 'medium';
+    return 'poor';
+  };
+
   return {
     socket,
     clientId: clientId!,
@@ -137,6 +189,8 @@ export function useSocket() {
     manualReconnect,
     getClientId: () => clientId!,
     getSocket: () => socket,
+    latency,
+    connectionQuality: getConnectionQuality(),
   };
 }
 

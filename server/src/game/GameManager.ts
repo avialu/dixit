@@ -203,14 +203,19 @@ export class GameManager {
       throw new Error("Cannot kick yourself");
     }
 
-    // Cannot kick during active game
-    if (this.state.phase !== GamePhase.DECK_BUILDING) {
-      throw new Error("Cannot kick players during an active game");
-    }
-
     const targetPlayer = this.state.players.get(targetPlayerId);
     if (!targetPlayer) {
       throw new Error("Player not found");
+    }
+
+    // Cannot kick the storyteller during their turn
+    if (
+      this.state.storytellerId === targetPlayerId &&
+      (this.state.phase === GamePhase.STORYTELLER_CHOICE ||
+        this.state.phase === GamePhase.PLAYERS_CHOICE ||
+        this.state.phase === GamePhase.VOTING)
+    ) {
+      throw new Error("Cannot kick the storyteller during their turn");
     }
 
     // Transfer their images to the admin instead of deleting
@@ -290,11 +295,6 @@ export class GameManager {
 
   promoteToAdmin(adminId: string, targetPlayerId: string): void {
     this.validateAdmin(adminId);
-
-    // Cannot promote during active game
-    if (this.state.phase !== GamePhase.DECK_BUILDING) {
-      throw new Error("Cannot promote players during an active game");
-    }
 
     const currentAdmin = this.state.players.get(adminId);
     if (!currentAdmin) {
@@ -419,10 +419,6 @@ export class GameManager {
   setWinTarget(target: number | null, adminId: string): void {
     this.validateAdmin(adminId);
 
-    if (this.state.phase !== GamePhase.DECK_BUILDING) {
-      throw new Error("Can only change win target during deck building");
-    }
-
     // Validate target is a reasonable number if not null
     if (target !== null && (target < 1 || target > 100)) {
       throw new Error("Win target must be between 1 and 100 points");
@@ -468,10 +464,6 @@ export class GameManager {
   setBoardPattern(pattern: "snake" | "spiral", adminId: string): void {
     this.validateAdmin(adminId);
 
-    if (this.state.phase !== GamePhase.DECK_BUILDING) {
-      throw new Error("Can only change board pattern during deck building");
-    }
-
     this.state.boardPattern = pattern;
     logger.info("Board pattern updated", { adminId, pattern });
   }
@@ -490,7 +482,6 @@ export class GameManager {
     const card = this.deckManager.addImage(imageData, playerId);
     return card;
   }
-
 
   deleteImage(cardId: string, playerId: string): boolean {
     return this.deckManager.deleteImage(cardId, playerId);
@@ -513,7 +504,7 @@ export class GameManager {
         [GamePhase.PLAYERS_CHOICE]: "Players' Turn",
         [GamePhase.VOTING]: "Voting",
         [GamePhase.REVEAL]: "Results",
-        [GamePhase.GAME_END]: "Game Over"
+        [GamePhase.GAME_END]: "Game Over",
       };
       const currentPhaseName = phaseNames[this.state.phase] || this.state.phase;
       throw new GameStateError(
@@ -884,11 +875,16 @@ export class GameManager {
       tokenImage: p.tokenImage,
     }));
 
-    const deckImages = this.deckManager.getAllCards().map((c) => ({
-      id: c.id,
-      uploadedBy: c.uploadedBy,
-      imageData: c.imageData, // Include image data for thumbnails
-    }));
+    // Only send full deck images during DECK_BUILDING (for thumbnails in deck uploader)
+    // During active game, deck images aren't needed - reduces payload significantly
+    const deckImages =
+      this.state.phase === GamePhase.DECK_BUILDING
+        ? this.deckManager.getAllCards().map((c) => ({
+            id: c.id,
+            uploadedBy: c.uploadedBy,
+            imageData: c.imageData,
+          }))
+        : [];
 
     // Reveal cards only in appropriate phases
     const revealedCards =
@@ -953,10 +949,16 @@ export class GameManager {
     );
     const myVote = this.state.votes.find((v) => v.voterId === playerId);
 
+    // Get the submitted card's image data so client can display it
+    const mySubmittedCardImage = mySubmittedCard
+      ? this.submittedCardsData.get(mySubmittedCard.cardId) || null
+      : null;
+
     return {
       playerId,
       hand: player.hand,
       mySubmittedCardId: mySubmittedCard?.cardId || null,
+      mySubmittedCardImage,
       myVote: myVote?.cardId || null,
     };
   }
@@ -1016,5 +1018,66 @@ export class GameManager {
 
   getCurrentPhase(): GamePhase {
     return this.state.phase;
+  }
+
+  /**
+   * Check if a player should have cards but doesn't, and deal them if needed.
+   * This is a recovery mechanism for edge cases where a player's hand wasn't properly dealt.
+   * @returns true if cards were dealt, false otherwise
+   */
+  repairPlayerHand(playerId: string): boolean {
+    const player = this.state.players.get(playerId);
+    if (!player) return false;
+
+    // Only repair during active game phases where players need cards
+    const activePhases = [
+      GamePhase.STORYTELLER_CHOICE,
+      GamePhase.PLAYERS_CHOICE,
+      GamePhase.VOTING,
+    ];
+
+    if (!activePhases.includes(this.state.phase)) {
+      return false;
+    }
+
+    // Player has already submitted a card, so they played successfully
+    const hasSubmitted = this.state.submittedCards.some(
+      (sc) => sc.playerId === playerId
+    );
+
+    // Calculate expected hand size
+    // If they haven't submitted: HAND_SIZE cards (typically 6)
+    // If they have submitted: HAND_SIZE - 1 cards (typically 5)
+    const expectedMinCards = hasSubmitted
+      ? GAME_CONSTANTS.HAND_SIZE - 1
+      : GAME_CONSTANTS.HAND_SIZE;
+
+    if (player.hand.length >= expectedMinCards) {
+      return false; // Hand is fine
+    }
+
+    // Player needs cards - this is an error recovery scenario
+    const needed = GAME_CONSTANTS.HAND_SIZE - player.hand.length;
+    if (needed > 0 && this.deckManager.getDeckSize() >= needed) {
+      const cards = this.deckManager.drawCards(needed);
+      player.addCards(cards);
+      logger.warn("Repaired player hand - dealt missing cards", {
+        playerId,
+        playerName: player.name,
+        cardsDealt: needed,
+        newHandSize: player.hand.length,
+        phase: this.state.phase,
+        hadSubmitted: hasSubmitted,
+      });
+      return true;
+    }
+
+    logger.error("Cannot repair player hand - not enough cards in deck", {
+      playerId,
+      playerName: player.name,
+      needed,
+      deckSize: this.deckManager.getDeckSize(),
+    });
+    return false;
   }
 }

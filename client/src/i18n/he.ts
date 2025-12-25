@@ -10,13 +10,14 @@ import { TranslationKeys } from "./types";
 export const he: TranslationKeys = {
   // Join Screen
   join: {
-    title: "s",
+    title: "דיקסיט",
     tagline: "משחק של סיפור יצירתי",
     enterName: "הכנס את שמך",
     addPhoto: "הוסף תמונת פרופיל",
     joinButton: "הצטרף למשחק",
     spectator: "הצטרף כצופה",
     scanToJoin: "סרוק כדי להצטרף ",
+    joining: "מצטרף...",
   },
 
   // Common UI elements
@@ -124,6 +125,8 @@ export const he: TranslationKeys = {
     selectFiles: "בחר קובץ תמונה אחד או יותר",
     selectFolder: "בחר תיקייה שלמה של תמונות",
     uploadedImage: "תמונה שהועלתה",
+    retrying: "מנסה שוב {name} ({attempt}/{max})...",
+    uploadFailed: "ההעלאה נכשלה אחרי {attempts} ניסיונות",
   },
 
   // Game Phases
@@ -281,5 +284,26 @@ export const he: TranslationKeys = {
   languages: {
     english: "English",
     hebrew: "עברית",
+  },
+
+  // Connection Status
+  connection: {
+    connecting: "מתחבר...",
+    reconnecting: "מתחבר מחדש...",
+    disconnected: "החיבור נותק",
+    retry: "לחץ להתחברות מחדש",
+  },
+
+  // Admin Settings (available during game)
+  adminSettings: {
+    title: "הגדרות מנהל",
+    playerManagement: "ניהול שחקנים",
+    gameSettings: "הגדרות משחק",
+    lobbyOnlyNote: "חלק מההגדרות זמינות רק בלובי",
+    cantKickStoryteller: "לא ניתן להוציא בזמן התור",
+    wouldEndGame: "זה יסיים את המשחק!",
+    winTargetWarningTitle: "⚠️ לסיים את המשחק מוקדם?",
+    winTargetWarningMessage:
+      "הגדרת יעד ניצחון ל-{target} נקודות תסיים את המשחק! ל-{winners} כבר יש מספיק נקודות לנצח. להמשיך?",
   },
 };

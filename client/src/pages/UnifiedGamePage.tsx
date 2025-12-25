@@ -1,22 +1,27 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
+import type { Socket } from "socket.io-client";
 import { RoomState, PlayerState } from "../hooks/useGameState";
+import { ConnectionQuality } from "../hooks/useSocket";
 import { GameBoard } from "../components/GameBoard";
 import { QRCode } from "../components/QRCode";
 import { Modal } from "../components/Modal";
 import * as ModalContent from "../components/ModalContent";
+import { AdminSettingsModal } from "../components/AdminSettingsModal";
 import { ProfileImageUpload } from "../components/ProfileImageUpload";
 import { Button, Icon, IconSize } from "../components/ui";
 import { storage } from "../utils/storage";
 import { ConfirmModal } from "../components/ConfirmModal";
 import { getMinimumDeckSize } from "../utils/imageConstants";
 import { useTranslation } from "../i18n";
+import { ConnectionStatus } from "../components/ConnectionStatus";
+import { LatencyIndicator } from "../components/LatencyIndicator";
 
 interface UnifiedGamePageProps {
   roomState: RoomState | null;
   playerState: PlayerState | null;
   playerId: string;
   clientId: string;
-  socket: any;
+  socket: Socket | null;
   onJoin: (name: string, clientId: string) => void;
   onJoinSpectator: (clientId: string) => void;
   onLeave: () => void;
@@ -36,6 +41,15 @@ interface UnifiedGamePageProps {
   onResetGame: () => void;
   onNewDeck: () => void;
   onUploadTokenImage: (imageData: string | null) => void;
+  // Demo mode - explicitly passed to distinguish from socket loading
+  isDemoMode?: boolean;
+  // Connection status props
+  isConnected?: boolean;
+  isReconnecting?: boolean;
+  needsManualReconnect?: boolean;
+  onManualReconnect?: () => void;
+  latency?: number | null;
+  connectionQuality?: ConnectionQuality;
 }
 
 export function UnifiedGamePage({
@@ -63,13 +77,37 @@ export function UnifiedGamePage({
   onResetGame,
   onNewDeck,
   onUploadTokenImage,
+  // Demo mode - explicitly passed, defaults to false for real game
+  isDemoMode = false,
+  // Connection status
+  isConnected = true,
+  isReconnecting = false,
+  needsManualReconnect = false,
+  onManualReconnect,
+  latency = null,
+  connectionQuality = 'unknown',
 }: UnifiedGamePageProps) {
   const { t } = useTranslation(roomState?.language);
   const [name, setName] = useState("");
+  
+  // Calculate the color the player will actually get when they join
+  // Based on current player count (they'll be the next player)
+  const joinScreenColor = useMemo(() => {
+    const colors = [
+      "#f39c12", // Orange
+      "#3498db", // Blue
+      "#2ecc71", // Green
+      "#e74c3c", // Red
+      "#9b59b6", // Purple
+      "#1abc9c", // Teal
+    ];
+    const nextPlayerIndex = roomState?.players?.length ?? 0;
+    return colors[nextPlayerIndex % colors.length];
+  }, [roomState?.players?.length]); // Recalculate when player count changes
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
   const [clue, setClue] = useState("");
   const [showModal, setShowModal] = useState(false);
-  const [modalType, setModalType] = useState<"settings" | "cards">("cards");
+  const [modalType, setModalType] = useState<"settings" | "cards" | "adminSettings">("cards");
   const [manuallyClosedModal, setManuallyClosedModal] = useState(false);
   const [detectedServerUrl, setDetectedServerUrl] = useState<string | null>(
     null
@@ -81,10 +119,11 @@ export function UnifiedGamePage({
   // Track local vote for locking UI
   const [localVotedCardId, setLocalVotedCardId] = useState<string | null>(null);
   // Track if user chose to be a spectator - initialize from localStorage
-  // BUT in demo mode (socket === null), always start as non-spectator
-  const [isUserSpectator, setIsUserSpectator] = useState(
-    socket === null ? false : storage.isSpectator.get()
-  );
+  // Read from storage on mount, then demo mode check happens via isDemoMode
+  const [isUserSpectator, setIsUserSpectator] = useState(() => {
+    // Read storage value initially
+    return storage.isSpectator.get();
+  });
   // Track name editing state - which player ID is being edited
   const [editingPlayerId, setEditingPlayerId] = useState<string | null>(null);
   const [newName, setNewName] = useState("");
@@ -104,8 +143,18 @@ export function UnifiedGamePage({
     onConfirm: () => {},
   });
 
-  // Detect demo mode (no socket connection)
-  const isDemoMode = socket === null;
+  // Loading states for actions
+  const [isJoining, setIsJoining] = useState(false);
+  const [isJoiningSpectator, setIsJoiningSpectator] = useState(false);
+  const [isStartingGame, setIsStartingGame] = useState(false);
+
+  // In demo mode, reset spectator status (demo always starts fresh)
+  // isDemoMode is now passed explicitly as a prop, so we don't need complex detection
+  useEffect(() => {
+    if (isDemoMode && isUserSpectator) {
+      setIsUserSpectator(false);
+    }
+  }, [isDemoMode, isUserSpectator]);
 
   // Fetch server URL on mount (for cases where we need it before roomState is available)
   useEffect(() => {
@@ -117,14 +166,64 @@ export function UnifiedGamePage({
     }
   }, [isDemoMode]);
 
+  // Listen for acknowledgment events to clear loading states
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleJoinSuccess = () => {
+      setIsJoining(false);
+    };
+
+    const handleJoinSpectatorSuccess = () => {
+      setIsJoiningSpectator(false);
+    };
+
+    const handleStartGameAck = () => {
+      setIsStartingGame(false);
+    };
+
+    // Clear loading on error too
+    const handleError = () => {
+      setIsJoining(false);
+      setIsJoiningSpectator(false);
+      setIsStartingGame(false);
+    };
+
+    socket.on("joinSuccess", handleJoinSuccess);
+    socket.on("joinSpectatorSuccess", handleJoinSpectatorSuccess);
+    socket.on("startGameAck", handleStartGameAck);
+    socket.on("error", handleError);
+    socket.on("gameError", handleError);
+
+    return () => {
+      socket.off("joinSuccess", handleJoinSuccess);
+      socket.off("joinSpectatorSuccess", handleJoinSpectatorSuccess);
+      socket.off("startGameAck", handleStartGameAck);
+      socket.off("error", handleError);
+      socket.off("gameError", handleError);
+    };
+  }, [socket]);
+
+  // Timeout fallback for loading states (5 seconds)
+  useEffect(() => {
+    let timeout: NodeJS.Timeout | null = null;
+    if (isJoining || isJoiningSpectator || isStartingGame) {
+      timeout = setTimeout(() => {
+        setIsJoining(false);
+        setIsJoiningSpectator(false);
+        setIsStartingGame(false);
+      }, 5000);
+    }
+    return () => {
+      if (timeout) clearTimeout(timeout);
+    };
+  }, [isJoining, isJoiningSpectator, isStartingGame]);
+
   // Reset local submission state when phase changes
   useEffect(() => {
     const phase = roomState?.phase;
-    // Clear local submissions when leaving STORYTELLER_CHOICE or PLAYERS_CHOICE
-    if (phase !== "STORYTELLER_CHOICE") {
-      setLocalSubmittedCardId(null);
-    }
-    if (phase !== "PLAYERS_CHOICE") {
+    // Clear local submissions when leaving BOTH STORYTELLER_CHOICE and PLAYERS_CHOICE phases
+    if (phase !== "STORYTELLER_CHOICE" && phase !== "PLAYERS_CHOICE") {
       setLocalSubmittedCardId(null);
     }
     // Clear local vote when leaving VOTING phase
@@ -175,12 +274,14 @@ export function UnifiedGamePage({
       shouldAutoOpen = true;
     }
 
-    if (shouldAutoOpen && !manuallyClosedModal) {
-      // Only auto-open if user hasn't manually closed it
+    if (shouldAutoOpen && !manuallyClosedModal && !showModal && modalType !== "adminSettings") {
+      // Only auto-open if user hasn't manually closed it AND modal isn't already open
+      // Don't override adminSettings modal
       setModalType("cards");
       setShowModal(true);
-    } else if (phase === "DECK_BUILDING") {
+    } else if (phase === "DECK_BUILDING" && modalType !== "adminSettings") {
       // When returning to deck building (e.g., after game reset), close modal
+      // But don't close if admin settings are open
       setShowModal(false);
       setManuallyClosedModal(false);
     }
@@ -197,7 +298,8 @@ export function UnifiedGamePage({
 
   const handleJoin = (e: React.FormEvent) => {
     e.preventDefault();
-    if (name.trim()) {
+    if (name.trim() && !isJoining) {
+      setIsJoining(true);
       onJoin(name.trim(), clientId);
       // Upload profile image after joining if one was selected
       if (profileImage) {
@@ -209,6 +311,10 @@ export function UnifiedGamePage({
   };
 
   const handleSpectatorJoin = () => {
+    // In demo mode, spectator join should do nothing
+    if (isDemoMode) return;
+    if (isJoiningSpectator) return;
+    setIsJoiningSpectator(true);
     setIsUserSpectator(true);
     storage.isSpectator.set(true);
     _onJoinSpectator(clientId);
@@ -319,6 +425,21 @@ export function UnifiedGamePage({
     });
   };
 
+  const handleConfirmWinTargetChange = (target: number, potentialWinners: string[]) => {
+    const winnerNames = potentialWinners.join(", ");
+    setConfirmModal({
+      isOpen: true,
+      title: t("adminSettings.winTargetWarningTitle"),
+      message: t("adminSettings.winTargetWarningMessage", {
+        target,
+        winners: winnerNames,
+      }),
+      onConfirm: () => {
+        onSetWinTarget(target);
+      },
+    });
+  };
+
   const handleStorytellerSubmit = () => {
     if (selectedCardId && clue.trim()) {
       onStorytellerSubmit(selectedCardId, clue.trim());
@@ -356,29 +477,53 @@ export function UnifiedGamePage({
     setManuallyClosedModal(false); // Clear manual close flag when user opens it
   };
 
-  // JOIN SCREEN (before joining)
+  const openAdminSettings = () => {
+    setModalType("adminSettings");
+    setShowModal(true);
+    setManuallyClosedModal(false);
+  };
+
+  // Check if we're waiting for reconnection (hasJoined but no roomState yet)
+  const isPendingReconnect = !isDemoMode && !roomState && storage.hasJoined.get();
+
+  // RECONNECTING SCREEN (waiting for server state after refresh)
+  if (isPendingReconnect) {
+    return (
+      <div className="unified-game-page reconnecting-state">
+        <ConnectionStatus
+          isConnected={isConnected}
+          isReconnecting={isReconnecting}
+          needsManualReconnect={needsManualReconnect}
+          onRetry={onManualReconnect || (() => {})}
+          t={t}
+        />
+        <div className="reconnecting-container">
+          <div className="reconnecting-spinner" />
+          <p>{t('connection.reconnecting')}</p>
+        </div>
+      </div>
+    );
+  }
+
+  // JOIN SCREEN (only for users who haven't joined before)
   if (!isJoined) {
     // Get server URL with priority: roomState > detected from API > current location
     const serverUrl =
       roomState?.serverUrl || detectedServerUrl || window.location.origin;
 
-    // Calculate player color based on placeholder index
-    const getPlayerColor = () => {
-      const colors = [
-        "#f39c12",
-        "#3498db",
-        "#2ecc71",
-        "#e74c3c",
-        "#9b59b6",
-        "#1abc9c",
-      ];
-      // Use a simple hash of current time for randomness
-      const index = Math.floor(Math.random() * colors.length);
-      return colors[index];
-    };
-
     return (
       <div className="unified-game-page join-state">
+        {/* Connection Status Banner */}
+        {!isDemoMode && (
+          <ConnectionStatus
+            isConnected={isConnected}
+            isReconnecting={isReconnecting}
+            needsManualReconnect={needsManualReconnect}
+            onRetry={onManualReconnect || (() => {})}
+            t={t}
+          />
+        )}
+        
         <div className="join-container">
           <div className="join-box">
             <h1>
@@ -393,7 +538,7 @@ export function UnifiedGamePage({
                   imageUrl={profileImage}
                   onUpload={setProfileImage}
                   onRemove={() => setProfileImage(null)}
-                  playerColor={getPlayerColor()}
+                  playerColor={joinScreenColor}
                   size="large"
                 />
                 <p className="join-profile-hint">{t("join.addPhoto")}</p>
@@ -412,7 +557,9 @@ export function UnifiedGamePage({
                 type="submit"
                 variant="primary"
                 size="large"
-                disabled={!name.trim()}
+                disabled={!name.trim() || isJoining || isJoiningSpectator}
+                loading={isJoining}
+                loadingText={t("join.joining")}
               >
                 <Icon.Rocket size={IconSize.medium} /> {t("join.joinButton")}
               </Button>
@@ -421,6 +568,9 @@ export function UnifiedGamePage({
                 variant="secondary"
                 size="large"
                 onClick={handleSpectatorJoin}
+                disabled={isJoining || isJoiningSpectator}
+                loading={isJoiningSpectator}
+                loadingText={t("join.joining")}
               >
                 👀 {t("join.spectator")}
               </Button>
@@ -438,6 +588,29 @@ export function UnifiedGamePage({
   // BOARD VIEW (after joining - always shows board)
   return (
     <div className="unified-game-page game-state">
+      {/* Connection Status Banner */}
+      {!isDemoMode && (
+        <ConnectionStatus
+          isConnected={isConnected}
+          isReconnecting={isReconnecting}
+          needsManualReconnect={needsManualReconnect}
+          onRetry={onManualReconnect || (() => {})}
+          t={t}
+        />
+      )}
+
+      {/* Latency Indicator - Fixed in corner */}
+      {!isDemoMode && isConnected && (
+        <div className="latency-indicator-container">
+          <LatencyIndicator
+            latency={latency}
+            connectionQuality={connectionQuality}
+            isConnected={isConnected}
+            compact={false}
+          />
+        </div>
+      )}
+
       {/* Board Background - Always Visible */}
       <div className="board-background">
         <GameBoard
@@ -454,7 +627,7 @@ export function UnifiedGamePage({
           {/* Cards Button - All Players */}
           <button
             className={`floating-action-button cards-button ${
-              showModal && modalType === "cards" ? "hidden" : ""
+              showModal ? "hidden" : ""
             }`}
             onClick={openCards}
             title={
@@ -488,7 +661,7 @@ export function UnifiedGamePage({
           </button>
 
           {/* QR Button - Show when QR is closed during deck building */}
-          {!isInGame && !showQR && (
+          {!isInGame && !showQR && !showModal && (
             <button
               className="floating-action-button qr-button"
               onClick={() => setShowQR(true)}
@@ -499,11 +672,17 @@ export function UnifiedGamePage({
           )}
 
           {/* Admin Start Game Button - During deck building */}
-          {isAdmin && !isInGame && (
+          {isAdmin && !isInGame && !showModal && (
             <button
-              className="floating-action-button start-game-button"
-              onClick={onStartGame}
+              className={`floating-action-button start-game-button ${isStartingGame ? "btn-loading" : ""}`}
+              onClick={() => {
+                if (!isStartingGame) {
+                  setIsStartingGame(true);
+                  onStartGame();
+                }
+              }}
               disabled={
+                isStartingGame ||
                 roomState.players.length < 3 ||
                 roomState.deckSize <
                   getMinimumDeckSize(
@@ -512,7 +691,9 @@ export function UnifiedGamePage({
                   )
               }
               title={
-                roomState.players.length < 3
+                isStartingGame
+                  ? "Starting..."
+                  : roomState.players.length < 3
                   ? "Need at least 3 players"
                   : roomState.deckSize <
                     getMinimumDeckSize(
@@ -531,19 +712,32 @@ export function UnifiedGamePage({
                   : "Start Game"
               }
             >
-              <Icon.Rocket size={IconSize.large} />
+              {isStartingGame ? (
+                <Icon.Loader size={IconSize.large} className="btn-spinner" />
+              ) : (
+                <Icon.Rocket size={IconSize.large} />
+              )}
+            </button>
+          )}
+
+          {/* Admin Settings Button - During active game */}
+          {isAdmin && isInGame && !showModal && (
+            <button
+              className="floating-action-button admin-settings-button"
+              onClick={openAdminSettings}
+              title={t("adminSettings.title")}
+            >
+              <Icon.Settings size={IconSize.large} />
             </button>
           )}
         </>
       )}
 
       {/* Floating Action Buttons - For Spectators (only in deck building) */}
-      {isJoined && isSpectator && !isInGame && (
+      {isJoined && isSpectator && !isInGame && !showModal && (
         <>
           <button
-            className={`floating-action-button cards-button ${
-              showModal && modalType === "cards" ? "hidden" : ""
-            }`}
+            className="floating-action-button cards-button"
             onClick={openCards}
             title="Players"
           >
@@ -599,6 +793,7 @@ export function UnifiedGamePage({
                 isAdmin,
                 editingPlayerId,
                 newName,
+                socket,
                 setEditingPlayerId,
                 setNewName,
                 handleStartEditName,
@@ -701,6 +896,21 @@ export function UnifiedGamePage({
                 t,
               });
             }
+          } else if (modalType === "adminSettings") {
+            // Admin Settings Modal - Available during active game
+            modalContent = AdminSettingsModal({
+              roomState,
+              playerId,
+              isAdmin,
+              isInGame: !!isInGame,
+              onSetBoardPattern,
+              onSetLanguage,
+              onSetWinTarget,
+              onKickPlayer: handleKickPlayer,
+              onPromotePlayer: handlePromotePlayer,
+              onConfirmWinTargetChange: handleConfirmWinTargetChange,
+              t,
+            });
           }
 
           return modalContent ? (

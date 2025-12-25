@@ -281,6 +281,11 @@ npm start</pre>
     // Send initial room state immediately so QR code shows correct URL
     broadcastRoomState();
 
+    // Handle client ping for latency measurement
+    socket.on("clientPing", () => {
+      socket.emit("clientPong");
+    });
+
     // Handle reconnection - allows client to re-register their socket with their clientId
     socket.on("reconnect", (data) => {
       try {
@@ -314,11 +319,17 @@ npm start</pre>
           
           logger.info("Player reconnected", { clientId, socketId: socket.id, playerName: player.name });
 
+          // Check if player needs hand repair (edge case recovery)
+          const currentPhase = gameManager.getCurrentPhase();
+          const repaired = gameManager.repairPlayerHand(clientId);
+          if (repaired) {
+            logger.warn("Player hand was repaired on reconnect", { clientId, playerName: player.name, phase: currentPhase });
+          }
+
           // Send fresh state
           broadcastRoomState();
           
           // Always send player state, especially important during game phases
-          const currentPhase = gameManager.getCurrentPhase();
           sendPlayerState(socket.id, clientId);
           
           // Log hand size for debugging
@@ -436,12 +447,30 @@ npm start</pre>
 
     socket.on("uploadImage", (data) => {
       withClientId(socket, (clientId) => {
-        const { imageData } = uploadImageSchema.parse(data);
-        const card = gameManager.uploadImage(imageData, clientId);
+        try {
+          const { imageData } = uploadImageSchema.parse(data);
+          const card = gameManager.uploadImage(imageData, clientId);
 
-        logger.playerAction(clientId, "uploaded image", { cardId: card.id });
+          logger.playerAction(clientId, "uploaded image", { cardId: card.id });
 
-        broadcastRoomState();
+          // Send the new image to all clients via incremental update (more efficient)
+          io.emit("imageAdded", {
+            id: card.id,
+            uploadedBy: clientId,
+            imageData: card.imageData,
+          });
+          
+          // Send lightweight room state update (without all images)
+          const roomState = gameManager.getRoomState();
+          roomState.serverUrl = serverUrl;
+          io.emit("roomState", roomState);
+          
+          // Acknowledge successful upload
+          socket.emit("uploadImageAck", { success: true, imageId: card.id });
+        } catch (error) {
+          const errorMessage = error instanceof Error ? error.message : "Upload failed";
+          socket.emit("uploadImageAck", { success: false, error: errorMessage });
+        }
       });
     });
 
@@ -452,6 +481,9 @@ npm start</pre>
 
         if (deleted) {
           logger.playerAction(clientId, "deleted image", { imageId });
+          
+          // Send incremental delete update
+          io.emit("imageDeleted", { id: imageId });
         }
 
         broadcastRoomState();
@@ -477,6 +509,9 @@ npm start</pre>
         }
 
         io.emit("phaseChanged", { phase: gameManager.getCurrentPhase() });
+        
+        // Acknowledge the action
+        socket.emit("startGameAck", { success: true });
       });
     });
 
@@ -489,6 +524,9 @@ npm start</pre>
         broadcastRoomState();
         sendPlayerState(socket.id, clientId);
         io.emit("phaseChanged", { phase: gameManager.getCurrentPhase() });
+        
+        // Acknowledge the action
+        socket.emit("storytellerSubmitAck", { success: true, cardId, clue });
       });
     });
 
@@ -506,6 +544,9 @@ npm start</pre>
         if (currentPhase !== "PLAYERS_CHOICE") {
           io.emit("phaseChanged", { phase: currentPhase });
         }
+        
+        // Acknowledge the action
+        socket.emit("playerSubmitCardAck", { success: true, cardId });
       });
     });
 
@@ -523,6 +564,9 @@ npm start</pre>
           io.emit("phaseChanged", { phase: currentPhase });
           broadcastRoomState();
         }
+        
+        // Acknowledge the action
+        socket.emit("playerVoteAck", { success: true, cardId });
       });
     });
 
@@ -537,6 +581,9 @@ npm start</pre>
 
         broadcastRoomState();
         io.emit("phaseChanged", { phase: gameManager.getCurrentPhase() });
+        
+        // Acknowledge the action
+        socket.emit("advanceRoundAck", { success: true });
       });
     });
 
@@ -551,6 +598,9 @@ npm start</pre>
         }
 
         io.emit("phaseChanged", { phase: gameManager.getCurrentPhase() });
+        
+        // Acknowledge the action
+        socket.emit("adminResetGameAck", { success: true });
       });
     });
 
@@ -565,6 +615,9 @@ npm start</pre>
         }
 
         io.emit("phaseChanged", { phase: gameManager.getCurrentPhase() });
+        
+        // Acknowledge the action
+        socket.emit("adminNewDeckAck", { success: true });
       });
     });
 

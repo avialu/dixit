@@ -1,4 +1,5 @@
 import { ButtonHTMLAttributes, ReactNode } from "react";
+import { Icon, IconSize } from "./Icon";
 
 export type ButtonVariant = "primary" | "secondary" | "continue" | "icon" | "danger" | "success";
 export type ButtonSize = "small" | "medium" | "large";
@@ -8,6 +9,10 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   size?: ButtonSize;
   children: ReactNode;
   className?: string;
+  /** Shows a loading spinner and disables the button */
+  loading?: boolean;
+  /** Optional text to show while loading (replaces children) */
+  loadingText?: string;
 }
 
 /**
@@ -25,6 +30,10 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
  * - small: Compact button
  * - medium: Standard size (default)
  * - large: Prominent button
+ *
+ * Loading:
+ * - loading={true}: Shows spinner, disables button, applies .btn-loading class
+ * - loadingText: Optional text to show while loading
  */
 export function Button({
   variant = "primary",
@@ -32,6 +41,8 @@ export function Button({
   children,
   className = "",
   disabled,
+  loading = false,
+  loadingText,
   ...props
 }: ButtonProps) {
   const variantClass = {
@@ -49,11 +60,28 @@ export function Button({
     large: "btn-large",
   }[size];
 
-  const classes = [variantClass, sizeClass, className].filter(Boolean).join(" ");
+  const loadingClass = loading ? "btn-loading" : "";
+
+  const classes = [variantClass, sizeClass, loadingClass, className].filter(Boolean).join(" ");
+
+  // Determine icon size based on button size
+  const spinnerSize = size === "large" ? IconSize.large : IconSize.medium;
 
   return (
-    <button className={classes} disabled={disabled} {...props}>
-      {children}
+    <button 
+      className={classes} 
+      disabled={disabled || loading} 
+      aria-busy={loading}
+      {...props}
+    >
+      {loading ? (
+        <>
+          <Icon.Loader size={spinnerSize} className="btn-spinner" />
+          {loadingText && <span className="btn-loading-text">{loadingText}</span>}
+        </>
+      ) : (
+        children
+      )}
     </button>
   );
 }

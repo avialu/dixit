@@ -19,6 +19,7 @@ export interface TranslationKeys {
     joinButton: string;
     spectator: string;
     scanToJoin: string;
+    joining: string;
   };
 
   // Common UI elements
@@ -125,6 +126,8 @@ export interface TranslationKeys {
     selectFiles: string;
     selectFolder: string;
     uploadedImage: string;
+    retrying: string;
+    uploadFailed: string;
   };
 
   // Game Phases
@@ -281,6 +284,26 @@ export interface TranslationKeys {
   languages: {
     english: string;
     hebrew: string;
+  };
+
+  // Connection Status
+  connection: {
+    connecting: string;
+    reconnecting: string;
+    disconnected: string;
+    retry: string;
+  };
+
+  // Admin Settings (available during game)
+  adminSettings: {
+    title: string;
+    playerManagement: string;
+    gameSettings: string;
+    lobbyOnlyNote: string;
+    cantKickStoryteller: string;
+    wouldEndGame: string;
+    winTargetWarningTitle: string;
+    winTargetWarningMessage: string;
   };
 }
 

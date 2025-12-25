@@ -39,6 +39,7 @@ interface LobbyModalProps {
   isAdmin: boolean;
   editingPlayerId: string | null;
   newName: string;
+  socket?: import("socket.io-client").Socket | null; // For upload retry support
   setEditingPlayerId: (id: string | null) => void;
   setNewName: (name: string) => void;
   handleStartEditName: (playerId: string, currentName: string) => void;
@@ -117,6 +118,7 @@ export function LobbyModal(props: LobbyModalProps) {
     isAdmin,
     editingPlayerId,
     newName,
+    socket,
     setNewName,
     handleStartEditName,
     handleSaveName,
@@ -310,6 +312,7 @@ export function LobbyModal(props: LobbyModalProps) {
           <DeckUploader
             roomState={roomState}
             playerId={playerId}
+            socket={socket}
             onUpload={onUploadImage}
             onDelete={onDeleteImage}
             onSetAllowPlayerUploads={onSetAllowPlayerUploads}
@@ -663,44 +666,28 @@ export function StorytellerChoiceModal(props: StorytellerModalProps) {
     footer,
     content: (
       <>
-        {isSubmitted &&
-          (() => {
-            const submittedCardId =
-              localSubmittedCardId || playerState?.mySubmittedCardId;
-            const submittedCard = playerState?.hand.find(
-              (c) => c.id === submittedCardId
-            );
-            return submittedCard ? (
-              <div className="submitted-card-preview">
-                <img
-                  src={submittedCard.imageData}
-                  alt="Your submitted card"
-                  style={{
-                    maxWidth: "100%",
-                    maxHeight: "40vh",
-                    borderRadius: "12px",
-                    boxShadow: "0 8px 24px rgba(102, 126, 234, 0.4)",
-                    border: "3px solid #667eea",
-                  }}
-                />
-              </div>
-            ) : null;
-          })()}
+        {isSubmitted && playerState?.mySubmittedCardImage && (
+          <div className="submitted-card-preview">
+            <img
+              src={playerState.mySubmittedCardImage}
+              alt="Your submitted card"
+              style={{
+                maxWidth: "100%",
+                maxHeight: "40vh",
+                borderRadius: "12px",
+                boxShadow: "0 8px 24px rgba(102, 126, 234, 0.4)",
+                border: "3px solid #667eea",
+              }}
+            />
+          </div>
+        )}
 
         <div className="modal-hand">
           <CardView
             cards={playerState?.hand || []}
-            selectedCardId={
-              isSubmitted
-                ? localSubmittedCardId || playerState?.mySubmittedCardId || null
-                : selectedCardId
-            }
+            selectedCardId={isSubmitted ? null : selectedCardId}
             onSelectCard={isSubmitted ? () => {} : setSelectedCardId}
-            lockedCardId={
-              isSubmitted
-                ? localSubmittedCardId || playerState?.mySubmittedCardId || null
-                : null
-            }
+            disabled={!!isSubmitted}
             showDrawer={false}
           />
         </div>
@@ -780,15 +767,32 @@ export function PlayerChoiceModal(props: PlayerChoiceModalProps) {
     header,
     footer,
     content: (
-      <div className="modal-hand">
-        <CardView
-          cards={playerState?.hand || []}
-          selectedCardId={isSubmitted ? localSubmittedCardId : selectedCardId}
-          onSelectCard={isSubmitted ? () => {} : setSelectedCardId}
-          lockedCardId={isSubmitted ? localSubmittedCardId : null}
-          showDrawer={false}
-        />
-      </div>
+      <>
+        {isSubmitted && playerState?.mySubmittedCardImage && (
+          <div className="submitted-card-preview">
+            <img
+              src={playerState.mySubmittedCardImage}
+              alt="Your submitted card"
+              style={{
+                maxWidth: "100%",
+                maxHeight: "35vh",
+                borderRadius: "12px",
+                boxShadow: "0 8px 24px rgba(102, 126, 234, 0.4)",
+                border: "3px solid #667eea",
+              }}
+            />
+          </div>
+        )}
+        <div className="modal-hand">
+          <CardView
+            cards={playerState?.hand || []}
+            selectedCardId={isSubmitted ? null : selectedCardId}
+            onSelectCard={isSubmitted ? () => {} : setSelectedCardId}
+            disabled={!!isSubmitted}
+            showDrawer={false}
+          />
+        </div>
+      </>
     ),
   };
 }
@@ -864,35 +868,28 @@ export function WaitingPlayersModal(props: {
     footer: null,
     content: (
       <>
-        {playerState?.mySubmittedCardId &&
-          (() => {
-            const submittedCard = playerState?.hand.find(
-              (c) => c.id === playerState.mySubmittedCardId
-            );
-            return submittedCard ? (
-              <div className="submitted-card-preview">
-                <img
-                  src={submittedCard.imageData}
-                  alt="Your submitted card"
-                  style={{
-                    maxWidth: "100%",
-                    maxHeight: "35vh",
-                    borderRadius: "12px",
-                    boxShadow: "0 8px 24px rgba(102, 126, 234, 0.4)",
-                    border: "3px solid #667eea",
-                  }}
-                />
-              </div>
-            ) : null;
-          })()}
+        {playerState?.mySubmittedCardImage && (
+          <div className="submitted-card-preview">
+            <img
+              src={playerState.mySubmittedCardImage}
+              alt="Your submitted card"
+              style={{
+                maxWidth: "100%",
+                maxHeight: "35vh",
+                borderRadius: "12px",
+                boxShadow: "0 8px 24px rgba(102, 126, 234, 0.4)",
+                border: "3px solid #667eea",
+              }}
+            />
+          </div>
+        )}
 
         <div className="modal-hand">
           <CardView
             cards={playerState?.hand || []}
-            selectedCardId={playerState?.mySubmittedCardId || null}
+            selectedCardId={null}
             onSelectCard={() => {}}
             disabled={true}
-            lockedCardId={playerState?.mySubmittedCardId || null}
             showDrawer={false}
           />
         </div>
