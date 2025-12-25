@@ -319,11 +319,17 @@ npm start</pre>
           
           logger.info("Player reconnected", { clientId, socketId: socket.id, playerName: player.name });
 
+          // Check if player needs hand repair (edge case recovery)
+          const currentPhase = gameManager.getCurrentPhase();
+          const repaired = gameManager.repairPlayerHand(clientId);
+          if (repaired) {
+            logger.warn("Player hand was repaired on reconnect", { clientId, playerName: player.name, phase: currentPhase });
+          }
+
           // Send fresh state
           broadcastRoomState();
           
           // Always send player state, especially important during game phases
-          const currentPhase = gameManager.getCurrentPhase();
           sendPlayerState(socket.id, clientId);
           
           // Log hand size for debugging

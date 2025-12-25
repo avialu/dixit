@@ -2433,6 +2433,43 @@ select {
   box-sizing: border-box;
 }
 
+/* RECONNECTING STATE */
+.unified-game-page.reconnecting-state {
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+}
+
+.reconnecting-container {
+  text-align: center;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.reconnecting-container p {
+  margin-top: 1.5rem;
+  font-size: 1.2rem;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.reconnecting-spinner {
+  width: 48px;
+  height: 48px;
+  border: 4px solid rgba(255, 255, 255, 0.2);
+  border-top-color: #4a90e2;
+  border-radius: 50%;
+  animation: reconnecting-spin 1s linear infinite;
+  margin: 0 auto;
+}
+
+@keyframes reconnecting-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 /* JOIN STATE */
 .unified-game-page.join-state {
   background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
@@ -3393,6 +3430,23 @@ select {
   50% {
     box-shadow: 0 8px 32px rgba(243, 156, 18, 0.7);
   }
+}
+
+/* Admin Settings Button - Available during active game */
+.floating-action-button.admin-settings-button {
+  bottom: 2rem;
+  right: 7.5rem; /* Left of main cards button */
+  background: linear-gradient(135deg, #9b59b6 0%, #8e44ad 100%);
+  box-shadow: 0 8px 24px rgba(155, 89, 182, 0.4);
+}
+
+.floating-action-button.admin-settings-button:hover {
+  transform: translateY(-4px) scale(1.05);
+  box-shadow: 0 12px 32px rgba(155, 89, 182, 0.6);
+}
+
+.floating-action-button.admin-settings-button:active {
+  transform: translateY(-2px) scale(1.02);
 }
 
 .floating-action-button.continue-button {
@@ -5036,6 +5090,13 @@ select {
     font-size: 1rem;
   }
 
+  .floating-action-button.admin-settings-button {
+    bottom: 1rem;
+    right: 6rem; /* Left of main cards button */
+    padding: 1rem 1.5rem;
+    font-size: 1rem;
+  }
+
   .floating-action-button.continue-button {
     bottom: 5rem;
     padding: 1rem 1.5rem;
@@ -5396,6 +5457,13 @@ select {
   .floating-action-button.start-game-button {
     bottom: 0.5rem;
     right: 9.5rem; /* Leftmost position - to the left of QR */
+    padding: 0.75rem 1rem;
+    font-size: 0.9rem;
+  }
+
+  .floating-action-button.admin-settings-button {
+    bottom: 0.5rem;
+    right: 5rem; /* Left of main cards button */
     padding: 0.75rem 1rem;
     font-size: 0.9rem;
   }

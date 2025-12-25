@@ -293,6 +293,18 @@ export interface TranslationKeys {
     disconnected: string;
     retry: string;
   };
+
+  // Admin Settings (available during game)
+  adminSettings: {
+    title: string;
+    playerManagement: string;
+    gameSettings: string;
+    lobbyOnlyNote: string;
+    cantKickStoryteller: string;
+    wouldEndGame: string;
+    winTargetWarningTitle: string;
+    winTargetWarningMessage: string;
+  };
 }
 
 /**

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import type { Socket } from "socket.io-client";
 import { RoomState, PlayerState } from "../hooks/useGameState";
 import { ConnectionQuality } from "../hooks/useSocket";
@@ -6,6 +6,7 @@ import { GameBoard } from "../components/GameBoard";
 import { QRCode } from "../components/QRCode";
 import { Modal } from "../components/Modal";
 import * as ModalContent from "../components/ModalContent";
+import { AdminSettingsModal } from "../components/AdminSettingsModal";
 import { ProfileImageUpload } from "../components/ProfileImageUpload";
 import { Button, Icon, IconSize } from "../components/ui";
 import { storage } from "../utils/storage";
@@ -40,6 +41,8 @@ interface UnifiedGamePageProps {
   onResetGame: () => void;
   onNewDeck: () => void;
   onUploadTokenImage: (imageData: string | null) => void;
+  // Demo mode - explicitly passed to distinguish from socket loading
+  isDemoMode?: boolean;
   // Connection status props
   isConnected?: boolean;
   isReconnecting?: boolean;
@@ -74,6 +77,8 @@ export function UnifiedGamePage({
   onResetGame,
   onNewDeck,
   onUploadTokenImage,
+  // Demo mode - explicitly passed, defaults to false for real game
+  isDemoMode = false,
   // Connection status
   isConnected = true,
   isReconnecting = false,
@@ -84,10 +89,25 @@ export function UnifiedGamePage({
 }: UnifiedGamePageProps) {
   const { t } = useTranslation(roomState?.language);
   const [name, setName] = useState("");
+  
+  // Calculate the color the player will actually get when they join
+  // Based on current player count (they'll be the next player)
+  const joinScreenColor = useMemo(() => {
+    const colors = [
+      "#f39c12", // Orange
+      "#3498db", // Blue
+      "#2ecc71", // Green
+      "#e74c3c", // Red
+      "#9b59b6", // Purple
+      "#1abc9c", // Teal
+    ];
+    const nextPlayerIndex = roomState?.players?.length ?? 0;
+    return colors[nextPlayerIndex % colors.length];
+  }, [roomState?.players?.length]); // Recalculate when player count changes
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
   const [clue, setClue] = useState("");
   const [showModal, setShowModal] = useState(false);
-  const [modalType, setModalType] = useState<"settings" | "cards">("cards");
+  const [modalType, setModalType] = useState<"settings" | "cards" | "adminSettings">("cards");
   const [manuallyClosedModal, setManuallyClosedModal] = useState(false);
   const [detectedServerUrl, setDetectedServerUrl] = useState<string | null>(
     null
@@ -128,10 +148,8 @@ export function UnifiedGamePage({
   const [isJoiningSpectator, setIsJoiningSpectator] = useState(false);
   const [isStartingGame, setIsStartingGame] = useState(false);
 
-  // Detect demo mode (no socket connection)
-  const isDemoMode = socket === null;
-
   // In demo mode, reset spectator status (demo always starts fresh)
+  // isDemoMode is now passed explicitly as a prop, so we don't need complex detection
   useEffect(() => {
     if (isDemoMode && isUserSpectator) {
       setIsUserSpectator(false);
@@ -408,6 +426,21 @@ export function UnifiedGamePage({
     });
   };
 
+  const handleConfirmWinTargetChange = (target: number, potentialWinners: string[]) => {
+    const winnerNames = potentialWinners.join(", ");
+    setConfirmModal({
+      isOpen: true,
+      title: t("adminSettings.winTargetWarningTitle"),
+      message: t("adminSettings.winTargetWarningMessage", {
+        target,
+        winners: winnerNames,
+      }),
+      onConfirm: () => {
+        onSetWinTarget(target);
+      },
+    });
+  };
+
   const handleStorytellerSubmit = () => {
     if (selectedCardId && clue.trim()) {
       onStorytellerSubmit(selectedCardId, clue.trim());
@@ -445,26 +478,39 @@ export function UnifiedGamePage({
     setManuallyClosedModal(false); // Clear manual close flag when user opens it
   };
 
-  // JOIN SCREEN (before joining)
+  const openAdminSettings = () => {
+    setModalType("adminSettings");
+    setShowModal(true);
+    setManuallyClosedModal(false);
+  };
+
+  // Check if we're waiting for reconnection (hasJoined but no roomState yet)
+  const isPendingReconnect = !isDemoMode && !roomState && storage.hasJoined.get();
+
+  // RECONNECTING SCREEN (waiting for server state after refresh)
+  if (isPendingReconnect) {
+    return (
+      <div className="unified-game-page reconnecting-state">
+        <ConnectionStatus
+          isConnected={isConnected}
+          isReconnecting={isReconnecting}
+          needsManualReconnect={needsManualReconnect}
+          onRetry={onManualReconnect || (() => {})}
+          t={t}
+        />
+        <div className="reconnecting-container">
+          <div className="reconnecting-spinner" />
+          <p>{t('connection.reconnecting')}</p>
+        </div>
+      </div>
+    );
+  }
+
+  // JOIN SCREEN (only for users who haven't joined before)
   if (!isJoined) {
     // Get server URL with priority: roomState > detected from API > current location
     const serverUrl =
       roomState?.serverUrl || detectedServerUrl || window.location.origin;
-
-    // Calculate player color based on placeholder index
-    const getPlayerColor = () => {
-      const colors = [
-        "#f39c12",
-        "#3498db",
-        "#2ecc71",
-        "#e74c3c",
-        "#9b59b6",
-        "#1abc9c",
-      ];
-      // Use a simple hash of current time for randomness
-      const index = Math.floor(Math.random() * colors.length);
-      return colors[index];
-    };
 
     return (
       <div className="unified-game-page join-state">
@@ -493,7 +539,7 @@ export function UnifiedGamePage({
                   imageUrl={profileImage}
                   onUpload={setProfileImage}
                   onRemove={() => setProfileImage(null)}
-                  playerColor={getPlayerColor()}
+                  playerColor={joinScreenColor}
                   size="large"
                 />
                 <p className="join-profile-hint">{t("join.addPhoto")}</p>
@@ -674,6 +720,19 @@ export function UnifiedGamePage({
               )}
             </button>
           )}
+
+          {/* Admin Settings Button - During active game */}
+          {isAdmin && isInGame && (
+            <button
+              className={`floating-action-button admin-settings-button ${
+                showModal && modalType === "adminSettings" ? "hidden" : ""
+              }`}
+              onClick={openAdminSettings}
+              title={t("adminSettings.title")}
+            >
+              <Icon.Settings size={IconSize.large} />
+            </button>
+          )}
         </>
       )}
 
@@ -842,6 +901,21 @@ export function UnifiedGamePage({
                 t,
               });
             }
+          } else if (modalType === "adminSettings") {
+            // Admin Settings Modal - Available during active game
+            modalContent = AdminSettingsModal({
+              roomState,
+              playerId,
+              isAdmin,
+              isInGame: !!isInGame,
+              onSetBoardPattern,
+              onSetLanguage,
+              onSetWinTarget,
+              onKickPlayer: handleKickPlayer,
+              onPromotePlayer: handlePromotePlayer,
+              onConfirmWinTargetChange: handleConfirmWinTargetChange,
+              t,
+            });
           }
 
           return modalContent ? (

@@ -290,4 +290,16 @@ export const en: TranslationKeys = {
     disconnected: 'Connection lost',
     retry: 'Tap to reconnect',
   },
+
+  // Admin Settings (available during game)
+  adminSettings: {
+    title: 'Admin Settings',
+    playerManagement: 'Player Management',
+    gameSettings: 'Game Settings',
+    lobbyOnlyNote: 'Some settings are only available in the lobby',
+    cantKickStoryteller: "Can't kick during turn",
+    wouldEndGame: 'This would end the game!',
+    winTargetWarningTitle: '⚠️ End Game Early?',
+    winTargetWarningMessage: 'Setting win target to {target} points will end the game! {winners} already has enough points to win. Continue?',
+  },
 };

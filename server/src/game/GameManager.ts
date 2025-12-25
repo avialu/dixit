@@ -203,14 +203,19 @@ export class GameManager {
       throw new Error("Cannot kick yourself");
     }
 
-    // Cannot kick during active game
-    if (this.state.phase !== GamePhase.DECK_BUILDING) {
-      throw new Error("Cannot kick players during an active game");
-    }
-
     const targetPlayer = this.state.players.get(targetPlayerId);
     if (!targetPlayer) {
       throw new Error("Player not found");
+    }
+
+    // Cannot kick the storyteller during their turn
+    if (
+      this.state.storytellerId === targetPlayerId &&
+      (this.state.phase === GamePhase.STORYTELLER_CHOICE ||
+        this.state.phase === GamePhase.PLAYERS_CHOICE ||
+        this.state.phase === GamePhase.VOTING)
+    ) {
+      throw new Error("Cannot kick the storyteller during their turn");
     }
 
     // Transfer their images to the admin instead of deleting
@@ -290,11 +295,6 @@ export class GameManager {
 
   promoteToAdmin(adminId: string, targetPlayerId: string): void {
     this.validateAdmin(adminId);
-
-    // Cannot promote during active game
-    if (this.state.phase !== GamePhase.DECK_BUILDING) {
-      throw new Error("Cannot promote players during an active game");
-    }
 
     const currentAdmin = this.state.players.get(adminId);
     if (!currentAdmin) {
@@ -1016,5 +1016,64 @@ export class GameManager {
 
   getCurrentPhase(): GamePhase {
     return this.state.phase;
+  }
+
+  /**
+   * Check if a player should have cards but doesn't, and deal them if needed.
+   * This is a recovery mechanism for edge cases where a player's hand wasn't properly dealt.
+   * @returns true if cards were dealt, false otherwise
+   */
+  repairPlayerHand(playerId: string): boolean {
+    const player = this.state.players.get(playerId);
+    if (!player) return false;
+
+    // Only repair during active game phases where players need cards
+    const activePhases = [
+      GamePhase.STORYTELLER_CHOICE,
+      GamePhase.PLAYERS_CHOICE,
+      GamePhase.VOTING,
+    ];
+
+    if (!activePhases.includes(this.state.phase)) {
+      return false;
+    }
+
+    // Player has already submitted a card, so they played successfully
+    const hasSubmitted = this.state.submittedCards.some(
+      (sc) => sc.playerId === playerId
+    );
+
+    // Calculate expected hand size
+    // If they haven't submitted: 6 cards
+    // If they have submitted: 5 cards
+    const expectedMinCards = hasSubmitted ? 0 : 1; // At minimum, non-submitters need at least 1 card
+
+    if (player.hand.length >= expectedMinCards) {
+      return false; // Hand is fine
+    }
+
+    // Player needs cards - this is an error recovery scenario
+    const needed = GAME_CONSTANTS.HAND_SIZE - player.hand.length;
+    if (needed > 0 && this.deckManager.getDeckSize() >= needed) {
+      const cards = this.deckManager.drawCards(needed);
+      player.addCards(cards);
+      logger.warn("Repaired player hand - dealt missing cards", {
+        playerId,
+        playerName: player.name,
+        cardsDealt: needed,
+        newHandSize: player.hand.length,
+        phase: this.state.phase,
+        hadSubmitted: hasSubmitted,
+      });
+      return true;
+    }
+
+    logger.error("Cannot repair player hand - not enough cards in deck", {
+      playerId,
+      playerName: player.name,
+      needed,
+      deckSize: this.deckManager.getDeckSize(),
+    });
+    return false;
   }
 }

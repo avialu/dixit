@@ -1561,6 +1561,7 @@ export function DemoPage() {
               playerId={currentPlayerId}
               clientId="demo-client-123"
               socket={null}
+              isDemoMode={true}
               onJoin={mockActions.storytellerSubmit}
               onJoinSpectator={() => console.log("Demo: spectator join")}
               onLeave={() => console.log("Demo: leave")}
@@ -1612,6 +1613,7 @@ export function DemoPage() {
                   },
                 } as any
               }
+              isDemoMode={true}
               onJoin={() => {}}
               onJoinSpectator={() => {}}
               onLeave={() => {}}

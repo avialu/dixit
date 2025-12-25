@@ -293,4 +293,16 @@ export const he: TranslationKeys = {
     disconnected: "החיבור נותק",
     retry: "לחץ להתחברות מחדש",
   },
+
+  // Admin Settings (available during game)
+  adminSettings: {
+    title: "הגדרות מנהל",
+    playerManagement: "ניהול שחקנים",
+    gameSettings: "הגדרות משחק",
+    lobbyOnlyNote: "חלק מההגדרות זמינות רק בלובי",
+    cantKickStoryteller: "לא ניתן להוציא בזמן התור",
+    wouldEndGame: "זה יסיים את המשחק!",
+    winTargetWarningTitle: "⚠️ לסיים את המשחק מוקדם?",
+    winTargetWarningMessage: "הגדרת יעד ניצחון ל-{target} נקודות תסיים את המשחק! ל-{winners} כבר יש מספיק נקודות לנצח. להמשיך?",
+  },
 };

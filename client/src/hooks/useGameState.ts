@@ -70,8 +70,21 @@ export function useGameState(socket: Socket | null) {
     });
 
     socket.on("playerState", (state: PlayerState) => {
+      console.log("Received playerState:", { 
+        playerId: state.playerId, 
+        handSize: state.hand?.length ?? 0,
+        mySubmittedCardId: state.mySubmittedCardId 
+      });
       setPlayerState(state);
     });
+
+    // Request fresh player state when listeners are ready
+    // This ensures we don't miss state updates due to race conditions
+    const clientId = storage.clientId.get();
+    if (clientId && storage.hasJoined.get() && socket.connected) {
+      console.log("Requesting fresh state after listener setup");
+      socket.emit("reconnect", { clientId });
+    }
 
     // Enhanced error handling with severity-based auto-dismiss
     const handleError = (data: GameErrorData) => {
