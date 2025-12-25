@@ -117,6 +117,174 @@ button svg {
 /* .btn-small removed - use UI Button component with size="small" instead */
 /* .btn-delete removed - not used anywhere */
 
+/* Button Loading States */
+.btn-loading {
+  position: relative;
+  pointer-events: none;
+  opacity: 0.85;
+}
+
+.btn-loading .btn-spinner {
+  animation: spin 1s linear infinite;
+}
+
+.btn-loading .btn-loading-text {
+  margin-left: 0.5rem;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Connection Status Banner */
+.connection-banner {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 9999;
+  padding: 0.75rem 1rem;
+  animation: slideDown 0.3s ease-out;
+}
+
+.connection-banner__content {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.connection-banner__message {
+  font-weight: 500;
+  font-size: 0.95rem;
+}
+
+.connection-banner__retry {
+  padding: 0.4rem 0.75rem !important;
+  font-size: 0.85rem !important;
+}
+
+.connection-banner--warning {
+  background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%);
+  color: white;
+  box-shadow: 0 2px 8px rgba(243, 156, 18, 0.4);
+}
+
+.connection-banner--error {
+  background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+  color: white;
+  box-shadow: 0 2px 8px rgba(231, 76, 60, 0.4);
+}
+
+.connection-spinner {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes slideDown {
+  from {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* Latency Indicator */
+.latency-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.75rem;
+  color: #95a5a6;
+  padding: 0.25rem 0.5rem;
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.latency-indicator__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #95a5a6;
+  flex-shrink: 0;
+}
+
+.latency-indicator__text {
+  font-family: monospace;
+  font-size: 0.7rem;
+}
+
+.latency-indicator--good .latency-indicator__dot {
+  background: #2ecc71;
+  box-shadow: 0 0 4px rgba(46, 204, 113, 0.6);
+}
+
+.latency-indicator--medium .latency-indicator__dot {
+  background: #f39c12;
+  box-shadow: 0 0 4px rgba(243, 156, 18, 0.6);
+}
+
+.latency-indicator--poor .latency-indicator__dot {
+  background: #e74c3c;
+  box-shadow: 0 0 4px rgba(231, 76, 60, 0.6);
+  animation: pulse-poor 1s ease-in-out infinite;
+}
+
+.latency-indicator--unknown .latency-indicator__dot {
+  background: #95a5a6;
+  animation: pulse-unknown 1.5s ease-in-out infinite;
+}
+
+.latency-indicator--disconnected {
+  color: #e74c3c;
+}
+
+.latency-indicator--disconnected svg {
+  color: #e74c3c;
+}
+
+@keyframes pulse-poor {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+@keyframes pulse-unknown {
+  0%, 100% {
+    opacity: 0.5;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+/* Latency Indicator Container - Fixed position in corner */
+.latency-indicator-container {
+  position: fixed;
+  bottom: 1rem;
+  left: 1rem;
+  z-index: 100;
+}
+
+/* Hide on very small screens to avoid clutter */
+@media (max-width: 360px) {
+  .latency-indicator-container {
+    display: none;
+  }
+}
+
 /* Input */
 input[type="text"] {
   padding: 0.75rem;
@@ -1049,6 +1217,7 @@ select {
 .game-status-bar {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 0.75rem;
   padding: 0.5rem 1rem;
   background: linear-gradient(
@@ -1094,10 +1263,11 @@ select {
 }
 
 .status-content {
-  flex: 1;
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
+  align-items: center;
+  text-align: center;
 }
 
 .status-text {

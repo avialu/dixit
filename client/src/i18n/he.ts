@@ -17,6 +17,7 @@ export const he: TranslationKeys = {
     joinButton: "הצטרף למשחק",
     spectator: "הצטרף כצופה",
     scanToJoin: "סרוק כדי להצטרף ",
+    joining: "מצטרף...",
   },
 
   // Common UI elements
@@ -124,6 +125,8 @@ export const he: TranslationKeys = {
     selectFiles: "בחר קובץ תמונה אחד או יותר",
     selectFolder: "בחר תיקייה שלמה של תמונות",
     uploadedImage: "תמונה שהועלתה",
+    retrying: "מנסה שוב {name} ({attempt}/{max})...",
+    uploadFailed: "ההעלאה נכשלה אחרי {attempts} ניסיונות",
   },
 
   // Game Phases
@@ -281,5 +284,13 @@ export const he: TranslationKeys = {
   languages: {
     english: "English",
     hebrew: "עברית",
+  },
+
+  // Connection Status
+  connection: {
+    connecting: "מתחבר...",
+    reconnecting: "מתחבר מחדש...",
+    disconnected: "החיבור נותק",
+    retry: "לחץ להתחברות מחדש",
   },
 };

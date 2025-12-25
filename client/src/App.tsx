@@ -16,6 +16,8 @@ function App() {
     isReconnecting,
     needsManualReconnect,
     manualReconnect,
+    latency,
+    connectionQuality,
   } = useSocket();
   const { roomState, playerState, error, actions } = useGameState(socket);
   const { language } = useTranslation(roomState?.language);
@@ -37,34 +39,7 @@ function App() {
   return (
     <BrowserRouter>
       <div className="app">
-        {/* Connection Status Indicator */}
-        {(!isConnected || isReconnecting || needsManualReconnect) && (
-          <div
-            className={`connection-status ${
-              isReconnecting
-                ? "reconnecting"
-                : needsManualReconnect
-                ? "disconnected"
-                : "connecting"
-            }`}
-          >
-            <span className="connection-dot"></span>
-            {isReconnecting && (
-              <span className="connection-text">Reconnecting...</span>
-            )}
-            {needsManualReconnect && (
-              <>
-                <span className="connection-text">Connection Lost</span>
-                <button
-                  className="connection-reconnect-btn"
-                  onClick={manualReconnect}
-                >
-                  Reconnect
-                </button>
-              </>
-            )}
-          </div>
-        )}
+        {/* Connection status is now handled inside UnifiedGamePage */}
 
         {error && (
           <div className={getErrorClass()}>
@@ -112,6 +87,12 @@ function App() {
                 onResetGame={actions.resetGame}
                 onNewDeck={actions.newDeck}
                 onUploadTokenImage={actions.uploadTokenImage}
+                isConnected={isConnected}
+                isReconnecting={isReconnecting}
+                needsManualReconnect={needsManualReconnect}
+                onManualReconnect={manualReconnect}
+                latency={latency}
+                connectionQuality={connectionQuality}
               />
             }
           />

@@ -7,19 +7,23 @@ interface JoinScreenProps {
   serverUrl: string;
   onJoin: (name: string, profileImage: string | null) => void;
   onJoinSpectator: () => void;
+  isJoining?: boolean;
+  isJoiningSpectator?: boolean;
 }
 
 export function JoinScreen({
   serverUrl,
   onJoin,
   onJoinSpectator,
+  isJoining = false,
+  isJoiningSpectator = false,
 }: JoinScreenProps) {
   const [name, setName] = useState("");
   const [profileImage, setProfileImage] = useState<string | null>(null);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (name.trim()) {
+    if (name.trim() && !isJoining) {
       onJoin(name.trim(), profileImage);
     }
   };
@@ -73,7 +77,9 @@ export function JoinScreen({
               type="submit"
               variant="primary"
               size="large"
-              disabled={!name.trim()}
+              disabled={!name.trim() || isJoining || isJoiningSpectator}
+              loading={isJoining}
+              loadingText="Joining..."
             >
               <Icon.Rocket size={IconSize.medium} /> Join Game
             </Button>
@@ -82,6 +88,9 @@ export function JoinScreen({
               variant="secondary"
               size="large"
               onClick={onJoinSpectator}
+              disabled={isJoining || isJoiningSpectator}
+              loading={isJoiningSpectator}
+              loadingText="Joining..."
             >
               👀 Join as Spectator
             </Button>

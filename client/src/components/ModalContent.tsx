@@ -39,6 +39,7 @@ interface LobbyModalProps {
   isAdmin: boolean;
   editingPlayerId: string | null;
   newName: string;
+  socket?: import("socket.io-client").Socket | null; // For upload retry support
   setEditingPlayerId: (id: string | null) => void;
   setNewName: (name: string) => void;
   handleStartEditName: (playerId: string, currentName: string) => void;
@@ -117,6 +118,7 @@ export function LobbyModal(props: LobbyModalProps) {
     isAdmin,
     editingPlayerId,
     newName,
+    socket,
     setNewName,
     handleStartEditName,
     handleSaveName,
@@ -310,6 +312,7 @@ export function LobbyModal(props: LobbyModalProps) {
           <DeckUploader
             roomState={roomState}
             playerId={playerId}
+            socket={socket}
             onUpload={onUploadImage}
             onDelete={onDeleteImage}
             onSetAllowPlayerUploads={onSetAllowPlayerUploads}
