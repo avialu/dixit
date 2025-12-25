@@ -453,7 +453,17 @@ npm start</pre>
 
           logger.playerAction(clientId, "uploaded image", { cardId: card.id });
 
-          broadcastRoomState();
+          // Send the new image to all clients via incremental update (more efficient)
+          io.emit("imageAdded", {
+            id: card.id,
+            uploadedBy: clientId,
+            imageData: card.imageData,
+          });
+          
+          // Send lightweight room state update (without all images)
+          const roomState = gameManager.getRoomState();
+          roomState.serverUrl = serverUrl;
+          io.emit("roomState", roomState);
           
           // Acknowledge successful upload
           socket.emit("uploadImageAck", { success: true, imageId: card.id });
@@ -471,6 +481,9 @@ npm start</pre>
 
         if (deleted) {
           logger.playerAction(clientId, "deleted image", { imageId });
+          
+          // Send incremental delete update
+          io.emit("imageDeleted", { id: imageId });
         }
 
         broadcastRoomState();

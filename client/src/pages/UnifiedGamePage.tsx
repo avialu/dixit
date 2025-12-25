@@ -222,11 +222,8 @@ export function UnifiedGamePage({
   // Reset local submission state when phase changes
   useEffect(() => {
     const phase = roomState?.phase;
-    // Clear local submissions when leaving STORYTELLER_CHOICE or PLAYERS_CHOICE
-    if (phase !== "STORYTELLER_CHOICE") {
-      setLocalSubmittedCardId(null);
-    }
-    if (phase !== "PLAYERS_CHOICE") {
+    // Clear local submissions when leaving BOTH STORYTELLER_CHOICE and PLAYERS_CHOICE phases
+    if (phase !== "STORYTELLER_CHOICE" && phase !== "PLAYERS_CHOICE") {
       setLocalSubmittedCardId(null);
     }
     // Clear local vote when leaving VOTING phase
@@ -277,12 +274,14 @@ export function UnifiedGamePage({
       shouldAutoOpen = true;
     }
 
-    if (shouldAutoOpen && !manuallyClosedModal) {
-      // Only auto-open if user hasn't manually closed it
+    if (shouldAutoOpen && !manuallyClosedModal && !showModal && modalType !== "adminSettings") {
+      // Only auto-open if user hasn't manually closed it AND modal isn't already open
+      // Don't override adminSettings modal
       setModalType("cards");
       setShowModal(true);
-    } else if (phase === "DECK_BUILDING") {
+    } else if (phase === "DECK_BUILDING" && modalType !== "adminSettings") {
       // When returning to deck building (e.g., after game reset), close modal
+      // But don't close if admin settings are open
       setShowModal(false);
       setManuallyClosedModal(false);
     }
@@ -628,7 +627,7 @@ export function UnifiedGamePage({
           {/* Cards Button - All Players */}
           <button
             className={`floating-action-button cards-button ${
-              showModal && modalType === "cards" ? "hidden" : ""
+              showModal ? "hidden" : ""
             }`}
             onClick={openCards}
             title={
@@ -662,7 +661,7 @@ export function UnifiedGamePage({
           </button>
 
           {/* QR Button - Show when QR is closed during deck building */}
-          {!isInGame && !showQR && (
+          {!isInGame && !showQR && !showModal && (
             <button
               className="floating-action-button qr-button"
               onClick={() => setShowQR(true)}
@@ -673,7 +672,7 @@ export function UnifiedGamePage({
           )}
 
           {/* Admin Start Game Button - During deck building */}
-          {isAdmin && !isInGame && (
+          {isAdmin && !isInGame && !showModal && (
             <button
               className={`floating-action-button start-game-button ${isStartingGame ? "btn-loading" : ""}`}
               onClick={() => {
@@ -722,11 +721,9 @@ export function UnifiedGamePage({
           )}
 
           {/* Admin Settings Button - During active game */}
-          {isAdmin && isInGame && (
+          {isAdmin && isInGame && !showModal && (
             <button
-              className={`floating-action-button admin-settings-button ${
-                showModal && modalType === "adminSettings" ? "hidden" : ""
-              }`}
+              className="floating-action-button admin-settings-button"
               onClick={openAdminSettings}
               title={t("adminSettings.title")}
             >
@@ -737,12 +734,10 @@ export function UnifiedGamePage({
       )}
 
       {/* Floating Action Buttons - For Spectators (only in deck building) */}
-      {isJoined && isSpectator && !isInGame && (
+      {isJoined && isSpectator && !isInGame && !showModal && (
         <>
           <button
-            className={`floating-action-button cards-button ${
-              showModal && modalType === "cards" ? "hidden" : ""
-            }`}
+            className="floating-action-button cards-button"
             onClick={openCards}
             title="Players"
           >

@@ -10,7 +10,7 @@ import { TranslationKeys } from "./types";
 export const he: TranslationKeys = {
   // Join Screen
   join: {
-    title: "s",
+    title: "דיקסיט",
     tagline: "משחק של סיפור יצירתי",
     enterName: "הכנס את שמך",
     addPhoto: "הוסף תמונת פרופיל",
@@ -303,6 +303,7 @@ export const he: TranslationKeys = {
     cantKickStoryteller: "לא ניתן להוציא בזמן התור",
     wouldEndGame: "זה יסיים את המשחק!",
     winTargetWarningTitle: "⚠️ לסיים את המשחק מוקדם?",
-    winTargetWarningMessage: "הגדרת יעד ניצחון ל-{target} נקודות תסיים את המשחק! ל-{winners} כבר יש מספיק נקודות לנצח. להמשיך?",
+    winTargetWarningMessage:
+      "הגדרת יעד ניצחון ל-{target} נקודות תסיים את המשחק! ל-{winners} כבר יש מספיק נקודות לנצח. להמשיך?",
   },
 };

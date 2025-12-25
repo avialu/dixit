@@ -43,6 +43,7 @@ export interface PlayerState {
   playerId: string;
   hand: Card[];
   mySubmittedCardId: string | null;
+  mySubmittedCardImage: string | null;
   myVote: string | null;
 }
 
@@ -66,7 +67,41 @@ export function useGameState(socket: Socket | null) {
     let errorDismissTimeout: NodeJS.Timeout | null = null;
 
     socket.on("roomState", (state: RoomState) => {
-      setRoomState(state);
+      setRoomState((prevState) => {
+        // If we have cached images and the new state has empty deckImages,
+        // preserve our cached images (server sends empty during active game for efficiency)
+        if (prevState && prevState.deckImages.length > 0 && state.deckImages.length === 0) {
+          return { ...state, deckImages: prevState.deckImages };
+        }
+        return state;
+      });
+    });
+
+    // Incremental image updates - much more efficient than sending all images
+    socket.on("imageAdded", (image: { id: string; uploadedBy: string; imageData: string }) => {
+      setRoomState((prevState) => {
+        if (!prevState) return prevState;
+        // Avoid duplicates
+        if (prevState.deckImages.some((img) => img.id === image.id)) {
+          return prevState;
+        }
+        return {
+          ...prevState,
+          deckImages: [...prevState.deckImages, image],
+          deckSize: prevState.deckSize + 1,
+        };
+      });
+    });
+
+    socket.on("imageDeleted", (data: { id: string }) => {
+      setRoomState((prevState) => {
+        if (!prevState) return prevState;
+        return {
+          ...prevState,
+          deckImages: prevState.deckImages.filter((img) => img.id !== data.id),
+          deckSize: Math.max(0, prevState.deckSize - 1),
+        };
+      });
     });
 
     socket.on("playerState", (state: PlayerState) => {
@@ -152,6 +187,8 @@ export function useGameState(socket: Socket | null) {
 
       socket.off("roomState");
       socket.off("playerState");
+      socket.off("imageAdded");
+      socket.off("imageDeleted");
       socket.off("error");
       socket.off("gameError");
       socket.off("validationError");

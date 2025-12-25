@@ -81,15 +81,15 @@ button svg {
 }
 
 .btn-continue {
-  padding: 1.25rem 2rem;
-  font-size: 1.2rem;
+  padding: 0.65rem 1.25rem;
+  font-size: 0.95rem;
   font-weight: bold;
   background: linear-gradient(135deg, #27ae60 0%, #2ecc71 100%);
   color: white;
-  border: 3px solid rgba(255, 255, 255, 0.3);
-  border-radius: 12px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 8px;
   cursor: pointer;
-  box-shadow: 0 8px 24px rgba(39, 174, 96, 0.4);
+  box-shadow: 0 4px 16px rgba(39, 174, 96, 0.4);
   transition: all 0.3s ease;
   animation: pulse-glow-green 2s ease-in-out infinite;
 }
@@ -2958,6 +2958,7 @@ select {
   border: 2px solid rgba(74, 144, 226, 0.2);
   transition: all 0.3s ease;
   gap: 1rem;
+  min-height: 70px; /* Consistent height for all player cards */
 }
 
 .player-token-preview {
@@ -3083,7 +3084,8 @@ select {
   align-items: center;
   gap: 0.5rem;
   flex: 1;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  min-height: 32px; /* Consistent height for all player cards */
 }
 
 .player-name {
@@ -3113,7 +3115,8 @@ select {
   align-items: center;
   gap: 0.5rem;
   margin-left: auto;
-  grid-column: 1 / -1; /* Grid placement when used in grid layouts */
+  min-height: 32px; /* Consistent height for all player cards */
+  flex-shrink: 0;
 }
 
 .btn-make-admin {

@@ -419,10 +419,6 @@ export class GameManager {
   setWinTarget(target: number | null, adminId: string): void {
     this.validateAdmin(adminId);
 
-    if (this.state.phase !== GamePhase.DECK_BUILDING) {
-      throw new Error("Can only change win target during deck building");
-    }
-
     // Validate target is a reasonable number if not null
     if (target !== null && (target < 1 || target > 100)) {
       throw new Error("Win target must be between 1 and 100 points");
@@ -468,10 +464,6 @@ export class GameManager {
   setBoardPattern(pattern: "snake" | "spiral", adminId: string): void {
     this.validateAdmin(adminId);
 
-    if (this.state.phase !== GamePhase.DECK_BUILDING) {
-      throw new Error("Can only change board pattern during deck building");
-    }
-
     this.state.boardPattern = pattern;
     logger.info("Board pattern updated", { adminId, pattern });
   }
@@ -490,7 +482,6 @@ export class GameManager {
     const card = this.deckManager.addImage(imageData, playerId);
     return card;
   }
-
 
   deleteImage(cardId: string, playerId: string): boolean {
     return this.deckManager.deleteImage(cardId, playerId);
@@ -513,7 +504,7 @@ export class GameManager {
         [GamePhase.PLAYERS_CHOICE]: "Players' Turn",
         [GamePhase.VOTING]: "Voting",
         [GamePhase.REVEAL]: "Results",
-        [GamePhase.GAME_END]: "Game Over"
+        [GamePhase.GAME_END]: "Game Over",
       };
       const currentPhaseName = phaseNames[this.state.phase] || this.state.phase;
       throw new GameStateError(
@@ -884,11 +875,16 @@ export class GameManager {
       tokenImage: p.tokenImage,
     }));
 
-    const deckImages = this.deckManager.getAllCards().map((c) => ({
-      id: c.id,
-      uploadedBy: c.uploadedBy,
-      imageData: c.imageData, // Include image data for thumbnails
-    }));
+    // Only send full deck images during DECK_BUILDING (for thumbnails in deck uploader)
+    // During active game, deck images aren't needed - reduces payload significantly
+    const deckImages =
+      this.state.phase === GamePhase.DECK_BUILDING
+        ? this.deckManager.getAllCards().map((c) => ({
+            id: c.id,
+            uploadedBy: c.uploadedBy,
+            imageData: c.imageData,
+          }))
+        : [];
 
     // Reveal cards only in appropriate phases
     const revealedCards =
@@ -953,10 +949,16 @@ export class GameManager {
     );
     const myVote = this.state.votes.find((v) => v.voterId === playerId);
 
+    // Get the submitted card's image data so client can display it
+    const mySubmittedCardImage = mySubmittedCard
+      ? this.submittedCardsData.get(mySubmittedCard.cardId) || null
+      : null;
+
     return {
       playerId,
       hand: player.hand,
       mySubmittedCardId: mySubmittedCard?.cardId || null,
+      mySubmittedCardImage,
       myVote: myVote?.cardId || null,
     };
   }
@@ -1044,9 +1046,11 @@ export class GameManager {
     );
 
     // Calculate expected hand size
-    // If they haven't submitted: 6 cards
-    // If they have submitted: 5 cards
-    const expectedMinCards = hasSubmitted ? 0 : 1; // At minimum, non-submitters need at least 1 card
+    // If they haven't submitted: HAND_SIZE cards (typically 6)
+    // If they have submitted: HAND_SIZE - 1 cards (typically 5)
+    const expectedMinCards = hasSubmitted
+      ? GAME_CONSTANTS.HAND_SIZE - 1
+      : GAME_CONSTANTS.HAND_SIZE;
 
     if (player.hand.length >= expectedMinCards) {
       return false; // Hand is fine
