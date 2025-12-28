@@ -14,6 +14,13 @@ export class DeckManager {
     this.adminId = adminId;
   }
 
+  /**
+   * Update the admin ID (e.g., when admin is transferred)
+   */
+  setAdmin(adminId: string): void {
+    this.adminId = adminId;
+  }
+
   setAllowPlayerUploads(allow: boolean): void {
     if (this.locked) {
       throw new Error("Cannot change upload settings: deck is locked");

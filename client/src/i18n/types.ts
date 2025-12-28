@@ -238,6 +238,8 @@ export interface TranslationKeys {
     waiting: string;
     waitingForAdmin: string;
     playerCard: string;
+    votedBy: string;
+    noVotes: string;
   };
 
   // Game End Phase
@@ -264,6 +266,14 @@ export interface TranslationKeys {
     logoutWarningMessage: string;
     deleteImageTitle: string;
     deleteImageMessage: string;
+    forcePhaseTitle: string;
+    forcePhaseMessage: string;
+  };
+
+  // Admin Force Phase
+  forcePhase: {
+    button: string;
+    tooltip: string;
   };
 
   // Error Messages

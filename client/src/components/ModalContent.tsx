@@ -90,6 +90,8 @@ interface PlayerChoiceModalProps {
   setSelectedCardId: (id: string | null) => void;
   handlePlayerSubmit: () => void;
   onTimerExpired?: () => void;
+  isAdmin?: boolean;
+  onForcePhase?: () => void;
   t: (key: string, values?: Record<string, string | number>) => string;
 }
 
@@ -100,9 +102,11 @@ interface VotingModalProps {
   localVotedCardId: string | null;
   isStoryteller: boolean;
   isSpectator: boolean;
+  isAdmin?: boolean;
   setSelectedCardId: (id: string | null) => void;
   handleVote: () => void;
   onTimerExpired?: () => void;
+  onForcePhase?: () => void;
   t: (key: string, values?: Record<string, string | number>) => string;
 }
 
@@ -721,6 +725,8 @@ export function PlayerChoiceModal(
     setSelectedCardId,
     handlePlayerSubmit,
     onTimerExpired,
+    isAdmin,
+    onForcePhase,
     t,
   } = props;
 
@@ -790,6 +796,19 @@ export function PlayerChoiceModal(
     </>
   );
 
+  // Admin Force Continue button (only when submitted and waiting for others)
+  const forceButton =
+    isSubmitted && isAdmin && onForcePhase && waitingForPlayers.length > 0 ? (
+      <Button
+        variant="secondary"
+        size="small"
+        onClick={onForcePhase}
+        title={t("forcePhase.tooltip")}
+      >
+        <Icon.ArrowForward size={IconSize.small} /> {t("forcePhase.button")}
+      </Button>
+    ) : null;
+
   const footer = !isSubmitted ? (
     <Button
       variant="primary"
@@ -799,7 +818,9 @@ export function PlayerChoiceModal(
     >
       {t("playerChoice.submitCard")}
     </Button>
-  ) : null;
+  ) : (
+    forceButton
+  );
 
   return {
     header,
@@ -824,8 +845,10 @@ export function WaitingStorytellerModal(props: {
   playerState: PlayerState | null;
   roomState: RoomState;
   t: (key: string, values?: Record<string, string | number>) => string;
+  isAdmin?: boolean;
+  onForcePhase?: () => void;
 }): ModalContentResult {
-  const { roomState, t } = props;
+  const { roomState, t, isAdmin, onForcePhase } = props;
 
   // Get storyteller name
   const storyteller = roomState.players.find(
@@ -848,9 +871,22 @@ export function WaitingStorytellerModal(props: {
     </>
   );
 
+  // Admin can force the phase to continue
+  const footer =
+    isAdmin && onForcePhase ? (
+      <Button
+        variant="secondary"
+        size="small"
+        onClick={onForcePhase}
+        title={t("forcePhase.tooltip")}
+      >
+        <Icon.ArrowForward size={IconSize.small} /> {t("forcePhase.button")}
+      </Button>
+    ) : null;
+
   return {
     header,
-    footer: null,
+    footer,
     timer: timerElement,
     content: (
       <>
@@ -872,8 +908,10 @@ export function WaitingPlayersModal(props: {
   playerState: PlayerState | null;
   roomState: RoomState;
   t: (key: string, values?: Record<string, string | number>) => string;
+  isAdmin?: boolean;
+  onForcePhase?: () => void;
 }): ModalContentResult {
-  const { playerState, roomState, t } = props;
+  const { playerState, roomState, t, isAdmin, onForcePhase } = props;
 
   // Get storyteller name
   const storyteller = roomState.players.find(
@@ -922,9 +960,22 @@ export function WaitingPlayersModal(props: {
     </>
   );
 
+  // Admin can force the phase to continue
+  const footer =
+    isAdmin && onForcePhase ? (
+      <Button
+        variant="secondary"
+        size="small"
+        onClick={onForcePhase}
+        title={t("forcePhase.tooltip")}
+      >
+        <Icon.ArrowForward size={IconSize.small} /> {t("forcePhase.button")}
+      </Button>
+    ) : null;
+
   return {
     header,
-    footer: null,
+    footer,
     timer: timerElement,
     content: (
       <div className="modal-hand">
@@ -949,9 +1000,11 @@ export function VotingModal(props: VotingModalProps): ModalContentResult {
     localVotedCardId,
     isStoryteller,
     isSpectator,
+    isAdmin,
     setSelectedCardId,
     handleVote,
     onTimerExpired,
+    onForcePhase,
     t,
   } = props;
 
@@ -1051,6 +1104,19 @@ export function VotingModal(props: VotingModalProps): ModalContentResult {
     </>
   );
 
+  // Admin Force Continue button
+  const forceButton =
+    isAdmin && onForcePhase && !allVotesIn ? (
+      <Button
+        variant="secondary"
+        size="small"
+        onClick={onForcePhase}
+        title={t("forcePhase.tooltip")}
+      >
+        <Icon.ArrowForward size={IconSize.small} /> {t("forcePhase.button")}
+      </Button>
+    ) : null;
+
   const footer = canVote ? (
     <Button
       variant="primary"
@@ -1060,13 +1126,25 @@ export function VotingModal(props: VotingModalProps): ModalContentResult {
     >
       {t("voting.submitVote")}
     </Button>
-  ) : hasVoted && !allVotesIn && waitingForPlayers.length > 0 ? (
-    <p style={{ color: "#95a5a6", margin: 0 }}>
-      ⏳{" "}
-      {t("storyteller.waitingFor", {
-        names: formatWaitingFor(waitingForPlayers),
-      })}
-    </p>
+  ) : (hasVoted || isStoryteller) && !allVotesIn ? (
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        gap: "0.5rem",
+        alignItems: "center",
+      }}
+    >
+      {waitingForPlayers.length > 0 && (
+        <p style={{ color: "#95a5a6", margin: 0 }}>
+          ⏳{" "}
+          {t("storyteller.waitingFor", {
+            names: formatWaitingFor(waitingForPlayers),
+          })}
+        </p>
+      )}
+      {forceButton}
+    </div>
   ) : null;
 
   return {
@@ -1163,6 +1241,7 @@ export function RevealModal(props: RevealModalProps): ModalContentResult {
           storytellerCardId={storytellerCardId || null}
           showResults={true}
           scoreDeltas={scoreDeltas}
+          t={t}
         />
       </div>
     ),

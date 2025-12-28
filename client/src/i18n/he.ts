@@ -237,6 +237,8 @@ export const he: TranslationKeys = {
     waiting: "ממתין...",
     waitingForAdmin: "ממתין ל-{name} להמשיך...",
     playerCard: "הקלף של {name}",
+    votedBy: "הצביעו",
+    noVotes: "אין הצבעות!",
   },
 
   // Game End Phase
@@ -264,6 +266,15 @@ export const he: TranslationKeys = {
       "יש לך {count} תמונות שהועלו בחפיסה. אם תתנתק, התמונות האלה יוסרו לצמיתות מהמשחק. האם אתה בטוח שברצונך להתנתק?",
     deleteImageTitle: "מחק תמונה",
     deleteImageMessage: "האם אתה בטוח שברצונך למחוק תמונה זו מהחפיסה?",
+    forcePhaseTitle: "המשך בכפייה",
+    forcePhaseMessage:
+      "לדלג על ההמתנה ולהגיש אוטומטית עבור שחקנים לא פעילים? פעולה זו תבחר באופן אקראי קלפים/הצבעות עבור שחקנים שטרם פעלו.",
+  },
+
+  // Admin Force Phase
+  forcePhase: {
+    button: "המשך בכפייה",
+    tooltip: "דלג על ההמתנה והגש אוטומטית עבור שחקנים לא פעילים",
   },
 
   // Error Messages

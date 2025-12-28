@@ -562,6 +562,20 @@ export function UnifiedGamePage({
     setSelectedCardId(null);
   };
 
+  // Admin force phase handler - shows confirmation before forcing
+  const handleForcePhase = () => {
+    setConfirmModal({
+      isOpen: true,
+      title: t("confirm.forcePhaseTitle"),
+      message: t("confirm.forcePhaseMessage"),
+      onConfirm: () => {
+        if (socket) {
+          socket.emit("adminForcePhase");
+        }
+      },
+    });
+  };
+
   const openCards = () => {
     setModalType("cards");
     setShowModal(true);
@@ -736,6 +750,13 @@ export function UnifiedGamePage({
           showQR={showQR}
           onCloseQR={() => setShowQR(false)}
           revealModalOpen={showModal && roomState.phase === "REVEAL"}
+          onAdvanceRound={() => {
+            if (socket) {
+              socket.emit("advanceRound");
+            } else {
+              _onAdvanceRound();
+            }
+          }}
         />
       </div>
 
@@ -984,6 +1005,8 @@ export function UnifiedGamePage({
                   playerState,
                   roomState,
                   t,
+                  isAdmin,
+                  onForcePhase: handleForcePhase,
                 });
               }
             }
@@ -998,6 +1021,8 @@ export function UnifiedGamePage({
                   setSelectedCardId,
                   handlePlayerSubmit,
                   onTimerExpired: handlePlayerTimerExpired,
+                  isAdmin,
+                  onForcePhase: handleForcePhase,
                   t,
                 });
               } else {
@@ -1005,6 +1030,8 @@ export function UnifiedGamePage({
                   playerState,
                   roomState,
                   t,
+                  isAdmin,
+                  onForcePhase: handleForcePhase,
                 });
               }
             }
@@ -1017,9 +1044,11 @@ export function UnifiedGamePage({
                 localVotedCardId,
                 isStoryteller,
                 isSpectator,
+                isAdmin,
                 setSelectedCardId,
                 handleVote,
                 onTimerExpired: handleVoteTimerExpired,
+                onForcePhase: handleForcePhase,
                 t,
               });
             }

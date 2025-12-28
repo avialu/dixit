@@ -1,6 +1,6 @@
 /**
  * Lightweight i18n System - Zero Dependencies
- * 
+ *
  * Custom internationalization solution with:
  * - Type-safe translations
  * - React hook for easy usage
@@ -8,11 +8,11 @@
  * - No external libraries needed
  */
 
-import { useState, useEffect } from 'react';
-import { Language, TranslationKeys } from './types';
-import { en } from './en';
-import { he } from './he';
-import { storage } from '../utils/storage';
+import { useState, useEffect } from "react";
+import { Language, TranslationKeys } from "./types";
+import { en } from "./en";
+import { he } from "./he";
+import { storage } from "../utils/storage";
 
 /**
  * All available translations
@@ -27,8 +27,8 @@ const translations: Record<Language, TranslationKeys> = {
  */
 function getBrowserLanguage(): Language {
   const browserLang = navigator.language.toLowerCase();
-  if (browserLang.startsWith('he')) return 'he';
-  return 'en'; // Default to English
+  if (browserLang.startsWith("he")) return "he";
+  return "en"; // Default to English
 }
 
 /**
@@ -77,7 +77,7 @@ export function hasPlayerLanguageOverride(): boolean {
 
 /**
  * Translation function with template support
- * 
+ *
  * Examples:
  * - t('join.title') → "DIXIT"
  * - t('status.needMoreImages', { count: 5 }) → "Need 5 more images to start"
@@ -85,11 +85,19 @@ export function hasPlayerLanguageOverride(): boolean {
  */
 type TemplateValues = Record<string, string | number>;
 
+/**
+ * Type for the translation function
+ */
+export type TranslateFunction = (
+  key: string,
+  values?: TemplateValues
+) => string;
+
 function interpolate(template: string, values?: TemplateValues): string {
   if (!values) return template;
-  
+
   return Object.entries(values).reduce((result, [key, value]) => {
-    return result.replace(new RegExp(`\\{${key}\\}`, 'g'), String(value));
+    return result.replace(new RegExp(`\\{${key}\\}`, "g"), String(value));
   }, template);
 }
 
@@ -97,15 +105,15 @@ function interpolate(template: string, values?: TemplateValues): string {
  * Get nested translation value from translation object
  */
 function getNestedValue(obj: any, path: string): string | undefined {
-  const keys = path.split('.');
+  const keys = path.split(".");
   let current = obj;
-  
+
   for (const key of keys) {
     if (current === undefined || current === null) return undefined;
     current = current[key];
   }
-  
-  return typeof current === 'string' ? current : undefined;
+
+  return typeof current === "string" ? current : undefined;
 }
 
 /**
@@ -114,7 +122,7 @@ function getNestedValue(obj: any, path: string): string | undefined {
 export function createTranslationFunction(language: Language) {
   return function t(key: string, values?: TemplateValues): string {
     const translation = getNestedValue(translations[language], key);
-    
+
     if (translation === undefined) {
       // Fallback to English if translation not found
       const fallback = getNestedValue(translations.en, key);
@@ -124,25 +132,25 @@ export function createTranslationFunction(language: Language) {
       }
       return interpolate(fallback, values);
     }
-    
+
     return interpolate(translation, values);
   };
 }
 
 /**
  * React Hook for translations
- * 
+ *
  * Usage:
  * ```tsx
  * function MyComponent({ roomState }) {
  *   const { t, language } = useTranslation(roomState?.language);
- *   
+ *
  *   return <h1>{t('join.title')}</h1>;
  * }
  * ```
  */
 export function useTranslation(roomLanguage?: Language | null) {
-  const [currentLanguage, setCurrentLanguage] = useState<Language>(() => 
+  const [currentLanguage, setCurrentLanguage] = useState<Language>(() =>
     getLanguage(roomLanguage)
   );
 
@@ -157,14 +165,14 @@ export function useTranslation(roomLanguage?: Language | null) {
   // Listen for storage changes (when player changes language in another tab)
   useEffect(() => {
     const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === 'dixit-playerLanguage') {
+      if (e.key === "dixit-playerLanguage") {
         const newLanguage = getLanguage(roomLanguage);
         setCurrentLanguage(newLanguage);
       }
     };
 
-    window.addEventListener('storage', handleStorageChange);
-    return () => window.removeEventListener('storage', handleStorageChange);
+    window.addEventListener("storage", handleStorageChange);
+    return () => window.removeEventListener("storage", handleStorageChange);
   }, [roomLanguage]);
 
   const t = createTranslationFunction(currentLanguage);
@@ -172,24 +180,24 @@ export function useTranslation(roomLanguage?: Language | null) {
   return {
     t,
     language: currentLanguage,
-    isRTL: currentLanguage === 'he',
+    isRTL: currentLanguage === "he",
   };
 }
 
 /**
  * Get direction for language (for HTML dir attribute)
  */
-export function getLanguageDirection(language: Language): 'ltr' | 'rtl' {
-  return language === 'he' ? 'rtl' : 'ltr';
+export function getLanguageDirection(language: Language): "ltr" | "rtl" {
+  return language === "he" ? "rtl" : "ltr";
 }
 
 /**
  * Alias for getLanguageDirection (for convenience)
  */
-export function getTextDirection(language: Language): 'ltr' | 'rtl' {
+export function getTextDirection(language: Language): "ltr" | "rtl" {
   return getLanguageDirection(language);
 }
 
 // Re-export types and translations for convenience
-export type { Language, TranslationKeys } from './types';
+export type { Language, TranslationKeys } from "./types";
 export { en, he };

@@ -238,6 +238,8 @@ export const en: TranslationKeys = {
     waiting: "Waiting...",
     waitingForAdmin: "Waiting for {name} to continue...",
     playerCard: "{name}'s card",
+    votedBy: "Voted by",
+    noVotes: "No votes!",
   },
 
   // Game End Phase
@@ -267,6 +269,15 @@ export const en: TranslationKeys = {
     deleteImageTitle: "Delete Image",
     deleteImageMessage:
       "Are you sure you want to delete this image from the deck?",
+    forcePhaseTitle: "Force Continue",
+    forcePhaseMessage:
+      "Skip waiting and auto-submit for inactive players? This will randomly select cards/votes for players who haven't acted yet.",
+  },
+
+  // Admin Force Phase
+  forcePhase: {
+    button: "Force Continue",
+    tooltip: "Skip waiting and auto-submit for inactive players",
   },
 
   // Error Messages
