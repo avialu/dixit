@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import type { Socket } from "socket.io-client";
 import { RoomState, PlayerState } from "../hooks/useGameState";
 import { ConnectionQuality } from "../hooks/useSocket";
@@ -155,6 +155,11 @@ export function UnifiedGamePage({
   const [isJoiningSpectator, setIsJoiningSpectator] = useState(false);
   const [isStartingGame, setIsStartingGame] = useState(false);
 
+  // State for REVEAL phase continue button (uses server timer as source of truth)
+  const [hasAdvancedRound, setHasAdvancedRound] = useState(false);
+  const [revealSecondsLeft, setRevealSecondsLeft] = useState(30);
+  const lastRoundForTimer = useRef<number>(-1);
+
   // In demo mode, reset spectator status (demo always starts fresh)
   // isDemoMode is now passed explicitly as a prop, so we don't need complex detection
   useEffect(() => {
@@ -257,6 +262,50 @@ export function UnifiedGamePage({
   const myPlayer = roomState?.players.find((p) => p.id === playerId);
   const isAdmin = myPlayer?.isAdmin || false;
   const isStoryteller = roomState?.storytellerId === playerId;
+
+  // Reset hasAdvancedRound when entering a new round
+  useEffect(() => {
+    if (roomState?.phase === "REVEAL" && roomState.currentRound !== lastRoundForTimer.current) {
+      lastRoundForTimer.current = roomState.currentRound;
+      setHasAdvancedRound(false);
+    }
+  }, [roomState?.phase, roomState?.currentRound]);
+
+  // Handle advancing to next round
+  const handleAdvanceRound = useCallback(() => {
+    if (!hasAdvancedRound) {
+      setHasAdvancedRound(true);
+      if (socket) {
+        socket.emit("advanceRound");
+      } else {
+        _onAdvanceRound();
+      }
+    }
+  }, [hasAdvancedRound, socket, _onAdvanceRound]);
+
+  // Sync revealSecondsLeft with server timer (one source of truth)
+  useEffect(() => {
+    if (roomState?.phase !== "REVEAL" || hasAdvancedRound) {
+      return;
+    }
+
+    // Calculate remaining time from server phaseStartTime and phaseDuration
+    const updateTimer = () => {
+      if (roomState?.phaseStartTime && roomState?.phaseDuration) {
+        const elapsed = Math.floor((Date.now() - roomState.phaseStartTime) / 1000);
+        const remaining = Math.max(0, roomState.phaseDuration - elapsed);
+        setRevealSecondsLeft(remaining);
+      }
+    };
+
+    // Initial update
+    updateTimer();
+
+    // Update every second
+    const interval = setInterval(updateTimer, 1000);
+
+    return () => clearInterval(interval);
+  }, [roomState?.phase, roomState?.phaseStartTime, roomState?.phaseDuration, hasAdvancedRound]);
 
   // Auto-open modal for game phases where player needs to take action
   useEffect(() => {
@@ -756,13 +805,6 @@ export function UnifiedGamePage({
           showQR={showQR}
           onCloseQR={() => setShowQR(false)}
           revealModalOpen={showModal && roomState.phase === "REVEAL"}
-          onAdvanceRound={() => {
-            if (socket) {
-              socket.emit("advanceRound");
-            } else {
-              _onAdvanceRound();
-            }
-          }}
         />
       </div>
 
@@ -916,6 +958,23 @@ export function UnifiedGamePage({
               <Icon.Settings size={IconSize.large} />
             </button>
           )}
+
+          {/* Admin Continue Button - During REVEAL phase */}
+          {isAdmin && roomState.phase === "REVEAL" && (
+            <button
+              className="floating-action-button continue-button"
+              onClick={handleAdvanceRound}
+              disabled={hasAdvancedRound}
+              title={t("reveal.continue")}
+            >
+              <Icon.ArrowForward size={IconSize.medium} />{" "}
+              <span className="continue-button-text">
+                {hasAdvancedRound
+                  ? t("reveal.autoAdvance")
+                  : t("reveal.continueIn", { seconds: revealSecondsLeft })}
+              </span>
+            </button>
+          )}
         </div>
       )}
 
@@ -952,22 +1011,6 @@ export function UnifiedGamePage({
         </div>
       )}
 
-      {/* Admin Continue Button - During REVEAL phase on board */}
-      {isJoined && isAdmin && roomState.phase === "REVEAL" && !showModal && (
-        <button
-          className="floating-action-button continue-button"
-          onClick={() => {
-            if (socket) {
-              socket.emit("advanceRound");
-            } else {
-              // Demo mode fallback
-              _onAdvanceRound();
-            }
-          }}
-        >
-          <Icon.ArrowForward size={IconSize.medium} /> Continue
-        </button>
-      )}
 
       {/* Modal Popup - Shows when player needs to act */}
       {showModal &&

@@ -102,6 +102,8 @@ export const he: TranslationKeys = {
   deckUploader: {
     deck: "חפיסה",
     myImages: "התמונות שלי",
+    maxImages: "מקסימום 200",
+    minPlayers: "מינימום 3",
     allImages: "כל התמונות",
     needMore: "דרושות עוד {count}",
     needMorePlayers: "דרושים עוד {count} שחקנים",
@@ -234,6 +236,9 @@ export const he: TranslationKeys = {
     storytellerClue: "רמז מספר הסיפור",
     storytellerClueWithName: "הרמז של {name}",
     continue: "המשך",
+    continueIn: "המשך ({seconds}ש)",
+    autoAdvance: "ממשיך אוטומטית...",
+    waitingWithTimer: "סיבוב הבא בעוד {seconds}ש...",
     waiting: "ממתין...",
     waitingForAdmin: "ממתין ל-{name} להמשיך...",
     playerCard: "הקלף של {name}",

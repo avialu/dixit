@@ -103,6 +103,8 @@ export const en: TranslationKeys = {
   deckUploader: {
     deck: "Deck",
     myImages: "My Images",
+    maxImages: "Maximum 200",
+    minPlayers: "Minimum 3",
     allImages: "All Images",
     needMore: "Need {count} more",
     needMorePlayers: "Need {count} more players",
@@ -235,6 +237,9 @@ export const en: TranslationKeys = {
     storytellerClue: "Storyteller Clue",
     storytellerClueWithName: "{name}'s Clue",
     continue: "Continue",
+    continueIn: "Continue ({seconds}s)",
+    autoAdvance: "Auto-advancing...",
+    waitingWithTimer: "Next round in {seconds}s...",
     waiting: "Waiting...",
     waitingForAdmin: "Waiting for {name} to continue...",
     playerCard: "{name}'s card",

@@ -226,6 +226,8 @@ const generateMockRoomState = (
           { voterId: "4", cardId: "c2" }, // Diana voted for Bob's card
         ],
         lastScoreDeltas: deltas,
+        phaseStartTime: Date.now(), // Timer for reveal phase
+        phaseDuration: 30, // 30 seconds for reveal
       };
 
     case "GAME_END":
@@ -681,6 +683,9 @@ export function DemoPage() {
     } else if (flowPhase === "VOTING") {
       phaseStartTime = Date.now();
       phaseDuration = 30; // 30 seconds for voting
+    } else if (flowPhase === "REVEAL") {
+      phaseStartTime = Date.now();
+      phaseDuration = 30; // 30 seconds for reveal
     }
 
     const baseState: RoomState = {

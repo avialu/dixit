@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { RoomState } from "../hooks/useGameState";
 import { QRCode } from "./QRCode";
-import { CloseButton, Button, Icon, IconSize } from "./ui";
+import { CloseButton } from "./ui";
 import { getMinimumDeckSize } from "../utils/imageConstants";
 import { useTranslation } from "../i18n";
 
@@ -11,7 +11,6 @@ interface GameBoardProps {
   showQR?: boolean;
   onCloseQR?: () => void;
   revealModalOpen?: boolean; // Track if REVEAL modal is open
-  onAdvanceRound?: () => void; // Admin can advance to next round
 }
 
 export function GameBoard({
@@ -20,7 +19,6 @@ export function GameBoard({
   showQR = true,
   onCloseQR,
   revealModalOpen = false,
-  onAdvanceRound,
 }: GameBoardProps) {
   const { t } = useTranslation(roomState.language);
   const svgContainerRef = useRef<HTMLDivElement>(null);
@@ -28,12 +26,6 @@ export function GameBoard({
     width: 0,
     height: 0,
   });
-
-  // Check if current player is admin
-  const currentPlayer = playerId
-    ? roomState.players.find((p) => p.id === playerId)
-    : null;
-  const isAdmin = currentPlayer?.isAdmin || false;
 
   // Freeze scores at previous positions while REVEAL modal is open
   const [frozenScores, setFrozenScores] = useState<{
@@ -661,14 +653,6 @@ export function GameBoard({
         </svg>
       </div>
 
-      {/* Admin Continue Button - shown during REVEAL phase */}
-      {roomState.phase === "REVEAL" && isAdmin && onAdvanceRound && (
-        <div className="board-continue-button">
-          <Button variant="continue" size="large" onClick={onAdvanceRound}>
-            <Icon.ArrowForward size={IconSize.medium} /> {t("reveal.continue")}
-          </Button>
-        </div>
-      )}
     </div>
   );
 }

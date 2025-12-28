@@ -138,7 +138,26 @@ export function createApp(port: number = serverConfig.port) {
           advanced = gameManager.autoVotePlayers();
           if (advanced) {
             logger.info("Auto-voted for players, advancing to reveal");
-            // No timer for reveal phase
+            // Start timer for reveal phase
+            startPhaseTimer(
+              gameManager.getRoomState().phaseDuration || 30,
+              "REVEAL"
+            );
+          }
+        } else if (phase === "REVEAL") {
+          // Auto-advance to next round when reveal timer expires
+          gameManager.autoAdvanceFromReveal();
+          advanced = true;
+          logger.info("Auto-advanced from reveal to next round");
+          // Start timer for next storyteller phase
+          const roomState = gameManager.getRoomState();
+          if (
+            roomState.phaseDuration &&
+            roomState.phase === "STORYTELLER_CHOICE"
+          ) {
+            startPhaseTimer(roomState.phaseDuration, "STORYTELLER_CHOICE");
+          } else {
+            clearPhaseTimer(); // Game ended
           }
         }
 
@@ -684,6 +703,12 @@ npm start</pre>
         if (currentPhase === "REVEAL") {
           io.emit("phaseChanged", { phase: currentPhase });
           broadcastRoomState();
+
+          // Start timer for reveal phase
+          const roomState = gameManager.getRoomState();
+          if (roomState.phaseDuration) {
+            startPhaseTimer(roomState.phaseDuration, "REVEAL");
+          }
         }
 
         // Acknowledge the action
@@ -758,6 +783,11 @@ npm start</pre>
           advanced = gameManager.autoVotePlayers();
           if (advanced) {
             clearPhaseTimer();
+            // Start timer for reveal phase
+            const roomState = gameManager.getRoomState();
+            if (roomState.phaseDuration) {
+              startPhaseTimer(roomState.phaseDuration, "REVEAL");
+            }
           }
         }
 

@@ -1,4 +1,4 @@
-import { ReactNode } from "react";
+import { ReactNode, useState, useEffect, useCallback } from "react";
 import { RoomState, PlayerState } from "../hooks/useGameState";
 import { CardView } from "../components/CardView";
 import { DeckUploader } from "../components/DeckUploader";
@@ -1169,6 +1169,79 @@ export function VotingModal(props: VotingModalProps): ModalContentResult {
   };
 }
 
+// Reveal Footer Component using server timer (one source of truth)
+function RevealFooter({
+  isAdmin,
+  onAdvanceRound,
+  phaseStartTime,
+  phaseDuration,
+  t,
+}: {
+  isAdmin: boolean;
+  onAdvanceRound: () => void;
+  phaseStartTime: number | null;
+  phaseDuration: number | null;
+  t: (key: string, values?: Record<string, string | number>) => string;
+}) {
+  const [hasAdvanced, setHasAdvanced] = useState(false);
+  const [secondsLeft, setSecondsLeft] = useState<number>(() => {
+    // Calculate initial seconds based on server time
+    if (phaseStartTime && phaseDuration) {
+      const elapsed = Math.floor((Date.now() - phaseStartTime) / 1000);
+      return Math.max(0, phaseDuration - elapsed);
+    }
+    return 30; // Fallback
+  });
+
+  const handleAdvance = useCallback(() => {
+    if (!hasAdvanced) {
+      setHasAdvanced(true);
+      onAdvanceRound();
+    }
+  }, [hasAdvanced, onAdvanceRound]);
+
+  // Sync with server timer every second
+  useEffect(() => {
+    if (hasAdvanced) return;
+
+    const interval = setInterval(() => {
+      if (phaseStartTime && phaseDuration) {
+        const elapsed = Math.floor((Date.now() - phaseStartTime) / 1000);
+        const remaining = Math.max(0, phaseDuration - elapsed);
+        setSecondsLeft(remaining);
+      }
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [phaseStartTime, phaseDuration, hasAdvanced]);
+
+  // For admin: show clickable button with timer
+  if (isAdmin) {
+    return (
+      <Button variant="continue" onClick={handleAdvance} disabled={hasAdvanced}>
+        <Icon.ArrowForward size={IconSize.medium} />{" "}
+        {hasAdvanced
+          ? t("reveal.autoAdvance")
+          : t("reveal.continueIn", { seconds: secondsLeft })}
+      </Button>
+    );
+  }
+
+  // For non-admin players: show timer countdown
+  return (
+    <p
+      style={{
+        color: secondsLeft <= 5 ? "#e74c3c" : "#f39c12",
+        fontWeight: "bold",
+        margin: 0,
+        fontSize: "1.1rem",
+      }}
+    >
+      ⏳ {t("reveal.waitingWithTimer", { seconds: secondsLeft })}
+    </p>
+  );
+}
+
 export function RevealModal(props: RevealModalProps): ModalContentResult {
   const { roomState, playerState, isAdmin, onAdvanceRound, t } = props;
 
@@ -1205,23 +1278,17 @@ export function RevealModal(props: RevealModalProps): ModalContentResult {
     </>
   );
 
-  // Get admin name for non-admin players
-  const adminPlayer = roomState.players.find((p) => p.isAdmin);
-  const adminName = adminPlayer?.name || "admin";
-
-  const footer = isAdmin ? (
-    <Button variant="continue" onClick={onAdvanceRound}>
-      <Icon.ArrowForward size={IconSize.medium} /> {t("reveal.continue")}
-    </Button>
-  ) : (
-    <p style={{ color: "#95a5a6", fontStyle: "italic", margin: 0 }}>
-      ⏳ {t("reveal.waitingForAdmin", { name: adminName })}
-    </p>
-  );
-
   return {
     header,
-    footer,
+    footer: (
+      <RevealFooter
+        isAdmin={isAdmin}
+        onAdvanceRound={onAdvanceRound}
+        phaseStartTime={roomState.phaseStartTime}
+        phaseDuration={roomState.phaseDuration}
+        t={t}
+      />
+    ),
     timer: undefined,
     content: (
       <div className="modal-voting-cards">

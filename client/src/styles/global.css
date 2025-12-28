@@ -4029,14 +4029,28 @@ select {
 }
 
 .floating-action-button.continue-button {
-  bottom: 8rem;
   background: linear-gradient(135deg, #27ae60 0%, #2ecc71 100%);
   box-shadow: 0 8px 24px rgba(39, 174, 96, 0.4);
   animation: pulse-glow-green 2s ease-in-out infinite;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
 .floating-action-button.continue-button:hover {
   box-shadow: 0 12px 32px rgba(39, 174, 96, 0.6);
+}
+
+.floating-action-button.continue-button .continue-button-text {
+  font-size: 0.9rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.floating-action-button.continue-button:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+  animation: none;
 }
 
 @keyframes pulse-glow-green {
@@ -6137,16 +6151,12 @@ select {
   }
 
   .floating-action-button.continue-button {
-    position: fixed;
-    bottom: 5rem;
-    right: 1rem;
     padding: 1rem 1.5rem;
     font-size: 1rem;
   }
 
-  [dir="rtl"] .floating-action-button.continue-button {
-    right: 1rem;
-    left: auto;
+  .floating-action-button.continue-button .continue-button-text {
+    font-size: 0.85rem;
   }
 
   .game-header {
@@ -6555,16 +6565,12 @@ select {
   }
 
   .floating-action-button.continue-button {
-    position: fixed;
-    bottom: 4rem;
-    right: 0.5rem;
     padding: 0.75rem 1rem;
     font-size: 0.9rem;
   }
 
-  [dir="rtl"] .floating-action-button.continue-button {
-    right: 0.5rem;
-    left: auto;
+  .floating-action-button.continue-button .continue-button-text {
+    font-size: 0.8rem;
   }
 
   /* Compact clue display */

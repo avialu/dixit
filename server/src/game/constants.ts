@@ -5,7 +5,7 @@
  * These now pull from centralized config with environment variable support.
  */
 
-import { gameConfig, imageConfig } from '../config/index.js';
+import { gameConfig, imageConfig } from "../config/index.js";
 
 export const GAME_CONSTANTS = {
   /** Number of cards each player holds during the game */
@@ -43,5 +43,7 @@ export const GAME_CONSTANTS = {
     PLAYERS_CHOICE: 30,
     /** Players have 30 seconds to vote */
     VOTING: 30,
+    /** Players have 30 seconds to view results before auto-advancing */
+    REVEAL: 30,
   },
 } as const;

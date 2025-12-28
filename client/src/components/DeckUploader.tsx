@@ -247,7 +247,7 @@ export function DeckUploader({
           <div className="deck-stat-card">
             <div className="deck-stat-title">{t("deckUploader.myImages")}</div>
             <div className="deck-stat-value">{myImages.length}</div>
-            <div className="deck-stat-subtitle">&nbsp;</div>
+            <div className="deck-stat-subtitle">{t("deckUploader.maxImages")}</div>
           </div>
 
           {/* Total Deck */}
@@ -273,13 +273,7 @@ export function DeckUploader({
           >
             <div className="deck-stat-title">{t("common.players")}</div>
             <div className="deck-stat-value">{roomState.players.length}</div>
-            <div className="deck-stat-subtitle">
-              {roomState.players.length >= 3
-                ? ""
-                : t("deckUploader.needMorePlayers", {
-                    count: 3 - roomState.players.length,
-                  })}
-            </div>
+            <div className="deck-stat-subtitle">{t("deckUploader.minPlayers")}</div>
           </div>
         </div>
 

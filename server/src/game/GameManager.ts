@@ -821,9 +821,9 @@ export class GameManager {
       }
     }
 
-    // Clear timer during reveal (no time limit for viewing results)
-    this.state.phaseStartTime = null;
-    this.state.phaseDuration = null;
+    // Start timer for reveal phase (30 seconds to view results)
+    this.state.phaseStartTime = Date.now();
+    this.state.phaseDuration = GAME_CONSTANTS.PHASE_TIMERS.REVEAL;
 
     this.state.phase = GamePhase.REVEAL;
   }
@@ -952,10 +952,8 @@ export class GameManager {
     return anyVoted || (this.state.phase as string) === "REVEAL";
   }
 
-  // Admin advances from REVEAL to next round (or game end)
-  advanceToNextRound(adminId: string): void {
-    this.validateAdmin(adminId);
-
+  // Core logic to advance from REVEAL to next round (shared between admin and auto-advance)
+  private advanceFromReveal(): void {
     if (this.state.phase !== GamePhase.REVEAL) {
       throw new Error("Can only advance from REVEAL phase");
     }
@@ -1030,6 +1028,17 @@ export class GameManager {
     this.state.phaseDuration = GAME_CONSTANTS.PHASE_TIMERS.STORYTELLER_CHOICE;
 
     this.state.phase = GamePhase.STORYTELLER_CHOICE;
+  }
+
+  // Admin advances from REVEAL to next round (or game end)
+  advanceToNextRound(adminId: string): void {
+    this.validateAdmin(adminId);
+    this.advanceFromReveal();
+  }
+
+  // Server auto-advances from REVEAL to next round (timer expired)
+  autoAdvanceFromReveal(): void {
+    this.advanceFromReveal();
   }
 
   resetGame(adminId: string): void {

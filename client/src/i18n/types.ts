@@ -104,6 +104,8 @@ export interface TranslationKeys {
   deckUploader: {
     deck: string;
     myImages: string;
+    maxImages: string;
+    minPlayers: string;
     allImages: string;
     needMore: string;
     needMorePlayers: string;
@@ -235,6 +237,9 @@ export interface TranslationKeys {
     storytellerClue: string;
     storytellerClueWithName: string;
     continue: string;
+    continueIn: string;
+    autoAdvance: string;
+    waitingWithTimer: string;
     waiting: string;
     waitingForAdmin: string;
     playerCard: string;
