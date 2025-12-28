@@ -187,7 +187,9 @@ export const he: TranslationKeys = {
     submitted: "נשלח",
     chooseCardTitle: "בחר קלף",
     storytellerClue: "רמז מספר הסיפור",
+    storytellerClueWithName: "הרמז של {name}",
     waitingTitle: "ממתין",
+    waitingForStoryteller: "{name} בוחר רמז...",
   },
 
   // Voting Phase
@@ -206,6 +208,7 @@ export const he: TranslationKeys = {
     watching: "צופה",
     spectating: "צופה",
     storytellerClue: "רמז מספר הסיפור",
+    storytellerClueWithName: "הרמז של {name}",
   },
 
   // Reveal Phase
@@ -222,6 +225,7 @@ export const he: TranslationKeys = {
     continueButton: "המשך לסיבוב הבא",
     results: "תוצאות",
     storytellerClue: "רמז מספר הסיפור",
+    storytellerClueWithName: "הרמז של {name}",
     continue: "המשך",
     waiting: "ממתין...",
   },

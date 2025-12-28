@@ -185,7 +185,9 @@ export const en: TranslationKeys = {
     submitted: 'Submitted',
     chooseCardTitle: 'Choose Card',
     storytellerClue: 'Storyteller Clue',
+    storytellerClueWithName: '{name}\'s Clue',
     waitingTitle: 'Waiting',
+    waitingForStoryteller: '{name} is choosing a clue...',
   },
 
   // Voting Phase
@@ -204,6 +206,7 @@ export const en: TranslationKeys = {
     watching: 'Watching',
     spectating: 'Spectating',
     storytellerClue: 'Storyteller Clue',
+    storytellerClueWithName: '{name}\'s Clue',
   },
 
   // Reveal Phase
@@ -220,6 +223,7 @@ export const en: TranslationKeys = {
     continueButton: 'Continue to Next Round',
     results: 'Results',
     storytellerClue: 'Storyteller Clue',
+    storytellerClueWithName: '{name}\'s Clue',
     continue: 'Continue',
     waiting: 'Waiting...',
   },

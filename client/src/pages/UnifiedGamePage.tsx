@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import type { Socket } from "socket.io-client";
 import { RoomState, PlayerState } from "../hooks/useGameState";
 import { ConnectionQuality } from "../hooks/useSocket";
@@ -15,6 +15,7 @@ import { getMinimumDeckSize } from "../utils/imageConstants";
 import { useTranslation } from "../i18n";
 import { ConnectionStatus } from "../components/ConnectionStatus";
 import { LatencyIndicator } from "../components/LatencyIndicator";
+import { resizeAndCompressImage } from "../utils/imageResize";
 
 interface UnifiedGamePageProps {
   roomState: RoomState | null;
@@ -136,6 +137,8 @@ export function UnifiedGamePage({
     title: string;
     message: string;
     onConfirm: () => void;
+    confirmVariant?: "primary" | "secondary" | "danger" | "success";
+    cancelVariant?: "primary" | "secondary" | "danger";
   }>({
     isOpen: false,
     title: "",
@@ -147,6 +150,9 @@ export function UnifiedGamePage({
   const [isJoining, setIsJoining] = useState(false);
   const [isJoiningSpectator, setIsJoiningSpectator] = useState(false);
   const [isStartingGame, setIsStartingGame] = useState(false);
+  
+  // File input ref for floating upload button
+  const floatingUploadRef = useRef<HTMLInputElement>(null);
 
   // In demo mode, reset spectator status (demo always starts fresh)
   // isDemoMode is now passed explicitly as a prop, so we don't need complex detection
@@ -233,6 +239,54 @@ export function UnifiedGamePage({
     // Reset manual close flag when phase changes (allow auto-open again)
     setManuallyClosedModal(false);
   }, [roomState?.phase]);
+
+  // SYNC LOCAL STATE WITH SERVER STATE
+  // This prevents desync where local says "submitted" but server never received it
+  // Server state (playerState.mySubmittedCardId) is the source of truth
+  // 
+  // How this works:
+  // 1. Player submits → localSubmittedCardId is set immediately (optimistic)
+  // 2. Effect runs: if local is set but server hasn't confirmed, start 3s timeout
+  // 3. If server confirms (mySubmittedCardId becomes set) → effect re-runs, 
+  //    cleanup cancels old timeout, and we return early (no new timeout)
+  // 4. If server doesn't confirm within 3s → timeout fires, clears local state
+  //    so player can retry
+  useEffect(() => {
+    // Server has confirmed - no sync needed
+    if (playerState?.mySubmittedCardId) {
+      return;
+    }
+    
+    // Local says submitted but server hasn't confirmed yet
+    // Start timeout - if server doesn't confirm in 3s, allow retry
+    if (localSubmittedCardId) {
+      const timeout = setTimeout(() => {
+        console.warn("Submission sync issue detected - clearing local state. Server may not have received the submission.");
+        setLocalSubmittedCardId(null);
+      }, 3000);
+      
+      // Cleanup: cancel timeout if effect re-runs (server confirmed or state changed)
+      return () => clearTimeout(timeout);
+    }
+  }, [localSubmittedCardId, playerState?.mySubmittedCardId]);
+
+  // Same sync for voting state
+  useEffect(() => {
+    // Server has confirmed - no sync needed
+    if (playerState?.myVote) {
+      return;
+    }
+    
+    // Local says voted but server hasn't confirmed yet
+    if (localVotedCardId) {
+      const timeout = setTimeout(() => {
+        console.warn("Vote sync issue detected - clearing local state. Server may not have received the vote.");
+        setLocalVotedCardId(null);
+      }, 3000);
+      
+      return () => clearTimeout(timeout);
+    }
+  }, [localVotedCardId, playerState?.myVote]);
 
   const isSpectator = isUserSpectator;
   const isJoined =
@@ -422,6 +476,9 @@ export function UnifiedGamePage({
           socket.emit("adminPromotePlayer", { targetPlayerId });
         }
       },
+      // Swap colors: Cancel is prominent (danger), Confirm is secondary
+      confirmVariant: "secondary",
+      cancelVariant: "danger",
     });
   };
 
@@ -468,6 +525,26 @@ export function UnifiedGamePage({
       setLocalVotedCardId(selectedCardId);
       setSelectedCardId(null);
       // Keep modal open after voting
+    }
+  };
+
+  // Handle floating upload button file selection
+  const handleFloatingUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    for (const file of Array.from(files)) {
+      try {
+        const imageData = await resizeAndCompressImage(file);
+        _onUploadImage(imageData);
+      } catch (error) {
+        console.error("Error processing image:", error);
+      }
+    }
+
+    // Reset the input
+    if (floatingUploadRef.current) {
+      floatingUploadRef.current.value = "";
     }
   };
 
@@ -671,6 +748,28 @@ export function UnifiedGamePage({
             </button>
           )}
 
+          {/* Upload Button - During deck building, only if uploads allowed */}
+          {!isInGame && !showModal && (isAdmin || roomState.allowPlayerUploads) && (
+            <>
+              <input
+                ref={floatingUploadRef}
+                type="file"
+                accept="image/*"
+                multiple
+                onChange={handleFloatingUpload}
+                style={{ display: "none" }}
+                id="floating-upload-input"
+              />
+              <button
+                className="floating-action-button upload-button"
+                onClick={() => floatingUploadRef.current?.click()}
+                title={t("tooltips.uploadImage")}
+              >
+                <Icon.Upload size={IconSize.large} />
+              </button>
+            </>
+          )}
+
           {/* Admin Start Game Button - During deck building */}
           {isAdmin && !isInGame && !showModal && (
             <button
@@ -830,6 +929,7 @@ export function UnifiedGamePage({
               } else {
                 modalContent = ModalContent.WaitingStorytellerModal({
                   playerState,
+                  roomState,
                   t,
                 });
               }
@@ -935,7 +1035,8 @@ export function UnifiedGamePage({
         title={confirmModal.title}
         message={confirmModal.message}
         confirmText="Confirm"
-        confirmVariant="danger"
+        confirmVariant={confirmModal.confirmVariant || "danger"}
+        cancelVariant={confirmModal.cancelVariant || "secondary"}
         onConfirm={confirmModal.onConfirm}
         onCancel={() => setConfirmModal({ ...confirmModal, isOpen: false })}
       />

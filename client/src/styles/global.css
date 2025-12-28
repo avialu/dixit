@@ -3401,9 +3401,26 @@ select {
   }
 }
 
+/* Upload Button - During deck building when uploads allowed */
+.floating-action-button.upload-button {
+  bottom: 2rem;
+  right: 13rem; /* Between QR and Start Game */
+  background: linear-gradient(135deg, #2ecc71 0%, #27ae60 100%);
+  box-shadow: 0 8px 24px rgba(46, 204, 113, 0.4);
+}
+
+.floating-action-button.upload-button:hover {
+  transform: translateY(-4px) scale(1.05);
+  box-shadow: 0 12px 32px rgba(46, 204, 113, 0.6);
+}
+
+.floating-action-button.upload-button:active {
+  transform: translateY(-2px) scale(1.02);
+}
+
 .floating-action-button.start-game-button {
   bottom: 2rem;
-  right: 13rem; /* Leftmost position - to the left of QR */
+  right: 18.5rem; /* Leftmost position - to the left of upload */
   background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%);
   box-shadow: 0 8px 24px rgba(243, 156, 18, 0.4);
   animation: pulse-glow-orange 2s ease-in-out infinite;
@@ -5086,9 +5103,16 @@ select {
     font-size: 1rem;
   }
 
+  .floating-action-button.upload-button {
+    bottom: 1rem;
+    right: 11rem; /* Between QR and Start Game */
+    padding: 1rem 1.5rem;
+    font-size: 1rem;
+  }
+
   .floating-action-button.start-game-button {
     bottom: 1rem;
-    right: 11rem; /* Leftmost position - to the left of QR */
+    right: 16rem; /* Leftmost position - to the left of upload */
     padding: 1rem 1.5rem;
     font-size: 1rem;
   }
@@ -5457,9 +5481,16 @@ select {
     font-size: 0.9rem;
   }
 
+  .floating-action-button.upload-button {
+    bottom: 0.5rem;
+    right: 9.5rem; /* Between QR and Start Game */
+    padding: 0.75rem 1rem;
+    font-size: 0.9rem;
+  }
+
   .floating-action-button.start-game-button {
     bottom: 0.5rem;
-    right: 9.5rem; /* Leftmost position - to the left of QR */
+    right: 14rem; /* Leftmost position - to the left of upload */
     padding: 0.75rem 1rem;
     font-size: 0.9rem;
   }

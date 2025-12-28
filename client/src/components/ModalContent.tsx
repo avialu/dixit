@@ -707,7 +707,15 @@ export function PlayerChoiceModal(props: PlayerChoiceModalProps) {
     t,
   } = props;
 
-  const isSubmitted = localSubmittedCardId;
+  // Use BOTH local and server state - server is the source of truth
+  // Local state provides immediate feedback, server state is authoritative
+  const isSubmitted = localSubmittedCardId || playerState?.mySubmittedCardId;
+
+  // Get storyteller name
+  const storyteller = roomState.players.find(
+    (p) => p.id === roomState.storytellerId
+  );
+  const storytellerName = storyteller?.name || t("common.storyteller");
 
   // Calculate who we're waiting for (players who haven't submitted yet)
   const waitingForPlayers = isSubmitted
@@ -733,7 +741,7 @@ export function PlayerChoiceModal(props: PlayerChoiceModalProps) {
         )}
       </h2>
       <p className="clue-reminder">
-        <strong>{t("playerChoice.storytellerClue")}:</strong>{" "}
+        <strong>{t("playerChoice.storytellerClueWithName", { name: storytellerName })}:</strong>{" "}
         <strong style={{ fontWeight: 900, fontSize: "1.1em" }}>
           "{roomState.currentClue}"
         </strong>
@@ -799,12 +807,20 @@ export function PlayerChoiceModal(props: PlayerChoiceModalProps) {
 
 export function WaitingStorytellerModal(props: {
   playerState: PlayerState | null;
+  roomState: RoomState;
   t: (key: string, values?: Record<string, string | number>) => string;
 }) {
-  const { t } = props;
+  const { roomState, t } = props;
+  
+  // Get storyteller name
+  const storyteller = roomState.players.find(
+    (p) => p.id === roomState.storytellerId
+  );
+  const storytellerName = storyteller?.name || t("common.storyteller");
+  
   const header = (
     <>
-      <h2>⏳ {t("common.loading")}</h2>
+      <h2>⏳ {t("playerChoice.waitingForStoryteller", { name: storytellerName })}</h2>
     </>
   );
 
@@ -834,6 +850,12 @@ export function WaitingPlayersModal(props: {
 }) {
   const { playerState, roomState, t } = props;
 
+  // Get storyteller name
+  const storyteller = roomState.players.find(
+    (p) => p.id === roomState.storytellerId
+  );
+  const storytellerName = storyteller?.name || t("common.storyteller");
+
   // Calculate who we're waiting for (players who haven't submitted yet)
   const waitingForPlayers = roomState.players
     .filter((p) => p.id !== roomState.storytellerId) // Exclude storyteller
@@ -844,7 +866,7 @@ export function WaitingPlayersModal(props: {
     <>
       <h2>⏳ {t("playerChoice.waitingTitle")}</h2>
       <p className="clue-reminder">
-        <strong>{t("playerChoice.storytellerClue")}:</strong>{" "}
+        <strong>{t("playerChoice.storytellerClueWithName", { name: storytellerName })}:</strong>{" "}
         <strong style={{ fontWeight: 900, fontSize: "1.1em" }}>
           "{roomState.currentClue}"
         </strong>
@@ -911,11 +933,19 @@ export function VotingModal(props: VotingModalProps) {
     t,
   } = props;
 
+  // Get storyteller name
+  const storyteller = roomState.players.find(
+    (p) => p.id === roomState.storytellerId
+  );
+  const storytellerName = storyteller?.name || t("common.storyteller");
+
   const eligiblePlayers = roomState.players.filter(
     (p) => p.id !== roomState.storytellerId
   );
   const allVotesIn = roomState.votes.length >= eligiblePlayers.length;
-  const hasVoted = localVotedCardId !== null;
+  // Use BOTH local and server state - server is the source of truth
+  // Local state provides immediate feedback, server state is authoritative
+  const hasVoted = localVotedCardId !== null || playerState?.myVote !== null;
   const canVote = !isStoryteller && !isSpectator && !hasVoted;
 
   // Calculate who we're waiting for (players who haven't voted yet)
@@ -968,7 +998,7 @@ export function VotingModal(props: VotingModalProps) {
     <>
       <h2>{getHeaderTitle()}</h2>
       <p className="clue-reminder">
-        <strong>{t("voting.storytellerClue")}:</strong>{" "}
+        <strong>{t("voting.storytellerClueWithName", { name: storytellerName })}:</strong>{" "}
         <strong style={{ fontWeight: 900, fontSize: "1.1em" }}>
           "{roomState.currentClue}"
         </strong>
@@ -1035,6 +1065,12 @@ export function RevealModal(props: RevealModalProps) {
   );
   const storytellerCardId = storytellerCard?.cardId;
 
+  // Get storyteller name
+  const storyteller = roomState.players.find(
+    (p) => p.id === storytellerId
+  );
+  const storytellerName = storyteller?.name || t("common.storyteller");
+
   const scoreDeltas: { [playerId: string]: number } = {};
   roomState.lastScoreDeltas.forEach((delta) => {
     scoreDeltas[delta.playerId] = delta.delta;
@@ -1046,7 +1082,7 @@ export function RevealModal(props: RevealModalProps) {
         <Icon.Results size={IconSize.large} /> {t("reveal.results")}
       </h2>
       <p className="clue-reminder">
-        <strong>{t("reveal.storytellerClue")}:</strong>{" "}
+        <strong>{t("reveal.storytellerClueWithName", { name: storytellerName })}:</strong>{" "}
         <strong style={{ fontWeight: 900, fontSize: "1.1em" }}>
           "{roomState.currentClue}"
         </strong>

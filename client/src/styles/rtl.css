@@ -116,9 +116,14 @@
   right: auto;
 }
 
+[dir="rtl"] .floating-action-button.upload-button {
+  left: 160px;
+  right: auto;
+}
+
 [dir="rtl"] .floating-action-button.start-game-button {
-  left: auto;
-  right: 20px;
+  left: 230px;
+  right: auto;
 }
 
 /* Error toast */

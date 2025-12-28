@@ -7,7 +7,8 @@ interface ConfirmModalProps {
   message: string;
   confirmText?: string;
   cancelText?: string;
-  confirmVariant?: "primary" | "danger" | "success";
+  confirmVariant?: "primary" | "secondary" | "danger" | "success";
+  cancelVariant?: "primary" | "secondary" | "danger";
   onConfirm: () => void;
   onCancel: () => void;
 }
@@ -36,6 +37,7 @@ export function ConfirmModal({
   confirmText = "Confirm",
   cancelText = "Cancel",
   confirmVariant = "primary",
+  cancelVariant = "secondary",
   onConfirm,
   onCancel,
 }: ConfirmModalProps) {
@@ -51,7 +53,7 @@ export function ConfirmModal({
       header={<h2>{title}</h2>}
       footer={
         <div className="modal-footer-buttons">
-          <Button variant="secondary" onClick={onCancel}>
+          <Button variant={cancelVariant} onClick={onCancel}>
             {cancelText}
           </Button>
           <Button variant={confirmVariant} onClick={handleConfirm}>
