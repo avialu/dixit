@@ -33,7 +33,12 @@ export interface RoomState {
   storytellerId: string | null;
   currentClue: string | null;
   submittedPlayerIds: string[]; // Player IDs who have submitted cards
-  revealedCards: { cardId: string; imageData: string; position: number }[];
+  revealedCards: {
+    cardId: string;
+    imageData: string;
+    position: number;
+    playerId: string;
+  }[];
   votes: { voterId: string; cardId: string }[];
   lastScoreDeltas: { playerId: string; delta: number }[];
   serverUrl: string;
@@ -72,7 +77,11 @@ export function useGameState(socket: Socket | null) {
       setRoomState((prevState) => {
         // If we have cached images and the new state has empty deckImages,
         // preserve our cached images (server sends empty during active game for efficiency)
-        if (prevState && prevState.deckImages.length > 0 && state.deckImages.length === 0) {
+        if (
+          prevState &&
+          prevState.deckImages.length > 0 &&
+          state.deckImages.length === 0
+        ) {
           return { ...state, deckImages: prevState.deckImages };
         }
         return state;
@@ -81,20 +90,28 @@ export function useGameState(socket: Socket | null) {
 
     // Incremental image updates - much more efficient than sending all images
     // Server now sends deckSize with each image, eliminating need for full roomState broadcast
-    socket.on("imageAdded", (image: { id: string; uploadedBy: string; imageData: string; deckSize: number }) => {
-      setRoomState((prevState) => {
-        if (!prevState) return prevState;
-        // Avoid duplicates
-        if (prevState.deckImages.some((img) => img.id === image.id)) {
-          return prevState;
-        }
-        return {
-          ...prevState,
-          deckImages: [...prevState.deckImages, image],
-          deckSize: image.deckSize, // Use server's deckSize for accuracy
-        };
-      });
-    });
+    socket.on(
+      "imageAdded",
+      (image: {
+        id: string;
+        uploadedBy: string;
+        imageData: string;
+        deckSize: number;
+      }) => {
+        setRoomState((prevState) => {
+          if (!prevState) return prevState;
+          // Avoid duplicates
+          if (prevState.deckImages.some((img) => img.id === image.id)) {
+            return prevState;
+          }
+          return {
+            ...prevState,
+            deckImages: [...prevState.deckImages, image],
+            deckSize: image.deckSize, // Use server's deckSize for accuracy
+          };
+        });
+      }
+    );
 
     // Incremental image deletion - server sends authoritative deckSize
     socket.on("imageDeleted", (data: { id: string; deckSize: number }) => {
@@ -109,10 +126,10 @@ export function useGameState(socket: Socket | null) {
     });
 
     socket.on("playerState", (state: PlayerState) => {
-      console.log("Received playerState:", { 
-        playerId: state.playerId, 
+      console.log("Received playerState:", {
+        playerId: state.playerId,
         handSize: state.hand?.length ?? 0,
-        mySubmittedCardId: state.mySubmittedCardId 
+        mySubmittedCardId: state.mySubmittedCardId,
       });
       setPlayerState(state);
     });

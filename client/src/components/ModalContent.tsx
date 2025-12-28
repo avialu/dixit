@@ -20,7 +20,6 @@ import {
   hasPlayerLanguageOverride,
 } from "../i18n";
 import { resizeAndCompressImage } from "../utils/imageResize";
-import { getMinimumDeckSize } from "../utils/imageConstants";
 
 // Common modal return type with optional timer
 export interface ModalContentResult {
@@ -174,50 +173,7 @@ export function LobbyModal(props: LobbyModalProps): ModalContentResult {
     onSetBoardBackground(null);
   };
 
-  // Calculate deck progress
-  const minRequired = getMinimumDeckSize(
-    roomState.players.length,
-    roomState.winTarget
-  );
-  const currentDeckSize = roomState.deckSize;
-  const needMore = Math.max(0, minRequired - currentDeckSize);
-  const isReady = currentDeckSize >= minRequired;
-  const progressPercent = Math.min(100, (currentDeckSize / minRequired) * 100);
-
-  const header = (
-    <>
-      <h2>
-        <Icon.People size={IconSize.large} /> {t("common.players")} (
-        {roomState.players.length})
-      </h2>
-      
-      {/* Image Progress Bar */}
-      <div className="lobby-image-progress">
-        <div className="lobby-progress-header">
-          <Icon.Images size={IconSize.medium} />
-          <span className="lobby-progress-label">
-            {isReady
-              ? isAdmin
-                ? t("status.readyToStart")
-                : t("lobby.waitingForAdminName", {
-                    name:
-                      roomState.players.find((p) => p.isAdmin)?.name || "admin",
-                  })
-              : t("lobby.needMoreImages", { count: needMore })}
-          </span>
-          <span className="lobby-progress-count">
-            {currentDeckSize}/{minRequired}
-          </span>
-        </div>
-        <div className="lobby-progress-bar">
-          <div
-            className={`lobby-progress-fill ${isReady ? "ready" : ""}`}
-            style={{ width: `${progressPercent}%` }}
-          />
-        </div>
-      </div>
-    </>
-  );
+  const header = null;
 
   const footer = (
     <>
@@ -634,7 +590,9 @@ export function LobbyModal(props: LobbyModalProps): ModalContentResult {
   };
 }
 
-export function StorytellerChoiceModal(props: StorytellerModalProps): ModalContentResult {
+export function StorytellerChoiceModal(
+  props: StorytellerModalProps
+): ModalContentResult {
   const {
     playerState,
     selectedCardId,
@@ -729,43 +687,32 @@ export function StorytellerChoiceModal(props: StorytellerModalProps): ModalConte
     </div>
   ) : null;
 
+  // Get the submitted card ID for locked state
+  const submittedCardId =
+    localSubmittedCardId || playerState?.mySubmittedCardId;
+
   return {
     header,
     footer,
     timer: timerElement,
     content: (
-      <>
-        {isSubmitted && playerState?.mySubmittedCardImage && (
-          <div className="submitted-card-preview">
-            <img
-              src={playerState.mySubmittedCardImage}
-              alt="Your submitted card"
-              style={{
-                maxWidth: "100%",
-                maxHeight: "40vh",
-                borderRadius: "12px",
-                boxShadow: "0 8px 24px rgba(102, 126, 234, 0.4)",
-                border: "3px solid #667eea",
-              }}
-            />
-          </div>
-        )}
-
-        <div className="modal-hand">
-          <CardView
-            cards={playerState?.hand || []}
-            selectedCardId={isSubmitted ? null : selectedCardId}
-            onSelectCard={isSubmitted ? () => {} : setSelectedCardId}
-            disabled={!!isSubmitted}
-            showDrawer={false}
-          />
-        </div>
-      </>
+      <div className="modal-hand">
+        <CardView
+          cards={playerState?.hand || []}
+          selectedCardId={isSubmitted ? null : selectedCardId}
+          onSelectCard={isSubmitted ? () => {} : setSelectedCardId}
+          disabled={!!isSubmitted}
+          lockedCardId={submittedCardId}
+          showDrawer={false}
+        />
+      </div>
     ),
   };
 }
 
-export function PlayerChoiceModal(props: PlayerChoiceModalProps): ModalContentResult {
+export function PlayerChoiceModal(
+  props: PlayerChoiceModalProps
+): ModalContentResult {
   const {
     playerState,
     selectedCardId,
@@ -778,6 +725,12 @@ export function PlayerChoiceModal(props: PlayerChoiceModalProps): ModalContentRe
   } = props;
 
   const isSubmitted = localSubmittedCardId;
+
+  // Get storyteller name
+  const storyteller = roomState.players.find(
+    (p) => p.id === roomState.storytellerId
+  );
+  const storytellerName = storyteller?.name || t("common.storyteller");
 
   // Timer for player choice - always show for everyone
   const timerElement = (
@@ -815,7 +768,10 @@ export function PlayerChoiceModal(props: PlayerChoiceModalProps): ModalContentRe
         )}
       </h2>
       <p className="clue-reminder">
-        <strong>{t("playerChoice.storytellerClue")}:</strong>{" "}
+        <strong>
+          {t("playerChoice.storytellerClueWithName", { name: storytellerName })}
+          :
+        </strong>{" "}
         <strong style={{ fontWeight: 900, fontSize: "1.1em" }}>
           "{roomState.currentClue}"
         </strong>
@@ -850,32 +806,16 @@ export function PlayerChoiceModal(props: PlayerChoiceModalProps): ModalContentRe
     footer,
     timer: timerElement,
     content: (
-      <>
-        {isSubmitted && playerState?.mySubmittedCardImage && (
-          <div className="submitted-card-preview">
-            <img
-              src={playerState.mySubmittedCardImage}
-              alt="Your submitted card"
-              style={{
-                maxWidth: "100%",
-                maxHeight: "35vh",
-                borderRadius: "12px",
-                boxShadow: "0 8px 24px rgba(102, 126, 234, 0.4)",
-                border: "3px solid #667eea",
-              }}
-            />
-          </div>
-        )}
-        <div className="modal-hand">
-          <CardView
-            cards={playerState?.hand || []}
-            selectedCardId={isSubmitted ? null : selectedCardId}
-            onSelectCard={isSubmitted ? () => {} : setSelectedCardId}
-            disabled={!!isSubmitted}
-            showDrawer={false}
-          />
-        </div>
-      </>
+      <div className="modal-hand">
+        <CardView
+          cards={playerState?.hand || []}
+          selectedCardId={isSubmitted ? null : selectedCardId}
+          onSelectCard={isSubmitted ? () => {} : setSelectedCardId}
+          disabled={!!isSubmitted}
+          lockedCardId={localSubmittedCardId}
+          showDrawer={false}
+        />
+      </div>
     ),
   };
 }
@@ -935,6 +875,12 @@ export function WaitingPlayersModal(props: {
 }): ModalContentResult {
   const { playerState, roomState, t } = props;
 
+  // Get storyteller name
+  const storyteller = roomState.players.find(
+    (p) => p.id === roomState.storytellerId
+  );
+  const storytellerName = storyteller?.name || t("common.storyteller");
+
   // Timer - show for everyone waiting
   const timerElement = (
     <Timer
@@ -954,7 +900,10 @@ export function WaitingPlayersModal(props: {
     <>
       <h2>⏳ {t("playerChoice.waitingTitle")}</h2>
       <p className="clue-reminder">
-        <strong>{t("playerChoice.storytellerClue")}:</strong>{" "}
+        <strong>
+          {t("playerChoice.storytellerClueWithName", { name: storytellerName })}
+          :
+        </strong>{" "}
         <strong style={{ fontWeight: 900, fontSize: "1.1em" }}>
           "{roomState.currentClue}"
         </strong>
@@ -978,33 +927,16 @@ export function WaitingPlayersModal(props: {
     footer: null,
     timer: timerElement,
     content: (
-      <>
-        {playerState?.mySubmittedCardImage && (
-          <div className="submitted-card-preview">
-            <img
-              src={playerState.mySubmittedCardImage}
-              alt="Your submitted card"
-              style={{
-                maxWidth: "100%",
-                maxHeight: "35vh",
-                borderRadius: "12px",
-                boxShadow: "0 8px 24px rgba(102, 126, 234, 0.4)",
-                border: "3px solid #667eea",
-              }}
-            />
-          </div>
-        )}
-
-        <div className="modal-hand">
-          <CardView
-            cards={playerState?.hand || []}
-            selectedCardId={null}
-            onSelectCard={() => {}}
-            disabled={true}
-            showDrawer={false}
-          />
-        </div>
-      </>
+      <div className="modal-hand">
+        <CardView
+          cards={playerState?.hand || []}
+          selectedCardId={null}
+          onSelectCard={() => {}}
+          disabled={true}
+          lockedCardId={playerState?.mySubmittedCardId}
+          showDrawer={false}
+        />
+      </div>
     ),
   };
 }
@@ -1029,6 +961,12 @@ export function VotingModal(props: VotingModalProps): ModalContentResult {
   const allVotesIn = roomState.votes.length >= eligiblePlayers.length;
   const hasVoted = localVotedCardId !== null;
   const canVote = !isStoryteller && !isSpectator && !hasVoted;
+
+  // Get storyteller name
+  const storyteller = roomState.players.find(
+    (p) => p.id === roomState.storytellerId
+  );
+  const storytellerName = storyteller?.name || t("common.storyteller");
 
   // Timer for voting - always show for everyone
   const timerElement = (
@@ -1092,7 +1030,9 @@ export function VotingModal(props: VotingModalProps): ModalContentResult {
     <>
       <h2>{getHeaderTitle()}</h2>
       <p className="clue-reminder">
-        <strong>{t("voting.storytellerClue")}:</strong>{" "}
+        <strong>
+          {t("voting.storytellerClueWithName", { name: storytellerName })}:
+        </strong>{" "}
         <strong style={{ fontWeight: 900, fontSize: "1.1em" }}>
           "{roomState.currentClue}"
         </strong>
@@ -1156,9 +1096,15 @@ export function RevealModal(props: RevealModalProps): ModalContentResult {
 
   const storytellerId = roomState.storytellerId;
   const storytellerCard = roomState.revealedCards.find(
-    (card) => (card as any).playerId === storytellerId
+    (card) => card.playerId === storytellerId
   );
   const storytellerCardId = storytellerCard?.cardId;
+
+  // Get storyteller name
+  const storyteller = roomState.players.find(
+    (p) => p.id === roomState.storytellerId
+  );
+  const storytellerName = storyteller?.name || t("common.storyteller");
 
   const scoreDeltas: { [playerId: string]: number } = {};
   roomState.lastScoreDeltas.forEach((delta) => {
@@ -1171,7 +1117,9 @@ export function RevealModal(props: RevealModalProps): ModalContentResult {
         <Icon.Results size={IconSize.large} /> {t("reveal.results")}
       </h2>
       <p className="clue-reminder">
-        <strong>{t("reveal.storytellerClue")}:</strong>{" "}
+        <strong>
+          {t("reveal.storytellerClueWithName", { name: storytellerName })}:
+        </strong>{" "}
         <strong style={{ fontWeight: 900, fontSize: "1.1em" }}>
           "{roomState.currentClue}"
         </strong>
@@ -1210,7 +1158,7 @@ export function RevealModal(props: RevealModalProps): ModalContentResult {
           players={roomState.players}
           cardOwners={roomState.revealedCards.map((card) => ({
             cardId: card.cardId,
-            playerId: (card as any).playerId || "unknown",
+            playerId: card.playerId,
           }))}
           storytellerCardId={storytellerCardId || null}
           showResults={true}

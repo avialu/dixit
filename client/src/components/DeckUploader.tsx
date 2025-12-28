@@ -275,7 +275,7 @@ export function DeckUploader({
             <div className="deck-stat-value">{roomState.players.length}</div>
             <div className="deck-stat-subtitle">
               {roomState.players.length >= 3
-                ? t("deckUploader.prefer", { count: minRequired })
+                ? ""
                 : t("deckUploader.needMorePlayers", {
                     count: 3 - roomState.players.length,
                   })}

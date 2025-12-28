@@ -73,19 +73,7 @@ export function AdminSettingsModal(props: AdminSettingsModalProps) {
     onSetWinTarget(target);
   };
 
-  const header = (
-    <>
-      <h2>
-        <Icon.Settings size={IconSize.large} /> {t("adminSettings.title")}
-      </h2>
-      {isInGame && (
-        <p style={{ color: "#95a5a6", fontSize: "0.9rem", marginTop: "0.5rem" }}>
-          {t("adminSettings.lobbyOnlyNote")}
-        </p>
-      )}
-    </>
-  );
-
+  const header = null;
   const footer = null;
 
   return {

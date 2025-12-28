@@ -899,7 +899,7 @@ The application has **4 main pages** with distinct purposes and routing.
 │                                                    │
 ├────────────────────────────────────────────────────┤
 │  Scoreboard:                                       │
-│  1. 📖 Alice: 15 (+3)                              │
+│  1. 🎭 Alice: 15 (+3)                              │
 │  2. Bob: 12 (+4)                                   │
 │  3. Carol: 18 (+2)                                 │
 └────────────────────────────────────────────────────┘
@@ -956,7 +956,7 @@ The application has **4 main pages** with distinct purposes and routing.
 **Scoreboard** (always visible in footer):
 
 - All players sorted by score (descending)
-- Shows: rank, name, admin crown (👑), storyteller book (📖), score, last delta
+- Shows: rank, name, admin crown (👑), storyteller book (🎭), score, last delta
 - Disconnected players marked (DC)
 
 #### 3.4.4 Components Used
@@ -1187,7 +1187,7 @@ interface PlayerListProps {
 - Lists all players with:
   - Name
   - Admin crown (👑) if `isAdmin`
-  - Storyteller book (📖) if `storytellerId === player.id`
+  - Storyteller book (🎭) if `storytellerId === player.id`
   - Score (in points)
   - "(disconnected)" if not connected
 - Disconnected players have visual styling (grayed out)
@@ -1203,7 +1203,7 @@ interface PlayerListProps {
         <span className="player-name">
           {player.name}
           {player.isAdmin && " 👑"}
-          {storytellerId === player.id && " 📖"}
+          {storytellerId === player.id && " 🎭"}
         </span>
         <span className="player-score">{player.score} pts</span>
         {!player.isConnected && " (disconnected)"}
@@ -1255,7 +1255,7 @@ interface ScoreboardProps {
 #### Table Columns
 
 1. **Rank**: Player's position (1-indexed)
-2. **Player**: Name + admin 👑 + storyteller 📖 + (DC) if disconnected
+2. **Player**: Name + admin 👑 + storyteller 🎭 + (DC) if disconnected
 3. **Score**: Current total score
 4. **Last Round**: Score delta from last round (color-coded)
 

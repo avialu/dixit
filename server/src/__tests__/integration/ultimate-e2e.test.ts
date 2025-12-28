@@ -410,7 +410,7 @@ describe("ULTIMATE E2E: 20 Players, Complete Game Flow", () => {
         }
 
         console.log(
-          `📖 Storyteller: ${storyteller.name} (${storyteller.hand.length} cards)`
+          `🎭 Storyteller: ${storyteller.name} (${storyteller.hand.length} cards)`
         );
 
         // STORYTELLER SUBMITS

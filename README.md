@@ -135,7 +135,7 @@ SERVER_URL=http://YOUR_IP:3000 npm start
 
 1. **Storyteller Phase**
 
-   - Storyteller (📖) chooses a card from their hand
+   - Storyteller (🎭) chooses a card from their hand
    - Gives a text clue
 
 2. **Players Choice**

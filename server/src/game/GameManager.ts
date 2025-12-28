@@ -586,12 +586,13 @@ export class GameManager {
       throw new Error("You do not have that card");
     }
 
-    const card = player.removeCard(cardId);
+    // Find the card in hand (don't remove it yet - will be removed at end of round)
+    const card = player.hand.find((c) => c.id === cardId);
     if (!card) {
       throw new Error("Card not found in hand");
     }
 
-    // Store card image data
+    // Store card image data for reveal phase
     this.submittedCardsData.set(cardId, card.imageData);
 
     this.state.currentClue = clue;
@@ -631,12 +632,13 @@ export class GameManager {
       throw new Error("You do not have that card");
     }
 
-    const card = player.removeCard(cardId);
+    // Find the card in hand (don't remove it yet - will be removed at end of round)
+    const card = player.hand.find((c) => c.id === cardId);
     if (!card) {
       throw new Error("Card not found in hand");
     }
 
-    // Store card image data
+    // Store card image data for reveal phase
     this.submittedCardsData.set(cardId, card.imageData);
 
     this.state.submittedCards.push({ cardId, playerId });
@@ -797,6 +799,14 @@ export class GameManager {
       if (hasWinner) {
         this.state.phase = GamePhase.GAME_END;
         return;
+      }
+    }
+
+    // Remove submitted cards from players' hands (they were kept for display until now)
+    for (const submittedCard of this.state.submittedCards) {
+      const player = this.state.players.get(submittedCard.playerId);
+      if (player) {
+        player.removeCard(submittedCard.cardId);
       }
     }
 
@@ -993,7 +1003,7 @@ export class GameManager {
 
     return {
       playerId,
-      hand: player.hand,
+      hand: player.hand, // Card stays in hand until next round
       mySubmittedCardId: mySubmittedCard?.cardId || null,
       mySubmittedCardImage,
       myVote: myVote?.cardId || null,

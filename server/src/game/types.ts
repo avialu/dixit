@@ -100,6 +100,7 @@ export interface RoomState {
     cardId: string;
     imageData: string;
     position: number;
+    playerId: string; // Who submitted this card
   }[]; // Only populated during REVEAL, VOTING, SCORING phases
   votes: {
     voterId: string;

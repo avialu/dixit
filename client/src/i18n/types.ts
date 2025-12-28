@@ -196,6 +196,7 @@ export interface TranslationKeys {
     submitted: string;
     chooseCardTitle: string;
     storytellerClue: string;
+    storytellerClueWithName: string;
     waitingTitle: string;
   };
 
@@ -215,6 +216,7 @@ export interface TranslationKeys {
     watching: string;
     spectating: string;
     storytellerClue: string;
+    storytellerClueWithName: string;
   };
 
   // Reveal Phase
@@ -231,6 +233,7 @@ export interface TranslationKeys {
     continueButton: string;
     results: string;
     storytellerClue: string;
+    storytellerClueWithName: string;
     continue: string;
     waiting: string;
     waitingForAdmin: string;

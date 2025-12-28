@@ -347,7 +347,7 @@ export function GameBoard({
         );
         const needMore = minRequired - roomState.deckSize;
         const isReady = roomState.deckSize >= minRequired;
-        
+
         // Determine status text based on game readiness and admin status
         let statusText: string;
         if (roomState.players.length < 3) {
@@ -359,7 +359,7 @@ export function GameBoard({
         } else {
           statusText = t("lobby.waitingForAdminName", { name: adminName });
         }
-        
+
         return {
           icon: "🎴",
           text: statusText,
@@ -435,11 +435,18 @@ export function GameBoard({
           <div className="status-text">{gameStatus.text}</div>
           {gameStatus.deckInfo ? (
             <div className="status-subtext">
-              <span className={`deck-count ${gameStatus.deckInfo.isReady ? 'deck-ready' : 'deck-warning'}`}>
+              <span
+                className={`deck-count ${
+                  gameStatus.deckInfo.isReady ? "deck-ready" : "deck-warning"
+                }`}
+              >
                 {gameStatus.deckInfo.count} {t("common.images")}
               </span>
               {" | "}
-              <span>{gameStatus.deckInfo.playerCount} {t("common.players").toLowerCase()}</span>
+              <span>
+                {gameStatus.deckInfo.playerCount}{" "}
+                {t("common.players").toLowerCase()}
+              </span>
             </div>
           ) : gameStatus.subtext ? (
             <div className="status-subtext">{gameStatus.subtext}</div>
@@ -572,7 +579,7 @@ export function GameBoard({
                 <g>
                   {player.tokenImage ? (
                     /* Token with custom image */
-                    <g 
+                    <g
                       transform={`translate(${tokenX}, ${tokenY})`}
                       className="player-token-group"
                     >
@@ -601,7 +608,7 @@ export function GameBoard({
                     </g>
                   ) : (
                     /* Token with color fallback and name initials */
-                    <g 
+                    <g
                       transform={`translate(${tokenX}, ${tokenY})`}
                       className="player-token-group"
                     >
@@ -636,7 +643,7 @@ export function GameBoard({
                       dominantBaseline="middle"
                       style={{ pointerEvents: "none" }}
                     >
-                      📖
+                      🎭
                     </text>
                   )}
                 </g>

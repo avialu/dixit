@@ -4412,14 +4412,23 @@ select {
   opacity: 0.6;
 }
 
+/* Locked card should maintain full visibility even when deck is disabled */
+.card.disabled.locked {
+  opacity: 1;
+}
+
 .card.locked {
   cursor: default;
   border-color: #2ecc71;
+  border-width: 3px;
   position: relative;
+  box-shadow: 0 0 20px rgba(46, 204, 113, 0.5), 0 8px 24px rgba(0, 0, 0, 0.3);
+  transform: translateY(-4px) scale(1.02);
+  z-index: 1;
 }
 
 .card.locked:hover {
-  transform: translateY(-2px);
+  transform: translateY(-4px) scale(1.02);
 }
 
 .card.storyteller-card {

@@ -37,7 +37,7 @@ Be the best storyteller! Give creative clues that some (but not all) players gue
 The game follows these phases in order:
 
 ```
-Lobby → Deck Building → Storytelling → Card Selection → 
+Lobby → Deck Building → Storytelling → Card Selection →
 Reveal → Voting → Scoring → [Next Round or Game End]
 ```
 
@@ -51,13 +51,14 @@ Reveal → Voting → Scoring → [Next Round or Game End]
 
 ### Phase 2: Storyteller's Turn
 
-- One player is designated as the storyteller (marked with 📖)
+- One player is designated as the storyteller (marked with 🎭)
 - Storyteller:
   1. Selects one card from their hand (6 cards)
   2. Provides a creative clue (1-200 characters)
   3. Submits card and clue
 
 **Tips for Storytelling:**
+
 - Not too obvious (or everyone will guess)
 - Not too obscure (or no one will guess)
 - Be creative with words, sounds, or phrases
@@ -86,6 +87,7 @@ Reveal → Voting → Scoring → [Next Round or Game End]
 ### Phase 6: Scoring
 
 Results are revealed:
+
 - Which card was the storyteller's
 - Who voted for which card
 - Points awarded to each player
@@ -128,6 +130,7 @@ Your clue was too hard!
 ### Bonus Points
 
 **Always applied:**
+
 - Each non-storyteller gets +1 point for every vote their card received
 - Votes for the storyteller's card don't count for bonus
 
@@ -136,11 +139,13 @@ Your clue was too hard!
 ### Example 1: Perfect Clue
 
 **Setup:**
+
 - Players: Alice (storyteller), Bob, Carol, Dave
 - Bob and Carol guess correctly
 - Dave guesses wrong, but his card gets 1 vote from Bob
 
 **Scores:**
+
 - Alice: +3 (some guessed correctly)
 - Bob: +3 (guessed correctly)
 - Carol: +3 (guessed correctly)
@@ -149,19 +154,23 @@ Your clue was too hard!
 ### Example 2: Too Obvious
 
 **Setup:**
+
 - All 3 players vote for Alice's card
 
 **Scores:**
+
 - Alice: 0 (too obvious)
 - Everyone else: +2 each (plus any bonus votes)
 
 ### Example 3: Too Obscure
 
 **Setup:**
+
 - No one votes for Alice's card
 - Votes spread among other cards
 
 **Scores:**
+
 - Alice: 0 (too obscure)
 - Everyone else: +2 each (plus bonus votes for their cards)
 
@@ -170,14 +179,17 @@ Your clue was too hard!
 ### Win Conditions
 
 **Primary:**
+
 - Any player reaches the win target score (default: 30 points)
 
 **Secondary:**
+
 - Deck runs out of cards (can't refill hands to 6 cards)
 
 ### Win Target Settings
 
 Admin can choose in lobby:
+
 - **30 points** (default, ~15-20 minutes)
 - **50 points** (longer game, ~30-40 minutes)
 - **Unlimited** (play until deck runs out)
@@ -185,10 +197,12 @@ Admin can choose in lobby:
 ### After Game Ends
 
 **Winner Declared:**
+
 - Player with highest score wins
 - If tied, player who reached target first wins
 
 **Admin Options:**
+
 - **Reset Game**: Keep same deck, reset scores to 0
 - **New Deck**: Clear everything, upload new images
 - **Back to Lobby**: Return to main menu
@@ -215,15 +229,18 @@ The first player to join is automatically the admin (👑).
 ### Admin-Only Actions
 
 **Before Game:**
+
 - Set win target (30/50/Unlimited)
 - Toggle who can upload images
 - Lock deck (prevent uploads/deletes)
 - Start game
 
 **During Game:**
+
 - None (gameplay is equal for all)
 
 **After Game:**
+
 - Reset game
 - Start new deck
 - Return to lobby
@@ -281,19 +298,18 @@ The first player to join is automatically the admin (👑).
 
 ## Quick Reference
 
-| Phase | Who Acts | Action |
-|-------|----------|--------|
-| Lobby | Admin | Start game when ready |
-| Storyteller's Turn | Storyteller | Choose card + give clue |
-| Card Selection | All Players | Choose matching card |
-| Reveal | Automatic | Cards shuffled and shown |
-| Voting | All Players | Vote for storyteller's card |
-| Scoring | Automatic | Points awarded |
-| Next Round | Anyone | Click "Next Round" |
+| Phase              | Who Acts    | Action                      |
+| ------------------ | ----------- | --------------------------- |
+| Lobby              | Admin       | Start game when ready       |
+| Storyteller's Turn | Storyteller | Choose card + give clue     |
+| Card Selection     | All Players | Choose matching card        |
+| Reveal             | Automatic   | Cards shuffled and shown    |
+| Voting             | All Players | Vote for storyteller's card |
+| Scoring            | Automatic   | Points awarded              |
+| Next Round         | Anyone      | Click "Next Round"          |
 
 ## More Information
 
 - Setup instructions: [README.md](README.md)
 - Technical details: [ARCHITECTURE.md](ARCHITECTURE.md)
 - Development guide: [DEVELOPMENT.md](DEVELOPMENT.md)
-
