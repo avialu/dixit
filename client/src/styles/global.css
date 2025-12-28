@@ -2189,6 +2189,328 @@ select {
 
 /* .game-end-actions defined earlier - see line 1627 */
 
+/* ========================================
+   RULES MODAL CONTENT
+   ======================================== */
+
+/* Tab Switch Button */
+.rules-tab-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  background: none;
+  border: none;
+  color: #667eea;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 0.5rem 0;
+  margin-bottom: 0.5rem;
+  transition: color 0.2s;
+}
+
+.rules-tab-switch:hover {
+  color: #8b9ff0;
+  text-decoration: underline;
+}
+
+/* Tutorial Slides View */
+.rules-tutorial {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 0.5rem 0;
+  min-height: 400px;
+}
+
+.rules-tutorial .rules-tab-switch {
+  align-self: flex-end;
+  margin-bottom: 1rem;
+}
+
+.rules-slide {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem 0;
+  max-width: 320px;
+}
+
+.rules-slide-icon {
+  margin-bottom: 1.5rem;
+  animation: rules-icon-bounce 2s ease-in-out infinite;
+}
+
+@keyframes rules-icon-bounce {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+.rules-slide-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #fff;
+  margin: 0 0 0.5rem 0;
+}
+
+.rules-slide-subtitle {
+  font-size: 1rem;
+  color: #667eea;
+  font-weight: 600;
+  margin: 0 0 1rem 0;
+}
+
+.rules-slide-description {
+  font-size: 0.95rem;
+  color: rgba(255, 255, 255, 0.85);
+  line-height: 1.6;
+  margin: 0;
+}
+
+/* Progress Dots */
+.rules-progress-dots {
+  display: flex;
+  gap: 0.5rem;
+  margin: 1.5rem 0;
+}
+
+.rules-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.3);
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  transition: all 0.2s;
+}
+
+.rules-dot:hover {
+  background: rgba(255, 255, 255, 0.5);
+}
+
+.rules-dot.active {
+  background: #667eea;
+  transform: scale(1.2);
+}
+
+/* Navigation Buttons */
+.rules-nav-buttons {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+  gap: 1rem;
+  margin-top: auto;
+  padding-top: 1rem;
+}
+
+.rules-nav-buttons button {
+  min-width: 120px;
+}
+
+/* Close Button at Bottom of Quick Ref */
+.rules-close-btn {
+  display: flex;
+  justify-content: center;
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.rules-close-btn button {
+  min-width: 150px;
+}
+
+/* Quick Reference Content */
+.rules-content {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  padding: 0.5rem 0;
+}
+
+.rules-content .rules-tab-switch {
+  margin-bottom: 0;
+}
+
+.rules-section {
+  background: rgba(42, 42, 62, 0.6);
+  border-radius: 12px;
+  padding: 1rem 1.25rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.rules-section-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #f39c12;
+  margin: 0 0 0.75rem 0;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid rgba(243, 156, 18, 0.3);
+}
+
+.rules-section-title svg {
+  flex-shrink: 0;
+}
+
+.rules-description {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.9);
+  line-height: 1.6;
+  font-size: 0.95rem;
+}
+
+/* Game Phases */
+.rules-phase {
+  margin-bottom: 1rem;
+  padding-left: 0.5rem;
+  border-left: 3px solid rgba(102, 126, 234, 0.5);
+}
+
+.rules-phase:last-child {
+  margin-bottom: 0;
+}
+
+.rules-phase h4 {
+  margin: 0 0 0.35rem 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #667eea;
+}
+
+.rules-phase p {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+/* Scoring Cases */
+.rules-scoring-case {
+  margin-bottom: 1rem;
+  padding: 0.75rem;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.rules-scoring-case:last-of-type {
+  margin-bottom: 0.75rem;
+}
+
+.rules-scoring-case h4 {
+  margin: 0 0 0.5rem 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.rules-scoring-normal h4 {
+  color: #2ecc71;
+}
+
+.rules-scoring-warning h4 {
+  color: #e74c3c;
+}
+
+.rules-scoring-case ul {
+  margin: 0;
+  padding-left: 1.25rem;
+  list-style-type: disc;
+}
+
+.rules-scoring-case li {
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 0.9rem;
+  line-height: 1.6;
+}
+
+.rules-scoring-case p {
+  margin: 0 0 0.25rem 0;
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.rules-bonus-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0.75rem;
+  background: rgba(52, 152, 219, 0.15);
+  border-radius: 8px;
+  border: 1px solid rgba(52, 152, 219, 0.3);
+  color: #3498db;
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.rules-bonus-note svg {
+  flex-shrink: 0;
+  margin-top: 0.15rem;
+}
+
+/* Tips Section */
+.rules-tips {
+  background: rgba(155, 89, 182, 0.1);
+  border-color: rgba(155, 89, 182, 0.3);
+}
+
+.rules-tip {
+  padding: 0.6rem 0.75rem;
+  margin-bottom: 0.5rem;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+  border-left: 3px solid #9b59b6;
+}
+
+.rules-tip:last-child {
+  margin-bottom: 0;
+}
+
+.rules-tip p {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+/* RTL support for rules */
+[dir="rtl"] .rules-phase {
+  padding-left: 0;
+  padding-right: 0.5rem;
+  border-left: none;
+  border-right: 3px solid rgba(102, 126, 234, 0.5);
+}
+
+[dir="rtl"] .rules-tip {
+  border-left: none;
+  border-right: 3px solid #9b59b6;
+}
+
+[dir="rtl"] .rules-scoring-case ul {
+  padding-left: 0;
+  padding-right: 1.25rem;
+}
+
+/* RTL support for tutorial */
+[dir="rtl"] .rules-tutorial .rules-tab-switch {
+  align-self: flex-start;
+}
+
+[dir="rtl"] .rules-nav-buttons {
+  flex-direction: row-reverse;
+}
+
 /* Old game page styles (kept for compatibility) */
 .game-page {
   padding: 2rem;
@@ -3725,6 +4047,22 @@ select {
   50% {
     box-shadow: 0 8px 32px rgba(39, 174, 96, 0.7);
   }
+}
+
+/* Rules Button - Subtle styling to not compete with primary actions */
+.floating-action-button.rules-button {
+  background: linear-gradient(135deg, #6c757d 0%, #868e96 100%);
+  box-shadow: 0 4px 16px rgba(108, 117, 125, 0.3);
+  opacity: 0.85;
+}
+
+.floating-action-button.rules-button:hover {
+  opacity: 1;
+  box-shadow: 0 6px 20px rgba(108, 117, 125, 0.5);
+}
+
+.floating-action-button.rules-button:active {
+  transform: translateY(-2px) scale(1.02);
 }
 
 @keyframes pulse-glow {

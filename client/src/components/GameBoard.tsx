@@ -473,7 +473,7 @@ export function GameBoard({
                 className="board-qr-close-btn"
               />
             )}
-            <p className="board-qr-hint">Scan to join</p>
+            <p className="board-qr-hint">{t("join.scanToJoin")}</p>
             <QRCode url={roomState.serverUrl} size={180} />
           </div>
         </div>

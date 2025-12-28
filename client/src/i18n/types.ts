@@ -335,6 +335,114 @@ export interface TranslationKeys {
     timeUp: string;
     secondsRemaining: string;
   };
+
+  // Rules Modal
+  rules: {
+    title: string;
+    // Tab labels
+    tabs: {
+      tutorial: string;
+      quickRef: string;
+    };
+    // Navigation
+    nav: {
+      next: string;
+      back: string;
+      skip: string;
+      getStarted: string;
+    };
+    // Tutorial slides
+    tutorial: {
+      slide1: {
+        title: string;
+        subtitle: string;
+        description: string;
+      };
+      slide2: {
+        title: string;
+        subtitle: string;
+        description: string;
+      };
+      slide3: {
+        title: string;
+        subtitle: string;
+        description: string;
+      };
+      slide4: {
+        title: string;
+        subtitle: string;
+        description: string;
+      };
+      slide5: {
+        title: string;
+        subtitle: string;
+        description: string;
+      };
+      slide6: {
+        title: string;
+        subtitle: string;
+        description: string;
+      };
+      slide7: {
+        title: string;
+        subtitle: string;
+        description: string;
+      };
+    };
+    // Quick Reference
+    objective: {
+      title: string;
+      description: string;
+    };
+    phases: {
+      title: string;
+      storytellerTurn: {
+        title: string;
+        description: string;
+      };
+      playersChoice: {
+        title: string;
+        description: string;
+      };
+      voting: {
+        title: string;
+        description: string;
+      };
+      reveal: {
+        title: string;
+        description: string;
+      };
+    };
+    scoring: {
+      title: string;
+      normalCase: {
+        title: string;
+        storyteller: string;
+        correctGuessers: string;
+        bonus: string;
+      };
+      tooObvious: {
+        title: string;
+        description: string;
+        others: string;
+      };
+      tooObscure: {
+        title: string;
+        description: string;
+        others: string;
+      };
+      bonusNote: string;
+    };
+    winning: {
+      title: string;
+      description: string;
+    };
+    tips: {
+      title: string;
+      storytellerTip: string;
+      playerTip: string;
+    };
+  };
 }
 
 /**

@@ -109,7 +109,7 @@ export function UnifiedGamePage({
   const [clue, setClue] = useState("");
   const [showModal, setShowModal] = useState(false);
   const [modalType, setModalType] = useState<
-    "settings" | "cards" | "adminSettings"
+    "settings" | "cards" | "adminSettings" | "rules"
   >("cards");
   const [manuallyClosedModal, setManuallyClosedModal] = useState(false);
   const [detectedServerUrl, setDetectedServerUrl] = useState<string | null>(
@@ -613,6 +613,12 @@ export function UnifiedGamePage({
     setManuallyClosedModal(false);
   };
 
+  const openRules = () => {
+    setModalType("rules");
+    setShowModal(true);
+    setManuallyClosedModal(false);
+  };
+
   // Check if we're waiting for reconnection (hasJoined but no roomState yet)
   const isPendingReconnect =
     !isDemoMode && !roomState && storage.hasJoined.get();
@@ -891,6 +897,15 @@ export function UnifiedGamePage({
             )}
           </button>
 
+          {/* Rules Button - Always available */}
+          <button
+            className="floating-action-button rules-button"
+            onClick={openRules}
+            title={t("rules.title")}
+          >
+            <Icon.Book size={IconSize.large} />
+          </button>
+
           {/* Admin Settings Button - During active game */}
           {isAdmin && isInGame && (
             <button
@@ -924,6 +939,15 @@ export function UnifiedGamePage({
             title="Players"
           >
             <Icon.Settings size={IconSize.large} />
+          </button>
+
+          {/* Rules Button - Available for spectators too */}
+          <button
+            className="floating-action-button rules-button"
+            onClick={openRules}
+            title={t("rules.title")}
+          >
+            <Icon.Book size={IconSize.large} />
           </button>
         </div>
       )}
@@ -1093,6 +1117,15 @@ export function UnifiedGamePage({
               onKickPlayer: handleKickPlayer,
               onPromotePlayer: handlePromotePlayer,
               onConfirmWinTargetChange: handleConfirmWinTargetChange,
+              t,
+            });
+          } else if (modalType === "rules") {
+            // Rules Modal - Available at all times
+            modalContent = ModalContent.RulesModal({
+              onClose: () => {
+                setShowModal(false);
+                setManuallyClosedModal(true);
+              },
               t,
             });
           }

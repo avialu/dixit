@@ -105,21 +105,8 @@
   margin-right: 0;
 }
 
-/* Floating action buttons */
-[dir="rtl"] .floating-action-button {
-  left: 20px;
-  right: auto;
-}
-
-[dir="rtl"] .floating-action-button.qr-button {
-  left: 90px;
-  right: auto;
-}
-
-[dir="rtl"] .floating-action-button.start-game-button {
-  left: auto;
-  right: 20px;
-}
+/* Floating action buttons - RTL handled by container in global.css */
+/* The .floating-buttons-container uses flex-direction: row-reverse for RTL */
 
 /* Error toast */
 [dir="rtl"] .error-toast {
@@ -192,4 +179,149 @@
 [dir="rtl"] .round-number {
   direction: ltr;
   display: inline-block;
+}
+
+/* Modal timer - flip position in RTL */
+[dir="rtl"] .modal-timer {
+  left: auto;
+  right: 0.75rem;
+}
+
+/* Board info alignment */
+[dir="rtl"] .board-info {
+  align-items: flex-start;
+}
+
+[dir="rtl"] .board-header {
+  flex-direction: row-reverse;
+}
+
+[dir="rtl"] .board-header-ingame {
+  flex-direction: row-reverse;
+}
+
+/* Arrow icons - flip in RTL */
+[dir="rtl"] .Icon-ArrowForward,
+[dir="rtl"] .Icon-ArrowBack,
+[dir="rtl"] button svg[data-lucide="arrow-right"],
+[dir="rtl"] button svg[data-lucide="arrow-left"] {
+  transform: scaleX(-1);
+}
+
+/* Game board visual */
+[dir="rtl"] .game-board-visual {
+  direction: rtl;
+}
+
+/* Revealed cards */
+[dir="rtl"] .revealed-cards-area {
+  direction: rtl;
+}
+
+/* Card header badges */
+[dir="rtl"] .card-header {
+  flex-direction: row-reverse;
+}
+
+/* Clue display */
+[dir="rtl"] .clue-display-ingame {
+  direction: rtl;
+}
+
+/* Progress bars should stay LTR */
+[dir="rtl"] .lobby-image-progress,
+[dir="rtl"] .progress-bar {
+  direction: ltr;
+}
+
+/* Form controls with icons */
+[dir="rtl"] .input-with-icon {
+  flex-direction: row-reverse;
+}
+
+/* Modal content sections */
+[dir="rtl"] .modal-section {
+  text-align: right;
+}
+
+/* Rules modal */
+[dir="rtl"] .rules-content {
+  text-align: right;
+}
+
+[dir="rtl"] .rules-section-title {
+  flex-direction: row-reverse;
+}
+
+/* Game status indicators */
+[dir="rtl"] .game-status-text {
+  text-align: right;
+}
+
+/* Player token and info */
+[dir="rtl"] .player-token-container {
+  flex-direction: row-reverse;
+}
+
+/* Admin controls */
+[dir="rtl"] .admin-controls {
+  flex-direction: row-reverse;
+}
+
+/* Phase indicator */
+[dir="rtl"] .phase-indicator {
+  direction: rtl;
+  text-align: right;
+}
+
+/* Keep button content (icons + text) in correct order */
+[dir="rtl"] button {
+  flex-direction: row-reverse;
+}
+
+/* Restore normal direction for icon-only buttons */
+[dir="rtl"] .btn-icon,
+[dir="rtl"] .floating-action-button {
+  flex-direction: row;
+}
+
+/* Deck preview grid stays LTR for visual consistency */
+[dir="rtl"] .deck-preview-grid {
+  direction: ltr;
+}
+
+/* Hand cards container */
+[dir="rtl"] .hand-cards {
+  direction: rtl;
+}
+
+/* Spectator badge */
+[dir="rtl"] .spectator-badge {
+  margin-left: 0;
+  margin-right: 0.5rem;
+}
+
+/* Mobile RTL adjustments */
+@media (max-width: 768px) {
+  [dir="rtl"] .modal-timer {
+    right: 0.5rem;
+    left: auto;
+  }
+
+  [dir="rtl"] .floating-buttons-container {
+    right: 1rem;
+    left: auto;
+  }
+}
+
+@media (max-width: 480px) {
+  [dir="rtl"] .modal-timer {
+    right: 0.5rem;
+    left: auto;
+  }
+
+  [dir="rtl"] .floating-buttons-container {
+    right: 0.5rem;
+    left: auto;
+  }
 }

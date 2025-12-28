@@ -1313,3 +1313,124 @@ export function GameEndModal(props: GameEndModalProps): ModalContentResult {
     ),
   };
 }
+
+// Rules Modal - Available at all times to explain game rules
+interface RulesModalProps {
+  onClose: () => void;
+  t: (key: string, values?: Record<string, string | number>) => string;
+}
+
+export function RulesModal(props: RulesModalProps): ModalContentResult {
+  const { onClose, t } = props;
+
+  const header = (
+    <>
+      <h2>
+        <Icon.Book size={IconSize.large} /> {t("rules.title")}
+      </h2>
+    </>
+  );
+
+  const footer = (
+    <Button variant="primary" onClick={onClose}>
+      {t("common.close")}
+    </Button>
+  );
+
+  return {
+    header,
+    footer,
+    timer: undefined,
+    content: (
+      <div className="rules-content">
+        {/* Objective Section */}
+        <section className="rules-section">
+          <h3 className="rules-section-title">
+            <Icon.Star size={IconSize.medium} /> {t("rules.objective.title")}
+          </h3>
+          <p className="rules-description">{t("rules.objective.description")}</p>
+        </section>
+
+        {/* Game Phases Section */}
+        <section className="rules-section">
+          <h3 className="rules-section-title">
+            <Icon.Cards size={IconSize.medium} /> {t("rules.phases.title")}
+          </h3>
+
+          <div className="rules-phase">
+            <h4>{t("rules.phases.storytellerTurn.title")}</h4>
+            <p>{t("rules.phases.storytellerTurn.description")}</p>
+          </div>
+
+          <div className="rules-phase">
+            <h4>{t("rules.phases.playersChoice.title")}</h4>
+            <p>{t("rules.phases.playersChoice.description")}</p>
+          </div>
+
+          <div className="rules-phase">
+            <h4>{t("rules.phases.voting.title")}</h4>
+            <p>{t("rules.phases.voting.description")}</p>
+          </div>
+
+          <div className="rules-phase">
+            <h4>{t("rules.phases.reveal.title")}</h4>
+            <p>{t("rules.phases.reveal.description")}</p>
+          </div>
+        </section>
+
+        {/* Scoring Section */}
+        <section className="rules-section">
+          <h3 className="rules-section-title">
+            <Icon.Trophy size={IconSize.medium} /> {t("rules.scoring.title")}
+          </h3>
+
+          <div className="rules-scoring-case rules-scoring-normal">
+            <h4>{t("rules.scoring.normalCase.title")}</h4>
+            <ul>
+              <li>{t("rules.scoring.normalCase.storyteller")}</li>
+              <li>{t("rules.scoring.normalCase.correctGuessers")}</li>
+              <li>{t("rules.scoring.normalCase.bonus")}</li>
+            </ul>
+          </div>
+
+          <div className="rules-scoring-case rules-scoring-warning">
+            <h4>{t("rules.scoring.tooObvious.title")}</h4>
+            <p>{t("rules.scoring.tooObvious.description")}</p>
+            <p>{t("rules.scoring.tooObvious.others")}</p>
+          </div>
+
+          <div className="rules-scoring-case rules-scoring-warning">
+            <h4>{t("rules.scoring.tooObscure.title")}</h4>
+            <p>{t("rules.scoring.tooObscure.description")}</p>
+            <p>{t("rules.scoring.tooObscure.others")}</p>
+          </div>
+
+          <p className="rules-bonus-note">
+            <Icon.Info size={IconSize.small} /> {t("rules.scoring.bonusNote")}
+          </p>
+        </section>
+
+        {/* Winning Section */}
+        <section className="rules-section">
+          <h3 className="rules-section-title">
+            <Icon.Crown size={IconSize.medium} /> {t("rules.winning.title")}
+          </h3>
+          <p className="rules-description">{t("rules.winning.description")}</p>
+        </section>
+
+        {/* Tips Section */}
+        <section className="rules-section rules-tips">
+          <h3 className="rules-section-title">
+            <Icon.Sparkles size={IconSize.medium} /> {t("rules.tips.title")}
+          </h3>
+          <div className="rules-tip">
+            <p>{t("rules.tips.storytellerTip")}</p>
+          </div>
+          <div className="rules-tip">
+            <p>{t("rules.tips.playerTip")}</p>
+          </div>
+        </section>
+      </div>
+    ),
+  };
+}

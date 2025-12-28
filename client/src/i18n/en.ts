@@ -340,4 +340,121 @@ export const en: TranslationKeys = {
     timeUp: "Time's up!",
     secondsRemaining: "{seconds} seconds remaining",
   },
+
+  // Rules Modal
+  rules: {
+    title: "How to Play",
+    // Tab labels
+    tabs: {
+      tutorial: "Tutorial",
+      quickRef: "Quick Reference",
+    },
+    // Navigation
+    nav: {
+      next: "Next",
+      back: "Back",
+      skip: "Skip",
+      getStarted: "Got it!",
+    },
+    // Tutorial slides (7 slides)
+    tutorial: {
+      slide1: {
+        title: "Welcome to Dixit!",
+        subtitle: "A game of creative storytelling",
+        description: "Give clues that are not too easy, not too hard - just right!",
+      },
+      slide2: {
+        title: "Storyteller's Turn",
+        subtitle: "Pick a card, give a clue",
+        description: "Choose one card from your hand and give a creative clue - a word, phrase, song, or story!",
+      },
+      slide3: {
+        title: "Players Match",
+        subtitle: "Find a matching card",
+        description: "Pick a card from your hand that matches the clue. Try to trick others into voting for yours!",
+      },
+      slide4: {
+        title: "Time to Vote",
+        subtitle: "Find the storyteller's card",
+        description: "All cards are shuffled and revealed. Vote for which card you think belongs to the storyteller.",
+      },
+      slide5: {
+        title: "Perfect Clue!",
+        subtitle: "Some players guessed correctly",
+        description: "Storyteller and correct guessers each get +3 points. This is what you want!",
+      },
+      slide6: {
+        title: "Watch Out!",
+        subtitle: "Too easy or too hard = 0 points",
+        description: "If everyone or no one guesses correctly, the storyteller gets nothing. Others get +2 each.",
+      },
+      slide7: {
+        title: "Race to Victory!",
+        subtitle: "First to the target wins",
+        description: "Earn bonus points when others vote for your card. Be creative and have fun!",
+      },
+    },
+    // Quick Reference (existing content)
+    objective: {
+      title: "Objective",
+      description:
+        "Be the best storyteller! Give creative clues that some (but not all) players guess correctly.",
+    },
+    phases: {
+      title: "Game Phases",
+      storytellerTurn: {
+        title: "1. Storyteller's Turn",
+        description:
+          "The storyteller picks a card from their hand and gives a clue (a word, phrase, or story). The clue should be creative - not too obvious, not too obscure!",
+      },
+      playersChoice: {
+        title: "2. Players Choose Cards",
+        description:
+          "All other players pick a card from their hand that matches the clue. Try to trick others into voting for your card!",
+      },
+      voting: {
+        title: "3. Voting",
+        description:
+          "All cards are shuffled and revealed. Players vote for which card they think belongs to the storyteller. You cannot vote for your own card.",
+      },
+      reveal: {
+        title: "4. Reveal & Scoring",
+        description:
+          "The storyteller's card is revealed and points are awarded. Then hands are refilled and the next player becomes storyteller.",
+      },
+    },
+    scoring: {
+      title: "Scoring",
+      normalCase: {
+        title: "Some Players Guessed Correctly",
+        storyteller: "Storyteller: +3 points",
+        correctGuessers: "Correct guessers: +3 points each",
+        bonus: "Bonus: +1 point per vote on your card",
+      },
+      tooObvious: {
+        title: "Everyone Guessed Correctly",
+        description: "Storyteller gets 0 points (clue was too easy!)",
+        others: "All others: +2 points each",
+      },
+      tooObscure: {
+        title: "Nobody Guessed Correctly",
+        description: "Storyteller gets 0 points (clue was too hard!)",
+        others: "All others: +2 points each",
+      },
+      bonusNote:
+        "Tip: You earn +1 point for each vote your card receives (except the storyteller's card).",
+    },
+    winning: {
+      title: "How to Win",
+      description:
+        "The first player to reach the target score wins! If the deck runs out, the player with the most points wins.",
+    },
+    tips: {
+      title: "Tips",
+      storytellerTip:
+        "As storyteller: Be creative and ambiguous. Use abstract concepts, not literal descriptions.",
+      playerTip:
+        "As player: Choose cards that might look like the storyteller's. Pay attention to who the storyteller is!",
+    },
+  },
 };
