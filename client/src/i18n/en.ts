@@ -200,6 +200,7 @@ export const en: TranslationKeys = {
     storytellerClue: "Storyteller Clue",
     storytellerClueWithName: "{name}'s Clue",
     waitingTitle: "Waiting",
+    waitingForStoryteller: "{name} is choosing a clue...",
   },
 
   // Voting Phase

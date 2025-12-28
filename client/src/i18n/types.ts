@@ -200,6 +200,7 @@ export interface TranslationKeys {
     storytellerClue: string;
     storytellerClueWithName: string;
     waitingTitle: string;
+    waitingForStoryteller: string;
   };
 
   // Voting Phase

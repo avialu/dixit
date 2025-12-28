@@ -89,3 +89,6 @@ export function getLatencyDescription(latency: number | null): string {
   return 'Poor';
 }
 
+
+
+

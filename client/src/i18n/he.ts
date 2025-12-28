@@ -199,6 +199,7 @@ export const he: TranslationKeys = {
     storytellerClue: "רמז מספר הסיפור",
     storytellerClueWithName: "הרמז של {name}",
     waitingTitle: "ממתין",
+    waitingForStoryteller: "{name} בוחר רמז...",
   },
 
   // Voting Phase
