@@ -262,6 +262,8 @@ export function UnifiedGamePage({
   const myPlayer = roomState?.players.find((p) => p.id === playerId);
   const isAdmin = myPlayer?.isAdmin || false;
   const isStoryteller = roomState?.storytellerId === playerId;
+  // Single source of truth for submitted card (local optimistic || server confirmed)
+  const submittedCardId = localSubmittedCardId || playerState?.mySubmittedCardId || null;
 
   // Reset hasAdvancedRound when entering a new round
   useEffect(() => {
@@ -549,7 +551,7 @@ export function UnifiedGamePage({
   // Auto-submit handlers when timer expires
   const handleStorytellerTimerExpired = () => {
     // Already submitted - nothing to do
-    if (localSubmittedCardId || playerState?.mySubmittedCardId) return;
+    if (submittedCardId) return;
 
     // Get the card to submit (selected or random)
     const hand = playerState?.hand || [];
@@ -575,7 +577,7 @@ export function UnifiedGamePage({
 
   const handlePlayerTimerExpired = () => {
     // Already submitted - nothing to do
-    if (localSubmittedCardId || playerState?.mySubmittedCardId) return;
+    if (submittedCardId) return;
 
     // Get the card to submit (selected or random)
     const hand = playerState?.hand || [];
@@ -1059,7 +1061,7 @@ export function UnifiedGamePage({
                   playerState,
                   selectedCardId,
                   clue,
-                  localSubmittedCardId,
+                  submittedCardId,
                   roomState,
                   setSelectedCardId,
                   setClue,
@@ -1083,7 +1085,7 @@ export function UnifiedGamePage({
                 modalContent = ModalContent.PlayerChoiceModal({
                   playerState,
                   selectedCardId,
-                  localSubmittedCardId,
+                  submittedCardId,
                   roomState,
                   setSelectedCardId,
                   handlePlayerSubmit,

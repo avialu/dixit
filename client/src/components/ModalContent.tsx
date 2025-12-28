@@ -73,7 +73,8 @@ interface StorytellerModalProps {
   playerState: PlayerState | null;
   selectedCardId: string | null;
   clue: string;
-  localSubmittedCardId: string | null;
+  /** Combined submitted card ID (local optimistic || server confirmed) - single source of truth */
+  submittedCardId: string | null;
   roomState: RoomState;
   setSelectedCardId: (id: string | null) => void;
   setClue: (clue: string) => void;
@@ -85,7 +86,8 @@ interface StorytellerModalProps {
 interface PlayerChoiceModalProps {
   playerState: PlayerState | null;
   selectedCardId: string | null;
-  localSubmittedCardId: string | null;
+  /** Combined submitted card ID (local optimistic || server confirmed) - single source of truth */
+  submittedCardId: string | null;
   roomState: RoomState;
   setSelectedCardId: (id: string | null) => void;
   handlePlayerSubmit: () => void;
@@ -601,7 +603,7 @@ export function StorytellerChoiceModal(
     playerState,
     selectedCardId,
     clue,
-    localSubmittedCardId,
+    submittedCardId,
     roomState,
     setSelectedCardId,
     setClue,
@@ -610,7 +612,8 @@ export function StorytellerChoiceModal(
     t,
   } = props;
 
-  const isSubmitted = localSubmittedCardId || playerState?.mySubmittedCardId;
+  // Single source of truth: submittedCardId is already computed by parent
+  const isSubmitted = !!submittedCardId;
 
   // Timer for storyteller - always show for everyone
   const timerElement = (
@@ -691,10 +694,6 @@ export function StorytellerChoiceModal(
     </div>
   ) : null;
 
-  // Get the submitted card ID for locked state
-  const submittedCardId =
-    localSubmittedCardId || playerState?.mySubmittedCardId;
-
   return {
     header,
     footer,
@@ -705,7 +704,7 @@ export function StorytellerChoiceModal(
           cards={playerState?.hand || []}
           selectedCardId={isSubmitted ? null : selectedCardId}
           onSelectCard={isSubmitted ? () => {} : setSelectedCardId}
-          disabled={!!isSubmitted}
+          disabled={isSubmitted}
           lockedCardId={submittedCardId}
           showDrawer={false}
         />
@@ -720,7 +719,7 @@ export function PlayerChoiceModal(
   const {
     playerState,
     selectedCardId,
-    localSubmittedCardId,
+    submittedCardId,
     roomState,
     setSelectedCardId,
     handlePlayerSubmit,
@@ -730,7 +729,8 @@ export function PlayerChoiceModal(
     t,
   } = props;
 
-  const isSubmitted = localSubmittedCardId;
+  // Single source of truth: submittedCardId is already computed by parent
+  const isSubmitted = !!submittedCardId;
 
   // Get storyteller name
   const storyteller = roomState.players.find(
@@ -832,8 +832,8 @@ export function PlayerChoiceModal(
           cards={playerState?.hand || []}
           selectedCardId={isSubmitted ? null : selectedCardId}
           onSelectCard={isSubmitted ? () => {} : setSelectedCardId}
-          disabled={!!isSubmitted}
-          lockedCardId={localSubmittedCardId}
+          disabled={isSubmitted}
+          lockedCardId={submittedCardId}
           showDrawer={false}
         />
       </div>
@@ -1415,7 +1415,9 @@ export function RulesModal(props: RulesModalProps): ModalContentResult {
           <h3 className="rules-section-title">
             <Icon.Star size={IconSize.medium} /> {t("rules.objective.title")}
           </h3>
-          <p className="rules-description">{t("rules.objective.description")}</p>
+          <p className="rules-description">
+            {t("rules.objective.description")}
+          </p>
         </section>
 
         {/* Game Phases Section */}
