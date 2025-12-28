@@ -482,11 +482,13 @@ npm start</pre>
         if (deleted) {
           logger.playerAction(clientId, "deleted image", { imageId });
           
-          // Send incremental delete update
-          io.emit("imageDeleted", { id: imageId });
+          // Send incremental delete update with deckSize for consistency with imageAdded
+          // This prevents client deck size from drifting during bulk deletions
+          io.emit("imageDeleted", { id: imageId, deckSize: gameManager.getDeckSize() });
         }
 
-        broadcastRoomState();
+        // No roomState broadcast needed - imageDeleted provides all necessary info
+        // This reduces network traffic during bulk deletions
       });
     });
 

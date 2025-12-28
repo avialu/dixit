@@ -7,6 +7,7 @@ import { useTranslation } from "../i18n";
 
 interface GameBoardProps {
   roomState: RoomState;
+  playerId?: string; // Current player's ID to check admin status
   showQR?: boolean;
   onCloseQR?: () => void;
   revealModalOpen?: boolean; // Track if REVEAL modal is open
@@ -14,6 +15,7 @@ interface GameBoardProps {
 
 export function GameBoard({
   roomState,
+  playerId,
   showQR = true,
   onCloseQR,
   revealModalOpen = false,
@@ -330,6 +332,12 @@ export function GameBoard({
       (p) => p.id === roomState.storytellerId
     );
     const storytellerName = storyteller?.name || t("common.storyteller");
+    const currentPlayer = playerId
+      ? roomState.players.find((p) => p.id === playerId)
+      : null;
+    const isAdmin = currentPlayer?.isAdmin || false;
+    const adminPlayer = roomState.players.find((p) => p.isAdmin);
+    const adminName = adminPlayer?.name || "admin";
 
     switch (roomState.phase) {
       case "DECK_BUILDING": {
@@ -339,14 +347,22 @@ export function GameBoard({
         );
         const needMore = minRequired - roomState.deckSize;
         const isReady = roomState.deckSize >= minRequired;
+        
+        // Determine status text based on game readiness and admin status
+        let statusText: string;
+        if (roomState.players.length < 3) {
+          statusText = t("status.waitingForPlayers");
+        } else if (needMore > 0) {
+          statusText = t("status.needMoreImages", { count: needMore });
+        } else if (isAdmin) {
+          statusText = t("status.readyToStart");
+        } else {
+          statusText = t("lobby.waitingForAdminName", { name: adminName });
+        }
+        
         return {
           icon: "🎴",
-          text:
-            roomState.players.length < 3
-              ? t("status.waitingForPlayers")
-              : needMore > 0
-              ? t("status.needMoreImages", { count: needMore })
-              : t("status.readyToStart"),
+          text: statusText,
           subtext: "", // We'll use deckInfo instead
           deckInfo: {
             count: roomState.deckSize,
@@ -359,7 +375,7 @@ export function GameBoard({
         return {
           icon: "🎭",
           text: t("status.storytellerChoosing", { name: storytellerName }),
-          subtext: t("status.waitingForStoryteller"),
+          subtext: t("status.waitingForStoryteller", { name: storytellerName }),
         };
       case "PLAYERS_CHOICE":
         return {
@@ -555,8 +571,11 @@ export function GameBoard({
               <g key={player.id} style={{ pointerEvents: "none" }}>
                 <g>
                   {player.tokenImage ? (
-                    /* Token with custom image - no animation */
-                    <g transform={`translate(${tokenX}, ${tokenY})`}>
+                    /* Token with custom image */
+                    <g 
+                      transform={`translate(${tokenX}, ${tokenY})`}
+                      className="player-token-group"
+                    >
                       <g
                         clipPath="url(#token-circle-mask)"
                         transform={`scale(${scaleFactor})`}
@@ -581,16 +600,32 @@ export function GameBoard({
                       />
                     </g>
                   ) : (
-                    /* Token with color fallback - no animation */
-                    <circle
-                      cx={tokenX}
-                      cy={tokenY}
-                      r={tokenSize * scaleFactor}
-                      fill={getPlayerColor(player.id)}
-                      stroke="#fff"
-                      strokeWidth={0.5 * scaleFactor}
-                      className="player-token"
-                    />
+                    /* Token with color fallback and name initials */
+                    <g 
+                      transform={`translate(${tokenX}, ${tokenY})`}
+                      className="player-token-group"
+                    >
+                      <circle
+                        cx={0}
+                        cy={0}
+                        r={tokenSize * scaleFactor}
+                        fill={getPlayerColor(player.id)}
+                        stroke="#fff"
+                        strokeWidth={0.5 * scaleFactor}
+                      />
+                      <text
+                        x={0}
+                        y={0}
+                        fontSize={tokenSize * scaleFactor * 0.9}
+                        textAnchor="middle"
+                        dominantBaseline="central"
+                        fill="white"
+                        fontWeight="bold"
+                        style={{ pointerEvents: "none" }}
+                      >
+                        {player.name.slice(0, 2).toUpperCase()}
+                      </text>
+                    </g>
                   )}
                   {roomState.storytellerId === player.id && (
                     <text

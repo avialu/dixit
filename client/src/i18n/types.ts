@@ -90,6 +90,7 @@ export interface TranslationKeys {
     gameLanguageDesc: string;
     personalLanguageDesc: string;
     waitingForAdmin: string;
+    waitingForAdminName: string;
     spectatingHelp: string;
     pointsLabel: string;
     adminBoardBackgroundLabel: string;
@@ -232,6 +233,8 @@ export interface TranslationKeys {
     storytellerClue: string;
     continue: string;
     waiting: string;
+    waitingForAdmin: string;
+    playerCard: string;
   };
 
   // Game End Phase
@@ -311,6 +314,13 @@ export interface TranslationKeys {
     wouldEndGame: string;
     winTargetWarningTitle: string;
     winTargetWarningMessage: string;
+  };
+
+  // Timer
+  timer: {
+    storytellerSleeping: string;
+    timeUp: string;
+    secondsRemaining: string;
   };
 }
 

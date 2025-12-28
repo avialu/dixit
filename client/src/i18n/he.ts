@@ -88,6 +88,7 @@ export const he: TranslationKeys = {
     gameLanguageDesc: "הגדר שפת ברירת מחדל לכל השחקנים",
     personalLanguageDesc: "בחר את העדפת השפה האישית שלך",
     waitingForAdmin: "ממתין למנהל להתחיל את המשחק...",
+    waitingForAdminName: "ממתין ל-{name} להתחיל את המשחק...",
     spectatingHelp: "צופה - אתה יכול להעלות תמונות כדי לעזור לבנות את החפיסה!",
     pointsLabel: "{points} נקודות",
     adminBoardBackgroundLabel: "רקע לוח (מנהל)",
@@ -152,8 +153,8 @@ export const he: TranslationKeys = {
     needMoreImages: "דרושות עוד {count} תמונות להתחלה",
     readyToStart: "מוכן להתחיל!",
     storytellerChoosing: "{name} בוחר קלף...",
-    storytellerThinking: "מספר הסיפור חושב...",
-    waitingForStoryteller: "ממתין למספר הסיפור לתת רמז",
+    storytellerThinking: "{name} חושב...",
+    waitingForStoryteller: "ממתין ל-{name} לתת רמז",
     playersChoosing: "שחקנים בוחרים את הקלפים שלהם...",
     matchTheClue: 'התאם לרמז: "{clue}"',
     cardsRevealed: "הקלפים נחשפו!",
@@ -231,6 +232,8 @@ export const he: TranslationKeys = {
     storytellerClue: "רמז מספר הסיפור",
     continue: "המשך",
     waiting: "ממתין...",
+    waitingForAdmin: "ממתין ל-{name} להמשיך...",
+    playerCard: "הקלף של {name}",
   },
 
   // Game End Phase
@@ -312,5 +315,12 @@ export const he: TranslationKeys = {
     winTargetWarningTitle: "⚠️ לסיים את המשחק מוקדם?",
     winTargetWarningMessage:
       "הגדרת יעד ניצחון ל-{target} נקודות תסיים את המשחק! ל-{winners} כבר יש מספיק נקודות לנצח. להמשיך?",
+  },
+
+  // Timer
+  timer: {
+    storytellerSleeping: "{name} ישן/ה...",
+    timeUp: "נגמר הזמן!",
+    secondsRemaining: "נותרו {seconds} שניות",
   },
 };

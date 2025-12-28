@@ -262,10 +262,12 @@ export function UnifiedGamePage({
   useEffect(() => {
     const phase = roomState?.phase;
     let shouldAutoOpen = false;
+    let delayMs = 0; // Delay before opening modal
 
     if (phase === "STORYTELLER_CHOICE" && isStoryteller) {
-      // Only open for storyteller
+      // Only open for storyteller - with 2s delay so they can see the board first
       shouldAutoOpen = true;
+      delayMs = 2000;
     } else if (phase === "PLAYERS_CHOICE" && !isStoryteller && !isSpectator) {
       // Only open for non-storyteller players
       shouldAutoOpen = true;
@@ -289,8 +291,17 @@ export function UnifiedGamePage({
     ) {
       // Only auto-open if user hasn't manually closed it AND modal isn't already open
       // Don't override adminSettings modal
-      setModalType("cards");
-      setShowModal(true);
+      if (delayMs > 0) {
+        // Delayed open for storyteller to see board positions first
+        const timer = setTimeout(() => {
+          setModalType("cards");
+          setShowModal(true);
+        }, delayMs);
+        return () => clearTimeout(timer);
+      } else {
+        setModalType("cards");
+        setShowModal(true);
+      }
     } else if (phase === "DECK_BUILDING" && modalType !== "adminSettings") {
       // When returning to deck building (e.g., after game reset), close modal
       // But don't close if admin settings are open
@@ -486,6 +497,71 @@ export function UnifiedGamePage({
     }
   };
 
+  // Auto-submit handlers when timer expires
+  const handleStorytellerTimerExpired = () => {
+    // Already submitted - nothing to do
+    if (localSubmittedCardId || playerState?.mySubmittedCardId) return;
+
+    // Get the card to submit (selected or random)
+    const hand = playerState?.hand || [];
+    if (hand.length === 0) return;
+
+    const cardToSubmit =
+      selectedCardId || hand[Math.floor(Math.random() * hand.length)].id;
+
+    // Get the clue (entered or fallback)
+    const storyteller = roomState?.players.find(
+      (p) => p.id === roomState?.storytellerId
+    );
+    const storytellerName = storyteller?.name || t("common.storyteller");
+    const clueToSubmit =
+      clue.trim() || t("timer.storytellerSleeping", { name: storytellerName });
+
+    onStorytellerSubmit(cardToSubmit, clueToSubmit);
+    setLocalSubmittedCardId(cardToSubmit);
+    setSelectedCardId(null);
+    setClue("");
+    setShowModal(false);
+  };
+
+  const handlePlayerTimerExpired = () => {
+    // Already submitted - nothing to do
+    if (localSubmittedCardId || playerState?.mySubmittedCardId) return;
+
+    // Get the card to submit (selected or random)
+    const hand = playerState?.hand || [];
+    if (hand.length === 0) return;
+
+    const cardToSubmit =
+      selectedCardId || hand[Math.floor(Math.random() * hand.length)].id;
+
+    onPlayerSubmitCard(cardToSubmit);
+    setLocalSubmittedCardId(cardToSubmit);
+    setSelectedCardId(null);
+    setShowModal(false);
+  };
+
+  const handleVoteTimerExpired = () => {
+    // Already voted - nothing to do
+    if (localVotedCardId || playerState?.myVote) return;
+
+    // Get valid cards to vote for (exclude own card)
+    const revealedCards = roomState?.revealedCards || [];
+    const myCardId = playerState?.mySubmittedCardId;
+    const validCards = revealedCards.filter((c) => c.cardId !== myCardId);
+
+    if (validCards.length === 0) return;
+
+    const cardToVote =
+      selectedCardId && validCards.some((c) => c.cardId === selectedCardId)
+        ? selectedCardId
+        : validCards[Math.floor(Math.random() * validCards.length)].cardId;
+
+    onPlayerVote(cardToVote);
+    setLocalVotedCardId(cardToVote);
+    setSelectedCardId(null);
+  };
+
   const openCards = () => {
     setModalType("cards");
     setShowModal(true);
@@ -656,6 +732,7 @@ export function UnifiedGamePage({
       <div className="board-background">
         <GameBoard
           roomState={roomState}
+          playerId={playerId}
           showQR={showQR}
           onCloseQR={() => setShowQR(false)}
           revealModalOpen={showModal && roomState.phase === "REVEAL"}
@@ -699,7 +776,7 @@ export function UnifiedGamePage({
                   : t("deckUploader.needMorePlayers", { count: playersNeeded })
                 : needMoreImages
                 ? t("status.needMoreImages", { count: imagesNeeded })
-                : t("game.startGame");
+                : t("lobby.startGame");
 
               return (
                 <button
@@ -854,6 +931,7 @@ export function UnifiedGamePage({
             header: React.ReactNode;
             footer: React.ReactNode;
             content: React.ReactNode;
+            timer?: React.ReactNode;
           } | null = null;
 
           if (modalType === "cards") {
@@ -898,11 +976,13 @@ export function UnifiedGamePage({
                   setSelectedCardId,
                   setClue,
                   handleStorytellerSubmit,
+                  onTimerExpired: handleStorytellerTimerExpired,
                   t,
                 });
               } else {
                 modalContent = ModalContent.WaitingStorytellerModal({
                   playerState,
+                  roomState,
                   t,
                 });
               }
@@ -917,6 +997,7 @@ export function UnifiedGamePage({
                   roomState,
                   setSelectedCardId,
                   handlePlayerSubmit,
+                  onTimerExpired: handlePlayerTimerExpired,
                   t,
                 });
               } else {
@@ -938,6 +1019,7 @@ export function UnifiedGamePage({
                 isSpectator,
                 setSelectedCardId,
                 handleVote,
+                onTimerExpired: handleVoteTimerExpired,
                 t,
               });
             }
@@ -996,6 +1078,7 @@ export function UnifiedGamePage({
               header={modalContent.header}
               footer={modalContent.footer}
               opaqueBackdrop={!isInGame}
+              timer={modalContent.timer}
             >
               {modalContent.content}
             </Modal>

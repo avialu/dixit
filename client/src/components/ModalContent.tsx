@@ -1,3 +1,4 @@
+import { ReactNode } from "react";
 import { RoomState, PlayerState } from "../hooks/useGameState";
 import { CardView } from "../components/CardView";
 import { DeckUploader } from "../components/DeckUploader";
@@ -11,6 +12,7 @@ import {
   Input,
   Icon,
   IconSize,
+  Timer,
 } from "./ui";
 import {
   getPlayerLanguageOverride,
@@ -18,6 +20,15 @@ import {
   hasPlayerLanguageOverride,
 } from "../i18n";
 import { resizeAndCompressImage } from "../utils/imageResize";
+import { getMinimumDeckSize } from "../utils/imageConstants";
+
+// Common modal return type with optional timer
+export interface ModalContentResult {
+  header: ReactNode;
+  footer: ReactNode;
+  content: ReactNode;
+  timer?: ReactNode;
+}
 
 // Helper function to format waiting message
 function formatWaitingFor(playerNames: string[]): string {
@@ -68,6 +79,7 @@ interface StorytellerModalProps {
   setSelectedCardId: (id: string | null) => void;
   setClue: (clue: string) => void;
   handleStorytellerSubmit: () => void;
+  onTimerExpired?: () => void;
   t: (key: string, values?: Record<string, string | number>) => string;
 }
 
@@ -78,6 +90,7 @@ interface PlayerChoiceModalProps {
   roomState: RoomState;
   setSelectedCardId: (id: string | null) => void;
   handlePlayerSubmit: () => void;
+  onTimerExpired?: () => void;
   t: (key: string, values?: Record<string, string | number>) => string;
 }
 
@@ -90,6 +103,7 @@ interface VotingModalProps {
   isSpectator: boolean;
   setSelectedCardId: (id: string | null) => void;
   handleVote: () => void;
+  onTimerExpired?: () => void;
   t: (key: string, values?: Record<string, string | number>) => string;
 }
 
@@ -110,7 +124,7 @@ interface GameEndModalProps {
 }
 
 // Helper function to create Modal with consistent structure
-export function LobbyModal(props: LobbyModalProps) {
+export function LobbyModal(props: LobbyModalProps): ModalContentResult {
   const {
     roomState,
     playerId,
@@ -160,12 +174,48 @@ export function LobbyModal(props: LobbyModalProps) {
     onSetBoardBackground(null);
   };
 
+  // Calculate deck progress
+  const minRequired = getMinimumDeckSize(
+    roomState.players.length,
+    roomState.winTarget
+  );
+  const currentDeckSize = roomState.deckSize;
+  const needMore = Math.max(0, minRequired - currentDeckSize);
+  const isReady = currentDeckSize >= minRequired;
+  const progressPercent = Math.min(100, (currentDeckSize / minRequired) * 100);
+
   const header = (
     <>
       <h2>
         <Icon.People size={IconSize.large} /> {t("common.players")} (
         {roomState.players.length})
       </h2>
+      
+      {/* Image Progress Bar */}
+      <div className="lobby-image-progress">
+        <div className="lobby-progress-header">
+          <Icon.Images size={IconSize.medium} />
+          <span className="lobby-progress-label">
+            {isReady
+              ? isAdmin
+                ? t("status.readyToStart")
+                : t("lobby.waitingForAdminName", {
+                    name:
+                      roomState.players.find((p) => p.isAdmin)?.name || "admin",
+                  })
+              : t("lobby.needMoreImages", { count: needMore })}
+          </span>
+          <span className="lobby-progress-count">
+            {currentDeckSize}/{minRequired}
+          </span>
+        </div>
+        <div className="lobby-progress-bar">
+          <div
+            className={`lobby-progress-fill ${isReady ? "ready" : ""}`}
+            style={{ width: `${progressPercent}%` }}
+          />
+        </div>
+      </div>
     </>
   );
 
@@ -180,6 +230,7 @@ export function LobbyModal(props: LobbyModalProps) {
   return {
     header,
     footer,
+    timer: undefined,
     content: (
       <>
         <div className="players-grid">
@@ -209,6 +260,7 @@ export function LobbyModal(props: LobbyModalProps) {
                     playerColor={getPlayerColor(
                       roomState.players.findIndex((p) => p.id === player.id)
                     )}
+                    playerName={player.name}
                     size="small"
                   />
                 )}
@@ -564,7 +616,12 @@ export function LobbyModal(props: LobbyModalProps) {
 
         {!isSpectator && (
           <p style={{ color: "#95a5a6", marginTop: "1rem" }}>
-            {isAdmin ? t("lobby.readyToStart") : t("lobby.waitingForAdmin")}
+            {isAdmin
+              ? t("lobby.readyToStart")
+              : t("lobby.waitingForAdminName", {
+                  name:
+                    roomState.players.find((p) => p.isAdmin)?.name || "admin",
+                })}
           </p>
         )}
         {isSpectator && (
@@ -577,7 +634,7 @@ export function LobbyModal(props: LobbyModalProps) {
   };
 }
 
-export function StorytellerChoiceModal(props: StorytellerModalProps) {
+export function StorytellerChoiceModal(props: StorytellerModalProps): ModalContentResult {
   const {
     playerState,
     selectedCardId,
@@ -587,10 +644,21 @@ export function StorytellerChoiceModal(props: StorytellerModalProps) {
     setSelectedCardId,
     setClue,
     handleStorytellerSubmit,
+    onTimerExpired,
     t,
   } = props;
 
   const isSubmitted = localSubmittedCardId || playerState?.mySubmittedCardId;
+
+  // Timer for storyteller - always show for everyone
+  const timerElement = (
+    <Timer
+      startTime={roomState.phaseStartTime}
+      duration={roomState.phaseDuration}
+      onTimeUp={!isSubmitted ? onTimerExpired : undefined}
+      size="medium"
+    />
+  );
 
   // Calculate who we're waiting for (players who haven't submitted yet)
   const waitingForPlayers = isSubmitted
@@ -664,6 +732,7 @@ export function StorytellerChoiceModal(props: StorytellerModalProps) {
   return {
     header,
     footer,
+    timer: timerElement,
     content: (
       <>
         {isSubmitted && playerState?.mySubmittedCardImage && (
@@ -696,7 +765,7 @@ export function StorytellerChoiceModal(props: StorytellerModalProps) {
   };
 }
 
-export function PlayerChoiceModal(props: PlayerChoiceModalProps) {
+export function PlayerChoiceModal(props: PlayerChoiceModalProps): ModalContentResult {
   const {
     playerState,
     selectedCardId,
@@ -704,16 +773,29 @@ export function PlayerChoiceModal(props: PlayerChoiceModalProps) {
     roomState,
     setSelectedCardId,
     handlePlayerSubmit,
+    onTimerExpired,
     t,
   } = props;
 
   const isSubmitted = localSubmittedCardId;
 
+  // Timer for player choice - always show for everyone
+  const timerElement = (
+    <Timer
+      startTime={roomState.phaseStartTime}
+      duration={roomState.phaseDuration}
+      onTimeUp={!isSubmitted ? onTimerExpired : undefined}
+      size="medium"
+    />
+  );
+
   // Calculate who we're waiting for (players who haven't submitted yet)
+  // Also exclude current player if they've locally submitted (before server state updates)
   const waitingForPlayers = isSubmitted
     ? roomState.players
         .filter((p) => p.id !== roomState.storytellerId) // Exclude storyteller
         .filter((p) => !roomState.submittedPlayerIds.includes(p.id)) // Haven't submitted
+        .filter((p) => p.id !== playerState?.playerId) // Exclude self if locally submitted
         .map((p) => p.name)
     : [];
 
@@ -766,6 +848,7 @@ export function PlayerChoiceModal(props: PlayerChoiceModalProps) {
   return {
     header,
     footer,
+    timer: timerElement,
     content: (
       <>
         {isSubmitted && playerState?.mySubmittedCardImage && (
@@ -799,18 +882,36 @@ export function PlayerChoiceModal(props: PlayerChoiceModalProps) {
 
 export function WaitingStorytellerModal(props: {
   playerState: PlayerState | null;
+  roomState: RoomState;
   t: (key: string, values?: Record<string, string | number>) => string;
-}) {
-  const { t } = props;
+}): ModalContentResult {
+  const { roomState, t } = props;
+
+  // Get storyteller name
+  const storyteller = roomState.players.find(
+    (p) => p.id === roomState.storytellerId
+  );
+  const storytellerName = storyteller?.name || t("common.storyteller");
+
+  // Timer - show for everyone waiting
+  const timerElement = (
+    <Timer
+      startTime={roomState.phaseStartTime}
+      duration={roomState.phaseDuration}
+      size="medium"
+    />
+  );
+
   const header = (
     <>
-      <h2>🤔 {t("status.storytellerThinking")}</h2>
+      <h2>🤔 {t("status.storytellerThinking", { name: storytellerName })}</h2>
     </>
   );
 
   return {
     header,
     footer: null,
+    timer: timerElement,
     content: (
       <>
         <div className="modal-hand">
@@ -831,8 +932,17 @@ export function WaitingPlayersModal(props: {
   playerState: PlayerState | null;
   roomState: RoomState;
   t: (key: string, values?: Record<string, string | number>) => string;
-}) {
+}): ModalContentResult {
   const { playerState, roomState, t } = props;
+
+  // Timer - show for everyone waiting
+  const timerElement = (
+    <Timer
+      startTime={roomState.phaseStartTime}
+      duration={roomState.phaseDuration}
+      size="medium"
+    />
+  );
 
   // Calculate who we're waiting for (players who haven't submitted yet)
   const waitingForPlayers = roomState.players
@@ -866,6 +976,7 @@ export function WaitingPlayersModal(props: {
   return {
     header,
     footer: null,
+    timer: timerElement,
     content: (
       <>
         {playerState?.mySubmittedCardImage && (
@@ -898,7 +1009,7 @@ export function WaitingPlayersModal(props: {
   };
 }
 
-export function VotingModal(props: VotingModalProps) {
+export function VotingModal(props: VotingModalProps): ModalContentResult {
   const {
     roomState,
     playerState,
@@ -908,6 +1019,7 @@ export function VotingModal(props: VotingModalProps) {
     isSpectator,
     setSelectedCardId,
     handleVote,
+    onTimerExpired,
     t,
   } = props;
 
@@ -918,11 +1030,23 @@ export function VotingModal(props: VotingModalProps) {
   const hasVoted = localVotedCardId !== null;
   const canVote = !isStoryteller && !isSpectator && !hasVoted;
 
+  // Timer for voting - always show for everyone
+  const timerElement = (
+    <Timer
+      startTime={roomState.phaseStartTime}
+      duration={roomState.phaseDuration}
+      onTimeUp={canVote ? onTimerExpired : undefined}
+      size="medium"
+    />
+  );
+
   // Calculate who we're waiting for (players who haven't voted yet)
+  // Also exclude current player if they've locally voted (before server state updates)
   const votedPlayerIds = roomState.votes.map((v) => v.voterId);
   const waitingForPlayers = hasVoted
     ? eligiblePlayers
         .filter((p) => !votedPlayerIds.includes(p.id))
+        .filter((p) => p.id !== playerState?.playerId) // Exclude self if locally voted
         .map((p) => p.name)
     : [];
 
@@ -1008,6 +1132,7 @@ export function VotingModal(props: VotingModalProps) {
   return {
     header,
     footer,
+    timer: timerElement,
     content: (
       <div className="modal-voting-cards">
         <CardView
@@ -1026,7 +1151,7 @@ export function VotingModal(props: VotingModalProps) {
   };
 }
 
-export function RevealModal(props: RevealModalProps) {
+export function RevealModal(props: RevealModalProps): ModalContentResult {
   const { roomState, playerState, isAdmin, onAdvanceRound, t } = props;
 
   const storytellerId = roomState.storytellerId;
@@ -1054,19 +1179,24 @@ export function RevealModal(props: RevealModalProps) {
     </>
   );
 
+  // Get admin name for non-admin players
+  const adminPlayer = roomState.players.find((p) => p.isAdmin);
+  const adminName = adminPlayer?.name || "admin";
+
   const footer = isAdmin ? (
     <Button variant="continue" onClick={onAdvanceRound}>
       <Icon.ArrowForward size={IconSize.medium} /> {t("reveal.continue")}
     </Button>
   ) : (
     <p style={{ color: "#95a5a6", fontStyle: "italic", margin: 0 }}>
-      ⏳ {t("reveal.waiting")}
+      ⏳ {t("reveal.waitingForAdmin", { name: adminName })}
     </p>
   );
 
   return {
     header,
     footer,
+    timer: undefined,
     content: (
       <div className="modal-voting-cards">
         <CardView
@@ -1091,7 +1221,7 @@ export function RevealModal(props: RevealModalProps) {
   };
 }
 
-export function GameEndModal(props: GameEndModalProps) {
+export function GameEndModal(props: GameEndModalProps): ModalContentResult {
   const { roomState, isAdmin, onResetGame, onNewDeck, t } = props;
 
   const sortedPlayers = [...roomState.players].sort(
@@ -1123,6 +1253,7 @@ export function GameEndModal(props: GameEndModalProps) {
   return {
     header,
     footer,
+    timer: undefined,
     content: (
       <div className="game-end-content">
         <div className="winner-announcement">

@@ -9,6 +9,8 @@ interface ModalProps {
   footer?: ReactNode;
   showCloseButton?: boolean;
   opaqueBackdrop?: boolean;
+  /** Timer element to display opposite the close button */
+  timer?: ReactNode;
 }
 
 /**
@@ -29,6 +31,7 @@ export function Modal({
   footer,
   showCloseButton = true,
   opaqueBackdrop = false,
+  timer,
 }: ModalProps) {
   if (!isOpen) return null;
 
@@ -48,6 +51,9 @@ export function Modal({
         aria-modal="true"
         onClick={(e) => e.stopPropagation()}
       >
+        {/* Timer - Positioned opposite the close button (top-left) */}
+        {timer && <div className="modal-timer">{timer}</div>}
+
         {/* Close Button */}
         {showCloseButton && <CloseButton onClose={onClose} />}
 

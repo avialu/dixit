@@ -34,4 +34,14 @@ export const GAME_CONSTANTS = {
    * Formula: playersNumber × (6 + (winTarget/2)) × 1.3
    */
   getMinDeckSize: gameConfig.getMinDeckSize,
+
+  /** Phase timer durations in seconds */
+  PHASE_TIMERS: {
+    /** Storyteller has 60 seconds to choose a card and provide a clue */
+    STORYTELLER_CHOICE: 60,
+    /** Players have 30 seconds to choose a matching card */
+    PLAYERS_CHOICE: 30,
+    /** Players have 30 seconds to vote */
+    VOTING: 30,
+  },
 } as const;

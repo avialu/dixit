@@ -37,6 +37,8 @@ export interface RoomState {
   votes: { voterId: string; cardId: string }[];
   lastScoreDeltas: { playerId: string; delta: number }[];
   serverUrl: string;
+  phaseStartTime: number | null; // Unix timestamp when current phase started (for timer)
+  phaseDuration: number | null; // Duration in seconds for current phase timer (null = no timer)
 }
 
 export interface PlayerState {
@@ -94,13 +96,14 @@ export function useGameState(socket: Socket | null) {
       });
     });
 
-    socket.on("imageDeleted", (data: { id: string }) => {
+    // Incremental image deletion - server sends authoritative deckSize
+    socket.on("imageDeleted", (data: { id: string; deckSize: number }) => {
       setRoomState((prevState) => {
         if (!prevState) return prevState;
         return {
           ...prevState,
           deckImages: prevState.deckImages.filter((img) => img.id !== data.id),
-          deckSize: Math.max(0, prevState.deckSize - 1),
+          deckSize: data.deckSize, // Use server's deckSize for accuracy
         };
       });
     });

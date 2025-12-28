@@ -5,6 +5,7 @@ export type TokenSize = "small" | "medium" | "large";
 export interface PlayerTokenProps {
   imageUrl?: string | null;
   playerColor?: string;
+  playerName?: string; // Player name to show initials when no image
   size?: TokenSize;
   editable?: boolean;
   onUpload?: (imageData: string) => void;
@@ -36,6 +37,7 @@ export const PLAYER_TOKEN_COLORS = [
 export function PlayerToken({
   imageUrl,
   playerColor,
+  playerName,
   size = "medium",
   className = "",
   children,
@@ -45,6 +47,9 @@ export function PlayerToken({
     medium: "token-medium",
     large: "token-large",
   }[size];
+
+  // Get first 2 letters of name as initials
+  const initials = playerName ? playerName.slice(0, 2).toUpperCase() : "";
 
   return (
     <div className={`player-token-preview ${sizeClass} ${className}`}>
@@ -56,11 +61,13 @@ export function PlayerToken({
         />
       ) : (
         <div
-          className="token-color-preview"
+          className="token-color-preview token-with-initials"
           style={{
             background: playerColor || PLAYER_TOKEN_COLORS[0],
           }}
-        />
+        >
+          {initials && <span className="token-initials">{initials}</span>}
+        </div>
       )}
       {children}
     </div>

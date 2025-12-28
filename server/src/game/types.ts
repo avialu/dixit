@@ -65,6 +65,8 @@ export interface GameState {
   submittedCards: SubmittedCard[];
   votes: Vote[];
   lastScoreDeltas: Map<string, number>; // playerId -> score change
+  phaseStartTime: number | null; // Unix timestamp when current phase started (for timer)
+  phaseDuration: number | null; // Duration in seconds for current phase timer (null = no timer)
 }
 
 // Public state sent to all clients
@@ -108,6 +110,8 @@ export interface RoomState {
     delta: number;
   }[];
   serverUrl: string; // LAN URL for joining
+  phaseStartTime: number | null; // Unix timestamp when current phase started (for timer)
+  phaseDuration: number | null; // Duration in seconds for current phase timer (null = no timer)
 }
 
 // Private state sent to individual player

@@ -1,4 +1,4 @@
-import { Badge } from "./ui";
+import { Badge, getPlayerColor } from "./ui";
 
 interface CardViewProps {
   cards: Array<{
@@ -16,7 +16,7 @@ interface CardViewProps {
   showDrawer?: boolean;
   myCardId?: string | null;
   votes?: { voterId: string; cardId: string }[];
-  players?: { id: string; name: string }[];
+  players?: { id: string; name: string; tokenImage?: string | null }[];
   cardOwners?: { cardId: string; playerId: string }[];
   storytellerCardId?: string | null;
   showResults?: boolean;
@@ -57,11 +57,13 @@ export function CardView({
     return votes?.filter((v) => v.cardId === cardId).length || 0;
   };
 
-  const getCardOwnerName = (cardId: string) => {
+  const getCardOwner = (cardId: string) => {
     const owner = cardOwners?.find((o) => o.cardId === cardId);
-    if (!owner?.playerId) return "Unknown";
+    if (!owner?.playerId) return null;
+    const playerIndex = players?.findIndex((p) => p.id === owner.playerId) ?? -1;
     const player = players?.find((p) => p.id === owner.playerId);
-    return player?.name || "Unknown";
+    if (!player) return null;
+    return { ...player, playerIndex };
   };
 
   const getCardOwnerPoints = (cardId: string) => {
@@ -74,12 +76,14 @@ export function CardView({
     return 0;
   };
 
-  const getVoterNames = (cardId: string) => {
-    const voters = votes?.filter((v) => v.cardId === cardId) || [];
-    return voters.map((v) => {
-      const player = players?.find((p) => p.id === v.voterId);
-      return player?.name || "Unknown";
-    });
+  const getVoters = (cardId: string) => {
+    const voterIds = votes?.filter((v) => v.cardId === cardId).map((v) => v.voterId) || [];
+    return voterIds.map((id) => {
+      const playerIndex = players?.findIndex((p) => p.id === id) ?? -1;
+      const player = players?.find((p) => p.id === id);
+      if (!player) return null;
+      return { ...player, playerIndex };
+    }).filter(Boolean) as { id: string; name: string; tokenImage?: string | null; playerIndex: number }[];
   };
 
   const isStorytellerCard = (cardId: string) => cardId === storytellerCardId;
@@ -101,8 +105,8 @@ export function CardView({
         const isDisabled = disabled || (showDrawer && isMyCard);
 
         const voteCount = showDrawer ? getVoteCount(cardId) : 0;
-        const voterNames = showDrawer ? getVoterNames(cardId) : [];
-        const ownerName = showDrawer ? getCardOwnerName(cardId) : "";
+        const voters = showDrawer ? getVoters(cardId) : [];
+        const owner = showDrawer ? getCardOwner(cardId) : null;
         const ownerPoints = showDrawer ? getCardOwnerPoints(cardId) : 0;
 
         return (
@@ -111,7 +115,7 @@ export function CardView({
             className={`card ${isSelected ? "selected" : ""} ${
               isLocked ? "locked" : ""
             } ${isDisabled ? "disabled" : ""} ${
-              isStoryteller ? "storyteller-card" : ""
+              isStoryteller && showResults ? "storyteller-card-gold" : ""
             }`}
             onClick={() => !isDisabled && !isLocked && onSelectCard(cardId)}
             role="listitem"
@@ -132,60 +136,26 @@ export function CardView({
               }
             }}
           >
-            {/* Card Drawer/Header (only in voting/reveal phases) */}
-            {showDrawer && showResults && (
-              <div className="card-header">
-                {/* Card owner */}
-                <div className="card-owner">
-                  {isStoryteller && <Badge variant="storyteller" />}
-                  {ownerName}
-                  {scoreDeltas && (
-                    <Badge
-                      variant="score"
-                      value={ownerPoints}
-                      style={{
-                        background:
-                          ownerPoints > 0
-                            ? "rgba(46, 204, 113, 0.9)"
-                            : "rgba(149, 165, 166, 0.5)",
-                        color: "white",
-                      }}
-                    />
-                  )}
-                </div>
-
-                {/* Voters list */}
-                {voterNames.length > 0 && (
-                  <div className="card-voters-top">
-                    <div className="voters-label">Voted by:</div>
-                    <div className="voters-list">
-                      {voterNames.length === 1 ? (
-                        // Show single voter name
-                        <span className="voter-name">{voterNames[0]}</span>
-                      ) : voterNames.length <= 3 ? (
-                        // Show first voter + "+N more" for 2-3 voters
-                        <>
-                          <span className="voter-name">{voterNames[0]}</span>
-                          <span className="voter-count">
-                            {" "}
-                            +{voterNames.length - 1} more
-                          </span>
-                        </>
-                      ) : (
-                        // Show just count for 4+ voters (avoid overflow)
-                        <span className="voter-count">
-                          {voterNames.length} votes
-                        </span>
-                      )}
+            {/* Card Owner Header - only during reveal */}
+            {showDrawer && showResults && owner && (
+              <div className={`card-owner-header ${isStoryteller ? "storyteller-gold" : ""}`}>
+                <div className="owner-profile">
+                  {owner.tokenImage ? (
+                    <img src={owner.tokenImage} alt={owner.name} className="owner-avatar" />
+                  ) : (
+                    <div 
+                      className="owner-avatar owner-avatar-fallback"
+                      style={{ background: getPlayerColor(owner.playerIndex) }}
+                    >
+                      {owner.name.slice(0, 2).toUpperCase()}
                     </div>
-                  </div>
-                )}
-
-                {/* No votes message */}
-                {voterNames.length === 0 && (
-                  <div className="card-voters-top no-votes">
-                    <div className="voters-label">No votes</div>
-                  </div>
+                  )}
+                  <span className="owner-name">{owner.name}</span>
+                </div>
+                {scoreDeltas && (
+                  <span className={`owner-points ${ownerPoints > 0 ? "positive" : ownerPoints < 0 ? "negative" : "zero"}`}>
+                    {ownerPoints > 0 ? "+" : ""}{ownerPoints}
+                  </span>
                 )}
               </div>
             )}
@@ -201,8 +171,8 @@ export function CardView({
                 decoding="async"
               />
 
-              {/* My Card Badge (in voting) */}
-              {showDrawer && isMyCard && (
+              {/* My Card Badge (in voting only, not in reveal) */}
+              {showDrawer && isMyCard && !showResults && (
                 <div className="my-card-badge" aria-hidden="true">
                   Your Card
                 </div>
@@ -215,6 +185,33 @@ export function CardView({
                   <span className="lock-text">
                     {showDrawer ? "Your Vote" : "Submitted"}
                   </span>
+                </div>
+              )}
+
+              {/* Voter Profile Images - overlaid on card during reveal */}
+              {showDrawer && showResults && voters.length > 0 && (
+                <div className="card-voters-overlay">
+                  {voters.slice(0, 5).map((voter, idx) => (
+                    <div key={idx} className="voter-profile" title={voter.name}>
+                      {voter.tokenImage ? (
+                        <img src={voter.tokenImage} alt={voter.name} className="voter-img" />
+                      ) : (
+                        <div 
+                          className="voter-img voter-img-fallback"
+                          style={{ background: getPlayerColor(voter.playerIndex) }}
+                        >
+                          {voter.name.slice(0, 2).toUpperCase()}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                  {voters.length > 5 && (
+                    <div className="voter-profile voter-overflow" title={voters.slice(5).map(v => v.name).join(", ")}>
+                      <div className="voter-img voter-img-fallback">
+                        +{voters.length - 5}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </div>

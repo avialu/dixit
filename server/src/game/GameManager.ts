@@ -40,6 +40,8 @@ export class GameManager {
       submittedCards: [],
       votes: [],
       lastScoreDeltas: new Map(),
+      phaseStartTime: null, // No timer during deck building
+      phaseDuration: null,
     };
     this.deckManager = new DeckManager(""); // Will set admin on first player
     this.submittedCardsData = new Map();
@@ -559,6 +561,10 @@ export class GameManager {
     this.state.storytellerId = admin!.id;
     this.state.currentRound = 1;
 
+    // Start phase timer for storyteller
+    this.state.phaseStartTime = Date.now();
+    this.state.phaseDuration = GAME_CONSTANTS.PHASE_TIMERS.STORYTELLER_CHOICE;
+
     this.state.phase = GamePhase.STORYTELLER_CHOICE;
   }
 
@@ -590,6 +596,10 @@ export class GameManager {
 
     this.state.currentClue = clue;
     this.state.submittedCards = [{ cardId, playerId }];
+
+    // Start phase timer for players
+    this.state.phaseStartTime = Date.now();
+    this.state.phaseDuration = GAME_CONSTANTS.PHASE_TIMERS.PLAYERS_CHOICE;
 
     this.state.phase = GamePhase.PLAYERS_CHOICE;
   }
@@ -661,6 +671,11 @@ export class GameManager {
     });
 
     this.state.submittedCards = shuffled;
+
+    // Start phase timer for voting
+    this.state.phaseStartTime = Date.now();
+    this.state.phaseDuration = GAME_CONSTANTS.PHASE_TIMERS.VOTING;
+
     this.state.phase = GamePhase.VOTING;
   }
 
@@ -742,6 +757,10 @@ export class GameManager {
       }
     }
 
+    // Clear timer during reveal (no time limit for viewing results)
+    this.state.phaseStartTime = null;
+    this.state.phaseDuration = null;
+
     this.state.phase = GamePhase.REVEAL;
   }
 
@@ -810,6 +829,10 @@ export class GameManager {
     this.state.currentRound++;
     this.submittedCardsData.clear();
 
+    // Start phase timer for new storyteller
+    this.state.phaseStartTime = Date.now();
+    this.state.phaseDuration = GAME_CONSTANTS.PHASE_TIMERS.STORYTELLER_CHOICE;
+
     this.state.phase = GamePhase.STORYTELLER_CHOICE;
   }
 
@@ -833,6 +856,10 @@ export class GameManager {
     this.state.votes = [];
     this.state.lastScoreDeltas.clear();
     this.submittedCardsData.clear();
+
+    // Clear timer
+    this.state.phaseStartTime = null;
+    this.state.phaseDuration = null;
 
     // Unlock and shuffle the deck for replay
     this.deckManager.reset();
@@ -865,6 +892,10 @@ export class GameManager {
     this.state.allowPlayerUploads = true;
     this.state.winTarget = GAME_CONSTANTS.DEFAULT_WIN_TARGET; // Reset to default
     this.submittedCardsData.clear();
+
+    // Clear timer
+    this.state.phaseStartTime = null;
+    this.state.phaseDuration = null;
   }
 
   // State Projections
@@ -941,6 +972,8 @@ export class GameManager {
       votes,
       lastScoreDeltas,
       serverUrl: "", // Will be populated by server.ts
+      phaseStartTime: this.state.phaseStartTime,
+      phaseDuration: this.state.phaseDuration,
     };
   }
 

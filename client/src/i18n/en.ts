@@ -88,6 +88,7 @@ export const en: TranslationKeys = {
     gameLanguageDesc: "Set default language for all players",
     personalLanguageDesc: "Choose your personal language preference",
     waitingForAdmin: "Waiting for admin to start the game...",
+    waitingForAdminName: "Waiting for {name} to start the game...",
     spectatingHelp:
       "Spectating - You can upload images to help build the deck!",
     pointsLabel: "{points} Points",
@@ -153,8 +154,8 @@ export const en: TranslationKeys = {
     needMoreImages: "Need {count} more images to start",
     readyToStart: "Ready to start!",
     storytellerChoosing: "{name} is choosing a card...",
-    storytellerThinking: "Storyteller is thinking...",
-    waitingForStoryteller: "Waiting for storyteller to provide a clue",
+    storytellerThinking: "{name} is thinking...",
+    waitingForStoryteller: "Waiting for {name} to provide a clue",
     playersChoosing: "Players are choosing their cards...",
     matchTheClue: 'Match the clue: "{clue}"',
     cardsRevealed: "Cards revealed!",
@@ -232,6 +233,8 @@ export const en: TranslationKeys = {
     storytellerClue: "Storyteller Clue",
     continue: "Continue",
     waiting: "Waiting...",
+    waitingForAdmin: "Waiting for {name} to continue...",
+    playerCard: "{name}'s card",
   },
 
   // Game End Phase
@@ -315,5 +318,12 @@ export const en: TranslationKeys = {
     winTargetWarningTitle: "⚠️ End Game Early?",
     winTargetWarningMessage:
       "Setting win target to {target} points will end the game! {winners} already has enough points to win. Continue?",
+  },
+
+  // Timer
+  timer: {
+    storytellerSleeping: "{name} is sleeping...",
+    timeUp: "Time's up!",
+    secondsRemaining: "{seconds} seconds remaining",
   },
 };

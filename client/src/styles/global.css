@@ -1605,6 +1605,12 @@ select {
   will-change: cx, cy;
 }
 
+/* Token group wrapper for fallback tokens - animates with transform */
+.player-token-group {
+  transition: transform 1.5s ease-in-out;
+  will-change: transform;
+}
+
 /* Bounce animation removed for simpler, more relaxed movement */
 
 /* Enhanced score delta animation - larger and more visible */
@@ -3131,6 +3137,29 @@ select {
   pointer-events: none;
 }
 
+/* Player initials in token fallback */
+.token-initials {
+  font-size: 1rem;
+  font-weight: 700;
+  color: white;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+  line-height: 1;
+  pointer-events: none;
+  letter-spacing: 0.5px;
+}
+
+.token-small .token-initials {
+  font-size: 0.65rem;
+}
+
+.token-medium .token-initials {
+  font-size: 0.9rem;
+}
+
+.token-large .token-initials {
+  font-size: 1.2rem;
+}
+
 .token-upload-overlay {
   position: absolute;
   top: 0;
@@ -3681,6 +3710,54 @@ select {
   z-index: 102;
 }
 
+/* Modal Timer - positioned opposite the close button */
+/* Modal Timer - positioned inside modal, opposite close button */
+.modal-timer {
+  position: absolute;
+  top: 0.75rem;
+  left: 0.75rem;
+  z-index: 102;
+}
+
+/* Phase Timer Component */
+.phase-timer {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+}
+
+.phase-timer svg {
+  display: block;
+}
+
+.phase-timer .timer-text {
+  position: absolute;
+  font-weight: 700;
+  font-size: 0.9rem !important;
+  font-family: var(--font-mono, "SF Mono", Monaco, monospace);
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
+  pointer-events: none;
+  color: white !important;
+}
+
+/* Timer pulse animation when time is low */
+.phase-timer.timer-pulse {
+  animation: timer-pulse 1s ease-in-out infinite;
+}
+
+@keyframes timer-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.08);
+  }
+}
+
 .modal-content {
   background: rgba(26, 26, 46, 0.98);
   border: 3px solid #4a90e2;
@@ -3740,6 +3817,103 @@ select {
   text-align: center;
   font-size: 0.85rem;
   line-height: 1.3;
+}
+
+/* Lobby Image Progress Bar */
+.lobby-image-progress {
+  width: 100%;
+  margin-top: 0.75rem;
+  padding: 0.5rem 0.75rem;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+}
+
+.lobby-progress-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.4rem;
+  font-size: 0.85rem;
+}
+
+.lobby-progress-header svg {
+  color: #95a5a6;
+  flex-shrink: 0;
+}
+
+.lobby-progress-label {
+  flex: 1;
+  text-align: start;
+  color: #f39c12;
+  font-weight: 500;
+}
+
+.lobby-progress-label:has(+ .lobby-progress-count) {
+  /* When ready, show in green */
+}
+
+.lobby-progress-count {
+  color: #95a5a6;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.lobby-progress-bar {
+  width: 100%;
+  height: 8px;
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.lobby-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #f39c12, #e67e22);
+  border-radius: 4px;
+  transition: width 0.3s ease-out;
+}
+
+.lobby-progress-fill.ready {
+  background: linear-gradient(90deg, #2ecc71, #27ae60);
+}
+
+/* When ready, also update the label color */
+.lobby-progress-fill.ready ~ .lobby-progress-label,
+.lobby-image-progress:has(.lobby-progress-fill.ready) .lobby-progress-label {
+  color: #2ecc71;
+}
+
+/* Mobile adjustments for lobby progress */
+@media (max-width: 768px) {
+  .lobby-image-progress {
+    margin-top: 0.5rem;
+    padding: 0.4rem 0.5rem;
+  }
+
+  .lobby-progress-header {
+    font-size: 0.8rem;
+    margin-bottom: 0.3rem;
+  }
+
+  .lobby-progress-bar {
+    height: 6px;
+  }
+}
+
+@media (max-width: 480px) {
+  .lobby-image-progress {
+    margin-top: 0.4rem;
+    padding: 0.35rem 0.4rem;
+  }
+
+  .lobby-progress-header {
+    font-size: 0.75rem;
+  }
+
+  .lobby-progress-bar {
+    height: 5px;
+  }
 }
 
 .modal-body {
@@ -4250,7 +4424,15 @@ select {
 
 .card.storyteller-card {
   border-color: #f59e0b;
-  box-shadow: 0 0 15px rgba(245, 158, 11, 0.3);
+  border-width: 4px;
+  box-shadow: 0 0 20px rgba(245, 158, 11, 0.5), 0 0 40px rgba(245, 158, 11, 0.2);
+  transform: scale(1.02);
+}
+
+/* Storyteller card header - more prominent styling */
+.storyteller-card-header {
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%) !important;
+  font-weight: 800;
 }
 
 .card-lock-indicator {
@@ -4424,6 +4606,157 @@ select {
   flex: 1;
 }
 
+/* Storyteller Card with Gold Border */
+.card.storyteller-card-gold {
+  border: 3px solid #ffd700 !important;
+  box-shadow: 0 0 20px rgba(255, 215, 0, 0.4), 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+/* Card Owner Header - top of card during reveal */
+.card-owner-header {
+  background: linear-gradient(
+    135deg,
+    rgba(0, 0, 0, 0.9) 0%,
+    rgba(30, 30, 50, 0.95) 100%
+  );
+  color: white;
+  padding: 0.5rem 0.625rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  border-radius: 12px 12px 0 0;
+  min-height: 2.75rem;
+}
+
+/* Storyteller header with gold styling */
+.card-owner-header.storyteller-gold {
+  background: linear-gradient(135deg, #b8860b 0%, #daa520 50%, #ffd700 100%);
+  color: #1a1a2e;
+}
+
+.card-owner-header .owner-profile {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.card-owner-header .owner-avatar {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+}
+
+.card-owner-header.storyteller-gold .owner-avatar {
+  border-color: #1a1a2e;
+}
+
+.card-owner-header .owner-avatar-fallback {
+  /* background is set inline via getPlayerColor() */
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 0.875rem;
+}
+
+.card-owner-header.storyteller-gold .owner-avatar-fallback {
+  /* Storyteller gets gold border instead of different background */
+  color: #ffd700;
+  box-shadow: 0 0 0 2px #ffd700;
+}
+
+.card-owner-header .owner-name {
+  font-weight: 700;
+  font-size: 0.9rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.card-owner-header .owner-points {
+  font-weight: 800;
+  font-size: 1rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: 6px;
+  min-width: 2.25rem;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.card-owner-header .owner-points.positive {
+  background: rgba(46, 204, 113, 0.95);
+  color: white;
+}
+
+.card-owner-header .owner-points.negative {
+  background: rgba(231, 76, 60, 0.95);
+  color: white;
+}
+
+.card-owner-header .owner-points.zero {
+  background: rgba(149, 165, 166, 0.5);
+  color: white;
+}
+
+.card-owner-header.storyteller-gold .owner-points.positive {
+  background: rgba(0, 100, 0, 0.9);
+}
+
+.card-owner-header.storyteller-gold .owner-points.zero {
+  background: rgba(0, 0, 0, 0.4);
+  color: #1a1a2e;
+}
+
+/* Voter Profile Images - overlaid on bottom of card */
+.card-voters-overlay {
+  position: absolute;
+  bottom: 0.5rem;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 0.25rem;
+  z-index: 10;
+  background: rgba(0, 0, 0, 0.7);
+  padding: 0.375rem 0.5rem;
+  border-radius: 20px;
+  backdrop-filter: blur(4px);
+}
+
+.card-voters-overlay .voter-profile {
+  flex-shrink: 0;
+}
+
+.card-voters-overlay .voter-img {
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid white;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.card-voters-overlay .voter-img-fallback {
+  /* background is set inline via getPlayerColor() */
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 0.75rem;
+}
+
+.card-voters-overlay .voter-overflow .voter-img-fallback {
+  background: rgba(50, 50, 70, 0.9);
+  font-size: 0.65rem;
+}
+
 .card-image-container img {
   width: 100%;
   height: 100%;
@@ -4463,11 +4796,7 @@ select {
   align-items: center;
 }
 
-.voter-name::before {
-  content: "→";
-  margin-right: 0.5rem;
-  color: #667eea;
-}
+/* Arrow removed per user request */
 
 .vote-count-badge {
   position: absolute;
@@ -5239,6 +5568,40 @@ select {
     font-size: 0.65rem;
   }
 
+  /* Responsive styles for card reveal UI */
+  .card-owner-header {
+    padding: 0.4rem 0.5rem;
+    min-height: 2.25rem;
+  }
+
+  .card-owner-header .owner-avatar {
+    width: 1.75rem;
+    height: 1.75rem;
+  }
+
+  .card-owner-header .owner-name {
+    font-size: 0.8rem;
+  }
+
+  .card-owner-header .owner-points {
+    font-size: 0.85rem;
+    padding: 0.2rem 0.4rem;
+  }
+
+  .card-voters-overlay {
+    padding: 0.25rem 0.375rem;
+  }
+
+  .card-voters-overlay .voter-img {
+    width: 1.5rem;
+    height: 1.5rem;
+    border-width: 1.5px;
+  }
+
+  .card-voters-overlay .voter-img-fallback {
+    font-size: 0.65rem;
+  }
+
   /* Make modal popup full screen on mobile */
   .modal-popup {
     position: fixed;
@@ -5336,6 +5699,13 @@ select {
     /* Ensure it's easily tappable */
     min-width: 44px;
     min-height: 44px;
+  }
+
+  /* Modal Timer - stays inside modal on mobile */
+  .modal-timer {
+    position: absolute;
+    top: 0.5rem;
+    left: 0.5rem;
   }
 
   /* Floating buttons container for mobile */
@@ -5688,6 +6058,51 @@ select {
     font-size: 0.6rem;
   }
 
+  /* Small mobile styles for card reveal UI */
+  .card-owner-header {
+    padding: 0.3rem 0.4rem;
+    min-height: 2rem;
+    gap: 0.375rem;
+  }
+
+  .card-owner-header .owner-profile {
+    gap: 0.375rem;
+  }
+
+  .card-owner-header .owner-avatar {
+    width: 1.5rem;
+    height: 1.5rem;
+  }
+
+  .card-owner-header .owner-avatar-fallback {
+    font-size: 0.7rem;
+  }
+
+  .card-owner-header .owner-name {
+    font-size: 0.7rem;
+  }
+
+  .card-owner-header .owner-points {
+    font-size: 0.75rem;
+    padding: 0.15rem 0.3rem;
+    min-width: 1.75rem;
+  }
+
+  .card-voters-overlay {
+    padding: 0.2rem 0.3rem;
+    gap: 0.15rem;
+  }
+
+  .card-voters-overlay .voter-img {
+    width: 1.25rem;
+    height: 1.25rem;
+    border-width: 1px;
+  }
+
+  .card-voters-overlay .voter-img-fallback {
+    font-size: 0.55rem;
+  }
+
   .modal-close-button {
     position: fixed;
     top: 0.5rem;
@@ -5698,6 +6113,13 @@ select {
     /* iOS tap target minimum */
     min-width: 44px;
     min-height: 44px;
+  }
+
+  /* Modal Timer - stays inside modal on small mobile */
+  .modal-timer {
+    position: absolute;
+    top: 0.5rem;
+    left: 0.5rem;
   }
 
   /* Floating buttons container for small mobile */

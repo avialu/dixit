@@ -123,6 +123,7 @@ export function AdminSettingsModal(props: AdminSettingsModalProps) {
                     playerColor={getPlayerColor(
                       roomState.players.findIndex((p) => p.id === player.id)
                     )}
+                    playerName={player.name}
                     size="small"
                   />
                   <div className="player-info">
