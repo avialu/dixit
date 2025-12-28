@@ -487,6 +487,10 @@ export class GameManager {
     return this.deckManager.deleteImage(cardId, playerId);
   }
 
+  getDeckSize(): number {
+    return this.deckManager.getDeckSize();
+  }
+
   lockDeck(adminId: string): void {
     this.validateAdmin(adminId);
     this.deckManager.lock();

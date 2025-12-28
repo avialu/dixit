@@ -338,6 +338,7 @@ export function GameBoard({
           roomState.winTarget
         );
         const needMore = minRequired - roomState.deckSize;
+        const isReady = roomState.deckSize >= minRequired;
         return {
           icon: "🎴",
           text:
@@ -346,14 +347,12 @@ export function GameBoard({
               : needMore > 0
               ? t("status.needMoreImages", { count: needMore })
               : t("status.readyToStart"),
-          subtext:
-            t("lobby.imageCount", {
-              current: roomState.deckSize,
-              required: minRequired,
-            }) +
-            ` | ${roomState.players.length} ${t(
-              "common.players"
-            ).toLowerCase()}`,
+          subtext: "", // We'll use deckInfo instead
+          deckInfo: {
+            count: roomState.deckSize,
+            isReady,
+            playerCount: roomState.players.length,
+          },
         };
       }
       case "STORYTELLER_CHOICE":
@@ -418,9 +417,17 @@ export function GameBoard({
         <div className="status-icon">{gameStatus.icon}</div>
         <div className="status-content">
           <div className="status-text">{gameStatus.text}</div>
-          {gameStatus.subtext && (
+          {gameStatus.deckInfo ? (
+            <div className="status-subtext">
+              <span className={`deck-count ${gameStatus.deckInfo.isReady ? 'deck-ready' : 'deck-warning'}`}>
+                {gameStatus.deckInfo.count} {t("common.images")}
+              </span>
+              {" | "}
+              <span>{gameStatus.deckInfo.playerCount} {t("common.players").toLowerCase()}</span>
+            </div>
+          ) : gameStatus.subtext ? (
             <div className="status-subtext">{gameStatus.subtext}</div>
-          )}
+          ) : null}
         </div>
       </div>
 

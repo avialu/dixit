@@ -26,6 +26,7 @@ export interface TranslationKeys {
   common: {
     loading: string;
     players: string;
+    images: string;
     settings: string;
     close: string;
     cancel: string;
@@ -102,12 +103,17 @@ export interface TranslationKeys {
   deckUploader: {
     deck: string;
     myImages: string;
+    allImages: string;
     needMore: string;
+    needMorePlayers: string;
+    needOneMorePlayer: string;
+    prefer: string;
     playersCanUpload: string;
     onlyAdminUploads: string;
     uploadImages: string;
     uploadFolder: string;
     uploading: string;
+    processingImages: string;
     onlyHostCanUpload: string;
     processed: string;
     failed: string;
@@ -147,6 +153,7 @@ export interface TranslationKeys {
     needMoreImages: string;
     readyToStart: string;
     storytellerChoosing: string;
+    storytellerThinking: string;
     waitingForStoryteller: string;
     playersChoosing: string;
     matchTheClue: string;

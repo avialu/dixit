@@ -804,7 +804,7 @@ export function WaitingStorytellerModal(props: {
   const { t } = props;
   const header = (
     <>
-      <h2>⏳ {t("common.loading")}</h2>
+      <h2>🤔 {t("status.storytellerThinking")}</h2>
     </>
   );
 

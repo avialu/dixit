@@ -78,7 +78,8 @@ export function useGameState(socket: Socket | null) {
     });
 
     // Incremental image updates - much more efficient than sending all images
-    socket.on("imageAdded", (image: { id: string; uploadedBy: string; imageData: string }) => {
+    // Server now sends deckSize with each image, eliminating need for full roomState broadcast
+    socket.on("imageAdded", (image: { id: string; uploadedBy: string; imageData: string; deckSize: number }) => {
       setRoomState((prevState) => {
         if (!prevState) return prevState;
         // Avoid duplicates
@@ -88,7 +89,7 @@ export function useGameState(socket: Socket | null) {
         return {
           ...prevState,
           deckImages: [...prevState.deckImages, image],
-          deckSize: prevState.deckSize + 1,
+          deckSize: image.deckSize, // Use server's deckSize for accuracy
         };
       });
     });
