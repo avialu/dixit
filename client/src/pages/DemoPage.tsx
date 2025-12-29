@@ -32,6 +32,7 @@ const generateMockRoomState = (
       boardBackgroundImage: null,
       boardPattern: "spiral",
       language: "en",
+      soundEnabled: true,
       serverUrl: currentUrl,
       phaseStartTime: null,
       phaseDuration: null,
@@ -95,6 +96,7 @@ const generateMockRoomState = (
     boardBackgroundImage: null,
     boardPattern: "spiral",
     language: "en",
+    soundEnabled: true,
     serverUrl: currentUrl,
     phaseStartTime: null,
     phaseDuration: null,
@@ -706,6 +708,7 @@ export function DemoPage() {
       boardBackgroundImage: boardBackgroundImage,
       boardPattern: flowBoardPattern,
       language: "en",
+      soundEnabled: true,
       serverUrl: detectedServerUrl || currentUrl,
       phaseStartTime,
       phaseDuration,
@@ -1609,6 +1612,9 @@ export function DemoPage() {
               onSetLanguage={(language) => {
                 console.log("Demo: set language", language);
               }}
+              onSetSoundEnabled={(enabled) => {
+                console.log("Demo: set sound enabled", enabled);
+              }}
               onSetWinTarget={(target) => {
                 console.log("Demo: set win target", target);
                 setWinTarget(target);
@@ -1645,6 +1651,7 @@ export function DemoPage() {
               onSetBoardBackground={flowActions.setBoardBackground}
               onSetBoardPattern={flowActions.setBoardPattern}
               onSetLanguage={() => console.log("Flow: set language")}
+              onSetSoundEnabled={() => console.log("Flow: set sound enabled")}
               onSetWinTarget={flowActions.setWinTarget}
               onStartGame={() => {}}
               onChangeName={() => {}}

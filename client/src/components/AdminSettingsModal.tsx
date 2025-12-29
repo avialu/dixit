@@ -22,6 +22,7 @@ interface AdminSettingsModalProps {
   onSetBoardPattern: (pattern: "snake" | "spiral") => void;
   onSetLanguage: (language: "en" | "he") => void;
   onSetWinTarget: (target: number) => void;
+  onSetSoundEnabled: (enabled: boolean) => void;
   onKickPlayer: (playerId: string) => void;
   onPromotePlayer: (playerId: string) => void;
   onConfirmWinTargetChange?: (target: number, potentialWinners: string[]) => void;
@@ -49,6 +50,7 @@ export function AdminSettingsModal(props: AdminSettingsModalProps) {
     onSetBoardPattern,
     onSetLanguage,
     onSetWinTarget,
+    onSetSoundEnabled,
     onKickPlayer,
     onPromotePlayer,
     onConfirmWinTargetChange,
@@ -212,6 +214,45 @@ export function AdminSettingsModal(props: AdminSettingsModalProps) {
                   🐌 {t("lobby.patternSpiral")}
                 </Button>
               </div>
+            </div>
+
+            {/* Sound Settings */}
+            <div
+              style={{
+                marginBottom: "1rem",
+                padding: "1rem",
+                background: "rgba(255, 255, 255, 0.1)",
+                borderRadius: "8px",
+              }}
+            >
+              <h4 style={{ marginBottom: "0.75rem" }}>
+                🔔 {t("adminSettings.soundSettings")}
+              </h4>
+              <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
+                <Button
+                  variant={roomState.soundEnabled ? "primary" : "secondary"}
+                  size="small"
+                  onClick={() => onSetSoundEnabled(true)}
+                >
+                  🔊 {t("adminSettings.soundOn")}
+                </Button>
+                <Button
+                  variant={!roomState.soundEnabled ? "primary" : "secondary"}
+                  size="small"
+                  onClick={() => onSetSoundEnabled(false)}
+                >
+                  🔇 {t("adminSettings.soundOff")}
+                </Button>
+              </div>
+              <p
+                style={{
+                  fontSize: "0.9rem",
+                  color: "#95a5a6",
+                  marginTop: "0.5rem",
+                }}
+              >
+                {t("adminSettings.soundDesc")}
+              </p>
             </div>
 
             {/* Win Target Settings */}

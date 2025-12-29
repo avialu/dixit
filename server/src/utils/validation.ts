@@ -85,3 +85,7 @@ export const setBoardPatternSchema = z.object({
 export const adminSetLanguageSchema = z.object({
   language: z.enum(["en", "he"]), // English or Hebrew
 });
+
+export const adminSetSoundEnabledSchema = z.object({
+  enabled: z.boolean(),
+});

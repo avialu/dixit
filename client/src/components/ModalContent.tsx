@@ -652,9 +652,7 @@ export function StorytellerChoiceModal(
         <>
           <p className="clue-reminder">
             <strong>{t("storyteller.yourClue")}:</strong>{" "}
-            <strong style={{ fontWeight: 900, fontSize: "1.1em" }}>
-              "{roomState.currentClue}"
-            </strong>
+            <span className="clue-highlight">"{roomState.currentClue}"</span>
           </p>
           {waitingForPlayers.length > 0 && (
             <p
@@ -778,9 +776,7 @@ export function PlayerChoiceModal(
           {t("playerChoice.storytellerClueWithName", { name: storytellerName })}
           :
         </strong>{" "}
-        <strong style={{ fontWeight: 900, fontSize: "1.1em" }}>
-          "{roomState.currentClue}"
-        </strong>
+        <span className="clue-highlight">"{roomState.currentClue}"</span>
       </p>
       {isSubmitted && waitingForPlayers.length > 0 && (
         <p
@@ -884,22 +880,29 @@ export function WaitingStorytellerModal(props: {
       </Button>
     ) : null;
 
+  // Check if this is a spectator (no hand)
+  const hasHand = props.playerState?.hand && props.playerState.hand.length > 0;
+
   return {
     header,
     footer,
     timer: timerElement,
-    content: (
-      <>
-        <div className="modal-hand">
-          <CardView
-            cards={props.playerState?.hand || []}
-            selectedCardId={null}
-            onSelectCard={() => {}}
-            disabled={true}
-            showDrawer={false}
-          />
-        </div>
-      </>
+    content: hasHand ? (
+      <div className="modal-hand">
+        <CardView
+          cards={props.playerState?.hand || []}
+          selectedCardId={null}
+          onSelectCard={() => {}}
+          disabled={true}
+          showDrawer={false}
+        />
+      </div>
+    ) : (
+      <div className="spectator-waiting">
+        <p style={{ textAlign: "center", color: "#95a5a6", padding: "2rem" }}>
+          <Icon.Eye size={IconSize.large} /> {t("lobby.spectatingHelp")}
+        </p>
+      </div>
     ),
   };
 }
@@ -942,9 +945,7 @@ export function WaitingPlayersModal(props: {
           {t("playerChoice.storytellerClueWithName", { name: storytellerName })}
           :
         </strong>{" "}
-        <strong style={{ fontWeight: 900, fontSize: "1.1em" }}>
-          "{roomState.currentClue}"
-        </strong>
+        <span className="clue-highlight">"{roomState.currentClue}"</span>
       </p>
       {waitingForPlayers.length > 0 && (
         <p
@@ -973,11 +974,14 @@ export function WaitingPlayersModal(props: {
       </Button>
     ) : null;
 
+  // Check if this is a spectator (no hand)
+  const hasHand = playerState?.hand && playerState.hand.length > 0;
+
   return {
     header,
     footer,
     timer: timerElement,
-    content: (
+    content: hasHand ? (
       <div className="modal-hand">
         <CardView
           cards={playerState?.hand || []}
@@ -987,6 +991,12 @@ export function WaitingPlayersModal(props: {
           lockedCardId={playerState?.mySubmittedCardId}
           showDrawer={false}
         />
+      </div>
+    ) : (
+      <div className="spectator-waiting">
+        <p style={{ textAlign: "center", color: "#95a5a6", padding: "2rem" }}>
+          <Icon.Eye size={IconSize.large} /> {t("lobby.spectatingHelp")}
+        </p>
       </div>
     ),
   };
@@ -1086,9 +1096,7 @@ export function VotingModal(props: VotingModalProps): ModalContentResult {
         <strong>
           {t("voting.storytellerClueWithName", { name: storytellerName })}:
         </strong>{" "}
-        <strong style={{ fontWeight: 900, fontSize: "1.1em" }}>
-          "{roomState.currentClue}"
-        </strong>
+        <span className="clue-highlight">"{roomState.currentClue}"</span>
       </p>
       {hasVoted && waitingForPlayers.length > 0 && !allVotesIn && (
         <p
@@ -1271,9 +1279,7 @@ export function RevealModal(props: RevealModalProps): ModalContentResult {
         <strong>
           {t("reveal.storytellerClueWithName", { name: storytellerName })}:
         </strong>{" "}
-        <strong style={{ fontWeight: 900, fontSize: "1.1em" }}>
-          "{roomState.currentClue}"
-        </strong>
+        <span className="clue-highlight">"{roomState.currentClue}"</span>
       </p>
     </>
   );

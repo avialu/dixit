@@ -1363,16 +1363,16 @@ select {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 0.75rem;
-  padding: 0.5rem 1rem;
+  gap: 1rem;
+  padding: 0.75rem 1.5rem;
   background: linear-gradient(
     135deg,
     rgba(74, 144, 226, 0.25),
     rgba(74, 144, 226, 0.15)
   );
-  border-radius: 8px;
+  border-radius: 10px;
   border: 2px solid rgba(74, 144, 226, 0.4);
-  margin-bottom: 0.25rem;
+  margin-bottom: 0.5rem;
   box-shadow: 0 4px 16px rgba(74, 144, 226, 0.2),
     inset 0 2px 4px rgba(255, 255, 255, 0.1);
   backdrop-filter: blur(10px);
@@ -1392,7 +1392,7 @@ select {
 }
 
 .status-icon {
-  font-size: 2rem;
+  font-size: 2.5rem;
   animation: status-icon-bounce 2s infinite;
   flex-shrink: 0;
 }
@@ -1416,15 +1416,15 @@ select {
 }
 
 .status-text {
-  font-size: 1.2rem;
+  font-size: 1.5rem;
   font-weight: bold;
   color: #fff;
   text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
-  line-height: 1.2;
+  line-height: 1.3;
 }
 
 .status-subtext {
-  font-size: 0.9rem;
+  font-size: 1.1rem;
   color: #4a90e2;
   font-weight: 500;
   opacity: 0.9;
@@ -1998,17 +1998,20 @@ select {
   gap: 0.75rem;
   width: 100%;
   align-items: center;
-  margin-top: 0.5rem;
+  /* Removed margin-top to better fit in fixed-height footer */
 }
 
 .clue-input-inline {
   flex: 1;
+  min-width: 0; /* Allow shrinking below content size */
   padding: 0.75rem 1rem;
   font-size: 1rem;
   border: 2px solid #4a90e2;
   border-radius: 8px;
   background: #2a2a3e;
   color: #fff;
+  min-height: 44px; /* Touch target minimum */
+  box-sizing: border-box;
 }
 
 .clue-input-inline:focus {
@@ -2018,10 +2021,12 @@ select {
 }
 
 .btn-inline {
-  padding: 0.75rem 2rem;
+  padding: 0.75rem 1.5rem;
   font-size: 1rem;
   white-space: nowrap;
   flex-shrink: 0;
+  min-height: 44px; /* Touch target minimum */
+  min-width: 80px;
 }
 
 .hand-container {
@@ -2245,7 +2250,8 @@ select {
 }
 
 @keyframes rules-icon-bounce {
-  0%, 100% {
+  0%,
+  100% {
     transform: translateY(0);
   }
   50% {
@@ -4193,6 +4199,17 @@ select {
   line-height: 1.3;
 }
 
+/* Clue text highlight - makes the clue stand out everywhere */
+.clue-highlight {
+  display: inline;
+  color: #cc0b0b;
+  font-weight: 900;
+  font-size: 1.15em;
+  text-shadow: 0 0 10px rgba(241, 196, 15, 0.4), 1px 1px 2px rgba(0, 0, 0, 0.5);
+  letter-spacing: 0.02em;
+  padding: 0.1em 0.4em;
+}
+
 .modal-header h3 {
   margin: 0;
   font-size: 1.1rem;
@@ -4322,18 +4339,20 @@ select {
 
 .modal-footer {
   flex-shrink: 0;
-  height: 70px; /* Fixed height */
-  min-height: 70px;
-  max-height: 70px;
+  min-height: 60px; /* Minimum height for content */
   display: flex;
-  flex-direction: column;
+  flex-direction: row; /* Row layout for inline content like clue input + button */
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
   width: 100%;
-  padding: 0 1rem;
+  padding: 0.75rem 1rem;
+  padding-bottom: max(
+    0.75rem,
+    env(safe-area-inset-bottom, 0.75rem)
+  ); /* iOS safe area */
   box-sizing: border-box;
-  overflow: hidden;
+  /* Removed overflow: hidden - content should be visible */
 }
 
 .modal-footer-buttons {
@@ -4704,15 +4723,22 @@ select {
     line-height: 1.2;
   }
 
+  .clue-highlight {
+    font-size: 1.1em;
+    padding: 0.05em 0.3em;
+  }
+
   .modal-header h3 {
     font-size: 1rem;
   }
 
   .modal-footer {
-    height: 65px; /* Slightly smaller on mobile */
-    min-height: 65px;
-    max-height: 65px;
-    padding: 0 0.75rem;
+    min-height: 55px; /* Slightly smaller on mobile */
+    padding: 0.5rem 0.75rem;
+    padding-bottom: max(
+      0.5rem,
+      env(safe-area-inset-bottom, 0.5rem)
+    ); /* iOS safe area */
   }
 }
 
@@ -5890,11 +5916,11 @@ select {
 
   /* Make status bar more compact on mobile to give board more space */
   .game-status-bar {
-    padding: 0.5rem 0.75rem;
-    margin-bottom: 0.25rem;
+    padding: 0.6rem 1rem;
+    margin-bottom: 0.35rem;
     flex-direction: row;
     text-align: left;
-    gap: 0.5rem;
+    gap: 0.75rem;
     flex-shrink: 0;
     width: 100%;
     box-sizing: border-box;
@@ -5904,17 +5930,17 @@ select {
   }
 
   .status-icon {
-    font-size: 1.5rem;
+    font-size: 1.8rem;
     flex-shrink: 0;
   }
 
   .status-text {
-    font-size: 0.85rem;
-    line-height: 1.1;
+    font-size: 1.1rem;
+    line-height: 1.2;
   }
 
   .status-subtext {
-    font-size: 0.7rem;
+    font-size: 0.9rem;
   }
 
   /* Adjust score track container for better mobile visibility */
@@ -6435,6 +6461,11 @@ select {
     line-height: 1.1;
   }
 
+  .clue-highlight {
+    font-size: 1em;
+    padding: 0.05em 0.25em;
+  }
+
   .modal-body {
     padding: 0.2rem 0;
     gap: 0.4rem;
@@ -6442,6 +6473,22 @@ select {
 
   .modal-section {
     padding: 0 0.2rem;
+  }
+
+  /* Compact clue submit row for small screens */
+  .clue-submit-row {
+    gap: 0.5rem;
+  }
+
+  .clue-input-inline {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.9rem;
+  }
+
+  .btn-inline {
+    padding: 0.5rem 1rem;
+    font-size: 0.9rem;
+    min-width: 70px;
   }
 
   /* Compact card header for small screens */

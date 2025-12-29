@@ -59,6 +59,7 @@ export interface GameState {
   boardBackgroundImage: string | null; // Custom board background image (base64 data URL)
   boardPattern: BoardPattern; // Snake (zigzag) or Spiral (snail) pattern
   language: Language; // Room language preference set by admin
+  soundEnabled: boolean; // Whether turn notification sounds are enabled (admin-controlled)
   currentRound: number;
   storytellerId: string | null;
   currentClue: string | null;
@@ -88,6 +89,7 @@ export interface RoomState {
   boardBackgroundImage: string | null; // Custom board background image (base64 data URL)
   boardPattern: BoardPattern; // Snake (zigzag) or Spiral (snail) pattern
   language: Language; // Room language preference set by admin
+  soundEnabled: boolean; // Whether turn notification sounds are enabled (admin-controlled)
   deckImages: {
     id: string;
     uploadedBy: string;

@@ -34,6 +34,7 @@ export class GameManager {
       boardBackgroundImage: null, // No custom background by default
       boardPattern: "spiral", // Default: spiral (snail) pattern
       language: "en", // Default language: English
+      soundEnabled: true, // Turn notification sounds enabled by default
       currentRound: 0,
       storytellerId: null,
       currentClue: null,
@@ -540,6 +541,16 @@ export class GameManager {
 
     this.state.language = language;
     logger.info("Game language updated", { adminId, language });
+  }
+
+  /**
+   * Set sound enabled/disabled (admin only)
+   */
+  setSoundEnabled(enabled: boolean, adminId: string): void {
+    this.validateAdmin(adminId);
+
+    this.state.soundEnabled = enabled;
+    logger.info("Sound setting updated", { adminId, enabled });
   }
 
   uploadImage(imageData: string, playerId: string): Card {
@@ -1168,6 +1179,7 @@ export class GameManager {
       boardBackgroundImage: this.state.boardBackgroundImage,
       boardPattern: this.state.boardPattern,
       language: this.state.language,
+      soundEnabled: this.state.soundEnabled,
       deckImages,
       currentRound: this.state.currentRound,
       storytellerId: this.state.storytellerId,

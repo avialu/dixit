@@ -28,6 +28,7 @@ export interface RoomState {
   boardBackgroundImage: string | null; // Custom board background image (base64 data URL)
   boardPattern: "snake" | "spiral"; // Snake (zigzag) or Spiral (snail) pattern
   language: "en" | "he"; // Room language preference (admin sets, players can override locally)
+  soundEnabled: boolean; // Whether turn notification sounds are enabled (admin-controlled)
   deckImages: { id: string; uploadedBy: string; imageData: string }[];
   currentRound: number;
   storytellerId: string | null;
@@ -342,6 +343,10 @@ export function useGameState(socket: Socket | null) {
     socket?.emit("adminSetLanguage", { language });
   };
 
+  const setSoundEnabled = (enabled: boolean) => {
+    socket?.emit("adminSetSoundEnabled", { enabled });
+  };
+
   const dismissError = () => {
     setError(null);
   };
@@ -374,6 +379,7 @@ export function useGameState(socket: Socket | null) {
       setBoardBackground,
       setBoardPattern,
       setLanguage,
+      setSoundEnabled,
       dismissError,
     },
   };

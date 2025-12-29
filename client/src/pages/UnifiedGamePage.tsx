@@ -16,6 +16,7 @@ import { resizeAndCompressImages } from "../utils/imageResize";
 import { useTranslation } from "../i18n";
 import { ConnectionStatus } from "../components/ConnectionStatus";
 import { LatencyIndicator } from "../components/LatencyIndicator";
+import { unlockAudio, notifyTurn } from "../utils/notifications";
 
 interface UnifiedGamePageProps {
   roomState: RoomState | null;
@@ -32,6 +33,7 @@ interface UnifiedGamePageProps {
   onSetBoardBackground: (imageData: string | null) => void;
   onSetBoardPattern: (pattern: "snake" | "spiral") => void;
   onSetLanguage: (language: "en" | "he") => void;
+  onSetSoundEnabled: (enabled: boolean) => void;
   onSetWinTarget: (target: number) => void;
   onStartGame: () => void;
   onChangeName: (newName: string) => void;
@@ -68,6 +70,7 @@ export function UnifiedGamePage({
   onSetBoardBackground,
   onSetBoardPattern,
   onSetLanguage,
+  onSetSoundEnabled,
   onSetWinTarget,
   onStartGame,
   onChangeName: _onChangeName,
@@ -273,6 +276,45 @@ export function UnifiedGamePage({
     }
   }, [roomState?.phase, roomState?.currentRound]);
 
+  // Track previous phase for turn notifications
+  const prevPhaseRef = useRef<string | null>(null);
+  const prevRoundRef = useRef<number | null>(null);
+
+  // Notify player when it's their turn (sound + vibration)
+  useEffect(() => {
+    if (!roomState || isDemoMode || isSpectator) return;
+    
+    const phase = roomState.phase;
+    const round = roomState.currentRound;
+    
+    // Skip on initial load
+    if (prevPhaseRef.current === null) {
+      prevPhaseRef.current = phase;
+      prevRoundRef.current = round;
+      return;
+    }
+    
+    // Only notify on phase changes or new rounds
+    const phaseChanged = prevPhaseRef.current !== phase;
+    const newRound = prevRoundRef.current !== round;
+    
+    if (!phaseChanged && !newRound) return;
+    
+    prevPhaseRef.current = phase;
+    prevRoundRef.current = round;
+    
+    // Check if it's my turn to act
+    const isMyTurn = 
+      (phase === 'STORYTELLER_CHOICE' && isStoryteller) ||
+      (phase === 'PLAYERS_CHOICE' && !isStoryteller) ||
+      (phase === 'VOTING' && !isStoryteller);
+    
+    // Only notify if sounds are enabled (admin setting)
+    if (isMyTurn && roomState.soundEnabled) {
+      notifyTurn();
+    }
+  }, [roomState?.phase, roomState?.currentRound, roomState?.soundEnabled, isStoryteller, isSpectator, isDemoMode, roomState]);
+
   // Handle advancing to next round
   const handleAdvanceRound = useCallback(() => {
     if (!hasAdvancedRound) {
@@ -353,13 +395,22 @@ export function UnifiedGamePage({
         setModalType("cards");
         setShowModal(true);
       }
+    } else if (
+      isSpectator &&
+      (phase === "STORYTELLER_CHOICE" ||
+        phase === "PLAYERS_CHOICE" ||
+        phase === "VOTING") &&
+      modalType !== "adminSettings"
+    ) {
+      // Close modal for spectators during action phases (they have no cards to show)
+      setShowModal(false);
     } else if (phase === "DECK_BUILDING" && modalType !== "adminSettings") {
       // When returning to deck building (e.g., after game reset), close modal
       // But don't close if admin settings are open
       setShowModal(false);
       setManuallyClosedModal(false);
     }
-  }, [roomState?.phase, isStoryteller, isSpectator, manuallyClosedModal]);
+  }, [roomState?.phase, isStoryteller, isSpectator, manuallyClosedModal, modalType]);
 
   // Auto-join spectators when they connect (only if not already joined)
   useEffect(() => {
@@ -374,6 +425,8 @@ export function UnifiedGamePage({
     e.preventDefault();
     if (name.trim() && !isJoining) {
       setIsJoining(true);
+      // Unlock audio on user interaction (required for iOS)
+      unlockAudio();
       onJoin(name.trim(), clientId);
       // Upload profile image after joining if one was selected
       if (profileImage) {
@@ -1081,7 +1134,8 @@ export function UnifiedGamePage({
             }
             // PLAYERS_CHOICE phase
             else if (roomState.phase === "PLAYERS_CHOICE") {
-              if (!isStoryteller) {
+              if (!isStoryteller && !isSpectator) {
+                // Only show card selection to actual players (not storyteller, not spectators)
                 modalContent = ModalContent.PlayerChoiceModal({
                   playerState,
                   selectedCardId,
@@ -1095,6 +1149,7 @@ export function UnifiedGamePage({
                   t,
                 });
               } else {
+                // Storyteller and spectators see waiting view
                 modalContent = ModalContent.WaitingPlayersModal({
                   playerState,
                   roomState,
@@ -1158,6 +1213,7 @@ export function UnifiedGamePage({
               isInGame: !!isInGame,
               onSetBoardPattern,
               onSetLanguage,
+              onSetSoundEnabled,
               onSetWinTarget,
               onKickPlayer: handleKickPlayer,
               onPromotePlayer: handlePromotePlayer,

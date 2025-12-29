@@ -333,6 +333,10 @@ export interface TranslationKeys {
     wouldEndGame: string;
     winTargetWarningTitle: string;
     winTargetWarningMessage: string;
+    soundSettings: string;
+    soundOn: string;
+    soundOff: string;
+    soundDesc: string;
   };
 
   // Timer

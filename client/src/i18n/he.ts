@@ -335,6 +335,10 @@ export const he: TranslationKeys = {
     winTargetWarningTitle: "⚠️ לסיים את המשחק מוקדם?",
     winTargetWarningMessage:
       "הגדרת יעד ניצחון ל-{target} נקודות תסיים את המשחק! ל-{winners} כבר יש מספיק נקודות לנצח. להמשיך?",
+    soundSettings: "התראות תור",
+    soundOn: "צליל פעיל",
+    soundOff: "מושתק",
+    soundDesc: "נגן צליל ורטט כשתור של שחקן",
   },
 
   // Timer

@@ -338,6 +338,10 @@ export const en: TranslationKeys = {
     winTargetWarningTitle: "⚠️ End Game Early?",
     winTargetWarningMessage:
       "Setting win target to {target} points will end the game! {winners} already has enough points to win. Continue?",
+    soundSettings: "Turn Notifications",
+    soundOn: "Sound On",
+    soundOff: "Muted",
+    soundDesc: "Play sound and vibration when it's a player's turn",
   },
 
   // Timer

@@ -25,6 +25,7 @@ import {
   setBoardBackgroundSchema,
   setBoardPatternSchema,
   adminSetLanguageSchema,
+  adminSetSoundEnabledSchema,
 } from "./utils/validation.js";
 import { getLanIpAddress } from "./utils/network.js";
 import {
@@ -554,6 +555,16 @@ npm start</pre>
         gameManager.setLanguage(language, clientId);
 
         logger.playerAction(clientId, "set language", { language });
+        broadcastRoomState();
+      });
+    });
+
+    socket.on("adminSetSoundEnabled", (data) => {
+      withClientId(socket, (clientId) => {
+        const { enabled } = adminSetSoundEnabledSchema.parse(data);
+        gameManager.setSoundEnabled(enabled, clientId);
+
+        logger.playerAction(clientId, "set sound enabled", { enabled });
         broadcastRoomState();
       });
     });
