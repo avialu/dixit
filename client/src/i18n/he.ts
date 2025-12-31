@@ -348,6 +348,17 @@ export const he: TranslationKeys = {
     secondsRemaining: "נותרו {seconds} שניות",
   },
 
+  // QR Code
+  qr: {
+    clickToCopy: "לחץ להעתקת הקישור",
+    copied: "הועתק!",
+  },
+
+  // Profile
+  profile: {
+    tapToChange: "לחץ לשינוי תמונה",
+  },
+
   // Rules Modal
   rules: {
     title: "איך לשחק",

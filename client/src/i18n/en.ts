@@ -351,6 +351,17 @@ export const en: TranslationKeys = {
     secondsRemaining: "{seconds} seconds remaining",
   },
 
+  // QR Code
+  qr: {
+    clickToCopy: "Click to copy link",
+    copied: "Copied!",
+  },
+
+  // Profile
+  profile: {
+    tapToChange: "Tap to change photo",
+  },
+
   // Rules Modal
   rules: {
     title: "How to Play",

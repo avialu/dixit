@@ -1505,6 +1505,61 @@ select {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 
+/* Copyable Link below QR Code */
+.qr-copy-link {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-top: 1rem;
+  padding: 0.75rem 1rem;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(74, 144, 226, 0.3);
+  border-radius: 8px;
+  color: #95a5a6;
+  font-size: 0.85rem;
+  font-family: "Courier New", monospace;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.qr-copy-link:hover {
+  background: rgba(74, 144, 226, 0.2);
+  border-color: rgba(74, 144, 226, 0.5);
+  color: #4a90e2;
+}
+
+.qr-copy-link:active {
+  transform: scale(0.98);
+}
+
+.qr-copy-link .qr-link-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 180px;
+}
+
+/* Editable Token Styles */
+.editable-token {
+  cursor: pointer;
+}
+
+.editable-token:hover .player-token-border {
+  stroke: #667eea !important;
+  stroke-width: 1.5 !important;
+}
+
+.editable-token:hover .token-edit-badge {
+  transform: scale(1.1);
+}
+
+.token-edit-badge {
+  transition: transform 0.2s ease;
+}
+
 @keyframes qr-fade-in {
   from {
     opacity: 0;
@@ -3594,6 +3649,31 @@ select {
   border-color: rgba(74, 144, 226, 0.4);
 }
 
+/* Clickable player card - for editing name */
+.player-card.clickable-card {
+  cursor: pointer;
+  position: relative;
+}
+
+.player-card.clickable-card:hover {
+  border-color: #667eea;
+  background: rgba(102, 126, 234, 0.15);
+  transform: translateX(5px) scale(1.01);
+}
+
+.player-card.clickable-card:hover .edit-name-hint {
+  opacity: 1 !important;
+  color: #667eea;
+}
+
+.player-card.clickable-card:active {
+  transform: translateX(5px) scale(0.99);
+}
+
+.edit-name-hint {
+  transition: opacity 0.2s ease, color 0.2s ease;
+}
+
 .player-info {
   display: flex;
   align-items: center;
@@ -5186,6 +5266,11 @@ select {
 
 .card-voters-overlay .voter-img-fallback {
   /* background is set inline via getPlayerColor() */
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 50%;
+  border: 2px solid white;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
   color: white;
   display: flex;
   align-items: center;
@@ -5914,6 +5999,16 @@ select {
     height: auto !important;
   }
 
+  .qr-copy-link {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.75rem;
+    margin-top: 0.75rem;
+  }
+
+  .qr-copy-link .qr-link-text {
+    max-width: 140px;
+  }
+
   /* Make status bar more compact on mobile to give board more space */
   .game-status-bar {
     padding: 0.6rem 1rem;
@@ -6045,6 +6140,9 @@ select {
   }
 
   .card-voters-overlay .voter-img-fallback {
+    width: 1.5rem;
+    height: 1.5rem;
+    border-width: 1.5px;
     font-size: 0.65rem;
   }
 
@@ -6567,6 +6665,9 @@ select {
   }
 
   .card-voters-overlay .voter-img-fallback {
+    width: 1.25rem;
+    height: 1.25rem;
+    border-width: 1px;
     font-size: 0.55rem;
   }
 
