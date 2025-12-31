@@ -32,7 +32,10 @@ const generateMockRoomState = (
       boardBackgroundImage: null,
       boardPattern: "spiral",
       language: "en",
+      soundEnabled: true,
       serverUrl: currentUrl,
+      phaseStartTime: null,
+      phaseDuration: null,
     };
   }
 
@@ -93,7 +96,10 @@ const generateMockRoomState = (
     boardBackgroundImage: null,
     boardPattern: "spiral",
     language: "en",
+    soundEnabled: true,
     serverUrl: currentUrl,
+    phaseStartTime: null,
+    phaseDuration: null,
   };
 
   // Phase-specific modifications
@@ -113,6 +119,8 @@ const generateMockRoomState = (
         ...baseState,
         phase: "STORYTELLER_CHOICE",
         currentClue: "",
+        phaseStartTime: Date.now(),
+        phaseDuration: 60, // 60 seconds for storyteller
       };
 
     case "PLAYERS_CHOICE":
@@ -122,6 +130,8 @@ const generateMockRoomState = (
         // Simulate: storyteller + 2 players have submitted, 2 still pending
         submittedPlayerIds: ["1", "2", "3"], // Alice (storyteller), Bob, Charlie submitted
         // Diana still needs to submit
+        phaseStartTime: Date.now(),
+        phaseDuration: 30, // 30 seconds for players
       };
 
     case "VOTING":
@@ -160,6 +170,8 @@ const generateMockRoomState = (
           { voterId: "2", cardId: "c4" }, // Bob voted
           { voterId: "3", cardId: "c4" }, // Charlie voted
         ],
+        phaseStartTime: Date.now(),
+        phaseDuration: 30, // 30 seconds for voting
       };
 
     case "REVEAL":
@@ -216,6 +228,8 @@ const generateMockRoomState = (
           { voterId: "4", cardId: "c2" }, // Diana voted for Bob's card
         ],
         lastScoreDeltas: deltas,
+        phaseStartTime: Date.now(), // Timer for reveal phase
+        phaseDuration: 30, // 30 seconds for reveal
       };
 
     case "GAME_END":
@@ -373,6 +387,7 @@ export function DemoPage() {
   const [flowLastDeltas, setFlowLastDeltas] = useState<
     Array<{ playerId: string; delta: number }>
   >([]);
+  const [flowVotingProcessed, setFlowVotingProcessed] = useState(false); // Prevent duplicate vote processing
   
   // Flow configuration
   const [flowNumPlayers, setFlowNumPlayers] = useState(3); // Total players (including user)
@@ -657,6 +672,24 @@ export function DemoPage() {
     const port = window.location.port || "3000";
     const currentUrl = `${window.location.protocol}//${window.location.hostname}:${port}`;
 
+    // Determine timer values based on phase
+    let phaseStartTime: number | null = null;
+    let phaseDuration: number | null = null;
+    
+    if (flowPhase === "STORYTELLER_CHOICE") {
+      phaseStartTime = Date.now();
+      phaseDuration = 60; // 60 seconds for storyteller
+    } else if (flowPhase === "PLAYERS_CHOICE") {
+      phaseStartTime = Date.now();
+      phaseDuration = 30; // 30 seconds for players
+    } else if (flowPhase === "VOTING") {
+      phaseStartTime = Date.now();
+      phaseDuration = 30; // 30 seconds for voting
+    } else if (flowPhase === "REVEAL") {
+      phaseStartTime = Date.now();
+      phaseDuration = 30; // 30 seconds for reveal
+    }
+
     const baseState: RoomState = {
       phase: flowPhase as any,
       players,
@@ -675,7 +708,10 @@ export function DemoPage() {
       boardBackgroundImage: boardBackgroundImage,
       boardPattern: flowBoardPattern,
       language: "en",
+      soundEnabled: true,
       serverUrl: detectedServerUrl || currentUrl,
+      phaseStartTime,
+      phaseDuration,
     };
 
     // Phase-specific data
@@ -808,111 +844,12 @@ export function DemoPage() {
             });
             return shuffled.map((card, idx) => ({ ...card, position: idx }));
           });
+          
+          // Reset voting state and transition to VOTING
+          // AI voting and transition to REVEAL are handled by useEffects
+          setFlowVotes([]);
+          setFlowVotingProcessed(false);
           setFlowPhase("VOTING");
-
-          // AI players vote automatically
-          setTimeout(() => {
-            const nonStorytellerCards = flowSubmittedCards.filter(
-              (sc) => sc.playerId !== storytellerId
-            );
-
-            // AI players vote (all AI players except storyteller)
-            const aiVotes: Array<{ voterId: string; cardId: string }> = [];
-            
-            flowPlayers.forEach(p => {
-              // Skip player 1 (user) and storyteller
-              if (p.id === "1" || p.id === storytellerId) return;
-              
-              // 50% chance to vote for storyteller's card, 50% for random other card
-              const shouldVoteCorrect = Math.random() > 0.5;
-              let cardChoice: string | undefined;
-              
-              if (shouldVoteCorrect) {
-                cardChoice = cardId; // Vote for storyteller's card
-              } else if (nonStorytellerCards.length > 0) {
-                const randomCard =
-                  nonStorytellerCards[
-                    Math.floor(Math.random() * nonStorytellerCards.length)
-                  ];
-                cardChoice = randomCard?.cardId;
-              }
-              
-              if (cardChoice) {
-                aiVotes.push({ voterId: p.id, cardId: cardChoice });
-              }
-            });
-
-            setFlowVotes(aiVotes);
-
-            // Go to REVEAL phase and calculate scores immediately
-            const storytellerId = getFlowStorytellerId();
-            const storytellerCard = flowSubmittedCards.find(
-              (sc) => sc.playerId === storytellerId
-            );
-
-            const storytellerCardId = storytellerCard?.cardId;
-            const votesForStoryteller = aiVotes.filter(
-              (v) => v.cardId === storytellerCardId
-            ).length;
-            const totalVoters = aiVotes.length;
-
-            // Initialize deltas for all players
-            const deltas: { [key: string]: number } = {};
-            flowPlayers.forEach(p => {
-              deltas[p.id] = 0;
-            });
-
-            // If everyone or no one found the card, storyteller gets 0
-            if (
-              votesForStoryteller === 0 ||
-              votesForStoryteller === totalVoters
-            ) {
-              deltas[storytellerId] = 0;
-              // Others get 2 points
-              flowPlayers.forEach((p) => {
-                if (p.id !== storytellerId) {
-                  deltas[p.id] = 2;
-                }
-              });
-            } else {
-              // Storyteller gets 3 points
-              deltas[storytellerId] = 3;
-              // Players who found it get 3 points
-              aiVotes.forEach((vote) => {
-                if (vote.cardId === storytellerCardId) {
-                  deltas[vote.voterId] = 3;
-                }
-              });
-            }
-
-            // Players get 1 point for each vote on their card (not storyteller's)
-            flowSubmittedCards.forEach((sc) => {
-              if (sc.playerId !== storytellerId) {
-                const votesForCard = aiVotes.filter(
-                  (v) => v.cardId === sc.cardId
-                ).length;
-                deltas[sc.playerId] = (deltas[sc.playerId] || 0) + votesForCard;
-              }
-            });
-
-            const deltaArray = Object.entries(deltas).map(
-              ([playerId, delta]) => ({
-                playerId,
-                delta,
-              })
-            );
-
-            setFlowLastDeltas(deltaArray);
-            setFlowPlayerScores((prev) => {
-              const newScores = { ...prev };
-              flowPlayers.forEach(p => {
-                newScores[p.id] = (prev[p.id] || 0) + (deltas[p.id] || 0);
-              });
-              return newScores;
-            });
-
-            setFlowPhase("REVEAL");
-          }, 2000);
         }, 1500);
       } else {
         // AI is storyteller - player 1 will manually submit card
@@ -967,7 +904,10 @@ export function DemoPage() {
       });
       
       // Transition to voting after delay
+      // Reset voting state and let useEffects handle AI voting and transition
       setTimeout(() => {
+        setFlowVotes([]);
+        setFlowVotingProcessed(false);
         setFlowPhase("VOTING");
       }, 1500);
     },
@@ -975,8 +915,14 @@ export function DemoPage() {
     playerVote: (cardId: string) => {
       console.log("Flow: Player voted for", cardId);
       
-      // Just add player's vote - AI voting is handled automatically in useEffect
-      setFlowVotes((prev) => [...prev, { voterId: "1", cardId }]);
+      // Add player's vote (prevents duplicates)
+      setFlowVotes((prev) => {
+        if (prev.some(v => v.voterId === "1")) {
+          console.log("Player already voted, ignoring duplicate");
+          return prev;
+        }
+        return [...prev, { voterId: "1", cardId }];
+      });
     },
 
     advanceRound: () => {
@@ -1097,129 +1043,176 @@ export function DemoPage() {
   }, [demoMode, flowPhase, flowStorytellerIndex]);
 
   // AUTO AI VOTING: All AI players automatically vote when VOTING phase starts
+  // NOTE: This only adds AI votes - phase transition is handled by separate useEffect
   useEffect(() => {
-    if (demoMode === "flow" && flowPhase === "VOTING") {
-      const storytellerId = getFlowStorytellerId();
+    if (demoMode !== "flow" || flowPhase !== "VOTING") return;
+
+    const storytellerId = getFlowStorytellerId();
+    const currentSubmittedCards = [...flowSubmittedCards];
+    const currentPlayers = [...flowPlayers];
+
+    // Get list of AI player IDs (not player 1 and not storyteller)
+    const aiPlayerIds = currentPlayers
+      .filter(p => p.id !== "1" && p.id !== storytellerId)
+      .map(p => p.id);
+
+    // Check if AI has already voted - prevent duplicate votes
+    const aiHasVoted = flowVotes.some(v => aiPlayerIds.includes(v.voterId));
+    if (aiHasVoted) {
+      console.log("AI has already voted, skipping...");
+      return;
+    }
+
+    console.log("AI players voting automatically...");
+
+    const timer = setTimeout(() => {
+      const storytellerCard = currentSubmittedCards.find(
+        (sc) => sc.playerId === storytellerId
+      );
+      
+      const nonStorytellerCards = currentSubmittedCards.filter(
+        (sc) => sc.playerId !== storytellerId
+      );
+
+      // Generate AI votes
+      const aiVotes: Array<{ voterId: string; cardId: string }> = [];
+      
+      aiPlayerIds.forEach(playerId => {
+        // 50% chance to vote for storyteller's card, 50% for random other card
+        const shouldVoteForStoryteller = Math.random() > 0.5;
+        let cardChoice: string | undefined;
+
+        if (shouldVoteForStoryteller && storytellerCard?.cardId) {
+          cardChoice = storytellerCard.cardId;
+        } else if (nonStorytellerCards.length > 0) {
+          // Pick a random card that's not their own
+          const eligibleCards = nonStorytellerCards.filter(c => c.playerId !== playerId);
+          if (eligibleCards.length > 0) {
+            const randomCard =
+              eligibleCards[
+                Math.floor(Math.random() * eligibleCards.length)
+              ];
+            cardChoice = randomCard.cardId;
+          } else if (storytellerCard?.cardId) {
+            cardChoice = storytellerCard.cardId;
+          }
+        }
+
+        if (cardChoice) {
+          aiVotes.push({ voterId: playerId, cardId: cardChoice });
+        }
+      });
+
+      // Add AI votes only - phase transition is handled by the vote completion useEffect
+      setFlowVotes((currentVotes) => {
+        // Double-check no AI votes exist yet (race condition protection)
+        const existingAiVotes = currentVotes.filter(v => aiPlayerIds.includes(v.voterId));
+        if (existingAiVotes.length > 0) {
+          console.log("AI votes already exist, not adding duplicates");
+          return currentVotes;
+        }
+        return [...currentVotes, ...aiVotes];
+      });
+    }, 2500); // 2.5 second delay for AI to "vote"
+
+    return () => clearTimeout(timer);
+  }, [demoMode, flowPhase, flowSubmittedCards, flowPlayers, flowVotes]);
+
+  // VOTING COMPLETION: Transition to REVEAL when all votes are in
+  useEffect(() => {
+    if (demoMode !== "flow" || flowPhase !== "VOTING") return;
+    
+    // Prevent duplicate processing
+    if (flowVotingProcessed) {
+      console.log("Voting already processed, skipping...");
+      return;
+    }
+
+    const storytellerId = getFlowStorytellerId();
+    
+    // Calculate expected voters (all players except storyteller)
+    const expectedVoters = flowPlayers.filter(p => p.id !== storytellerId).length;
+    const currentVoteCount = flowVotes.length;
+
+    console.log(`Votes: ${currentVoteCount}/${expectedVoters}`);
+
+    // Only transition when ALL votes are in (including user)
+    if (currentVoteCount >= expectedVoters && currentVoteCount > 0) {
+      console.log("All votes received, calculating scores and transitioning to REVEAL...");
+      
+      // Mark as processed to prevent duplicate calculations
+      setFlowVotingProcessed(true);
+
       const currentSubmittedCards = [...flowSubmittedCards];
       const currentPlayers = [...flowPlayers];
+      const allVotes = [...flowVotes];
 
-      console.log("AI players voting automatically...");
+      // Calculate scores
+      const stCard = currentSubmittedCards.find(
+        (sc) => sc.playerId === storytellerId
+      );
+      const stCardId = stCard?.cardId;
+      const votesForStoryteller = allVotes.filter(
+        (v) => v.cardId === stCardId
+      ).length;
+      const totalVoters = allVotes.length;
 
-      setTimeout(() => {
-        const storytellerCard = currentSubmittedCards.find(
-          (sc) => sc.playerId === storytellerId
-        );
-        
-        const nonStorytellerCards = currentSubmittedCards.filter(
-          (sc) => sc.playerId !== storytellerId
-        );
+      // Initialize deltas for all players
+      const deltas: { [key: string]: number } = {};
+      currentPlayers.forEach(p => {
+        deltas[p.id] = 0;
+      });
 
-        // Generate AI votes
-        const aiVotes: Array<{ voterId: string; cardId: string }> = [];
-        
-        currentPlayers.forEach(p => {
-          // Skip player 1 (user) and storyteller
-          if (p.id === "1" || p.id === storytellerId) return;
-          
-          // 50% chance to vote for storyteller's card, 50% for random other card
-          const shouldVoteForStoryteller = Math.random() > 0.5;
-          let cardChoice: string | undefined;
-
-          if (shouldVoteForStoryteller && storytellerCard?.cardId) {
-            cardChoice = storytellerCard.cardId;
-          } else if (nonStorytellerCards.length > 0) {
-            // Pick a random card that's not their own
-            const eligibleCards = nonStorytellerCards.filter(c => c.playerId !== p.id);
-            if (eligibleCards.length > 0) {
-              const randomCard =
-                eligibleCards[
-                  Math.floor(Math.random() * eligibleCards.length)
-                ];
-              cardChoice = randomCard.cardId;
-            } else if (storytellerCard?.cardId) {
-              cardChoice = storytellerCard.cardId;
-            }
-          }
-
-          if (cardChoice) {
-            aiVotes.push({ voterId: p.id, cardId: cardChoice });
+      // Scoring logic
+      if (
+        votesForStoryteller === 0 ||
+        votesForStoryteller === totalVoters
+      ) {
+        deltas[storytellerId] = 0;
+        currentPlayers.forEach((p) => {
+          if (p.id !== storytellerId) {
+            deltas[p.id] = 2;
           }
         });
+      } else {
+        deltas[storytellerId] = 3;
+        allVotes.forEach((vote) => {
+          if (vote.cardId === stCardId) {
+            deltas[vote.voterId] = 3;
+          }
+        });
+      }
 
-        // Add AI votes
-        setFlowVotes((currentVotes) => {
-          const allVotes = [...currentVotes, ...aiVotes];
-          
-          // Calculate scores
-          const stCard = currentSubmittedCards.find(
-            (sc) => sc.playerId === storytellerId
-          );
-          const stCardId = stCard?.cardId;
-          const votesForStoryteller = allVotes.filter(
-            (v) => v.cardId === stCardId
+      // Bonus points for votes on player's cards
+      currentSubmittedCards.forEach((sc) => {
+        if (sc.playerId !== storytellerId) {
+          const votesForCard = allVotes.filter(
+            (v) => v.cardId === sc.cardId
           ).length;
-          const totalVoters = allVotes.length;
+          deltas[sc.playerId] =
+            (deltas[sc.playerId] || 0) + votesForCard;
+        }
+      });
 
-          // Initialize deltas for all players
-          const deltas: { [key: string]: number } = {};
-          currentPlayers.forEach(p => {
-            deltas[p.id] = 0;
-          });
+      const deltaArray = Object.entries(deltas).map(
+        ([playerId, delta]) => ({ playerId, delta })
+      );
 
-          // Scoring logic
-          if (
-            votesForStoryteller === 0 ||
-            votesForStoryteller === totalVoters
-          ) {
-            deltas[storytellerId] = 0;
-            currentPlayers.forEach((p) => {
-              if (p.id !== storytellerId) {
-                deltas[p.id] = 2;
-              }
-            });
-          } else {
-            deltas[storytellerId] = 3;
-            allVotes.forEach((vote) => {
-              if (vote.cardId === stCardId) {
-                deltas[vote.voterId] = 3;
-              }
-            });
-          }
-
-          // Bonus points for votes on player's cards
-          currentSubmittedCards.forEach((sc) => {
-            if (sc.playerId !== storytellerId) {
-              const votesForCard = allVotes.filter(
-                (v) => v.cardId === sc.cardId
-              ).length;
-              deltas[sc.playerId] =
-                (deltas[sc.playerId] || 0) + votesForCard;
-            }
-          });
-
-          const deltaArray = Object.entries(deltas).map(
-            ([playerId, delta]) => ({ playerId, delta })
-          );
-
-          setFlowLastDeltas(deltaArray);
-          setFlowPlayerScores((prev) => {
-            const newScores = { ...prev };
-            currentPlayers.forEach(p => {
-              newScores[p.id] = (prev[p.id] || 0) + (deltas[p.id] || 0);
-            });
-            return newScores;
-          });
-
-          // Transition to REVEAL
-          setTimeout(() => {
-            setFlowPhase("REVEAL");
-          }, 500);
-
-          return allVotes;
+      setFlowLastDeltas(deltaArray);
+      setFlowPlayerScores((prev) => {
+        const newScores = { ...prev };
+        currentPlayers.forEach(p => {
+          newScores[p.id] = (prev[p.id] || 0) + (deltas[p.id] || 0);
         });
-      }, 2500); // 2.5 second delay for AI to "vote"
+        return newScores;
+      });
+
+      // Transition to REVEAL after a short delay
+      setTimeout(() => {
+        setFlowPhase("REVEAL");
+      }, 500);
     }
-  }, [demoMode, flowPhase, flowSubmittedCards, flowPlayers]);
+  }, [demoMode, flowPhase, flowVotes, flowPlayers, flowSubmittedCards, flowVotingProcessed]);
 
   // Start game with selected configuration
   const startFlowGame = () => {
@@ -1619,6 +1612,9 @@ export function DemoPage() {
               onSetLanguage={(language) => {
                 console.log("Demo: set language", language);
               }}
+              onSetSoundEnabled={(enabled) => {
+                console.log("Demo: set sound enabled", enabled);
+              }}
               onSetWinTarget={(target) => {
                 console.log("Demo: set win target", target);
                 setWinTarget(target);
@@ -1655,6 +1651,7 @@ export function DemoPage() {
               onSetBoardBackground={flowActions.setBoardBackground}
               onSetBoardPattern={flowActions.setBoardPattern}
               onSetLanguage={() => console.log("Flow: set language")}
+              onSetSoundEnabled={() => console.log("Flow: set sound enabled")}
               onSetWinTarget={flowActions.setWinTarget}
               onStartGame={() => {}}
               onChangeName={() => {}}

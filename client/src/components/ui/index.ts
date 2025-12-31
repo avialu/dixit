@@ -24,3 +24,5 @@ export type { CardProps, CardVariant } from "./Card";
 
 export { Icon, IconSize, defaultIconProps } from "./Icon";
 
+export { Timer } from "./Timer";
+export type { TimerProps } from "./Timer";

@@ -16,7 +16,7 @@ export const he: TranslationKeys = {
     addPhoto: "הוסף תמונת פרופיל",
     joinButton: "הצטרף למשחק",
     spectator: "הצטרף כצופה",
-    scanToJoin: "סרוק כדי להצטרף ",
+    scanToJoin: "סרוק כדי להצטרף",
     joining: "מצטרף...",
   },
 
@@ -24,6 +24,7 @@ export const he: TranslationKeys = {
   common: {
     loading: "טוען...",
     players: "שחקנים",
+    images: "תמונות",
     settings: "הגדרות",
     close: "סגור",
     cancel: "ביטול",
@@ -50,7 +51,7 @@ export const he: TranslationKeys = {
     playersSection: "שחקנים",
     deckSection: "חפיסת המשחק",
     settingsSection: "הגדרות משחק",
-    waitingForPlayers: "ממתין לשחקנים להצטרף...",
+    waitingForPlayers: "ממתין לשחקנים ...",
     needMoreImages: "דרושות עוד {count} תמונות להתחלה",
     readyToStart: "מוכן להתחיל!",
     playerCount: "{count} שחקנים",
@@ -87,6 +88,7 @@ export const he: TranslationKeys = {
     gameLanguageDesc: "הגדר שפת ברירת מחדל לכל השחקנים",
     personalLanguageDesc: "בחר את העדפת השפה האישית שלך",
     waitingForAdmin: "ממתין למנהל להתחיל את המשחק...",
+    waitingForAdminName: "ממתין ל-{name} להתחיל את המשחק...",
     spectatingHelp: "צופה - אתה יכול להעלות תמונות כדי לעזור לבנות את החפיסה!",
     pointsLabel: "{points} נקודות",
     adminBoardBackgroundLabel: "רקע לוח (מנהל)",
@@ -100,12 +102,19 @@ export const he: TranslationKeys = {
   deckUploader: {
     deck: "חפיסה",
     myImages: "התמונות שלי",
+    maxImages: "מקסימום 200",
+    minPlayers: "מינימום 3",
+    allImages: "כל התמונות",
     needMore: "דרושות עוד {count}",
+    needMorePlayers: "דרושים עוד {count} שחקנים",
+    needOneMorePlayer: "דרוש עוד שחקן אחד",
+    prefer: "מועדף {count}",
     playersCanUpload: "שחקנים יכולים להעלות",
     onlyAdminUploads: "רק מנהל מעלה",
     uploadImages: "העלה תמונות",
     uploadFolder: "העלה תיקייה",
     uploading: "מעלה...",
+    processingImages: "מעבד תמונות...",
     onlyHostCanUpload: "רק המארח יכול להעלות תמונות",
     processed: "{completed} מתוך {total} עובדו",
     failed: "{count} נכשלו",
@@ -146,7 +155,8 @@ export const he: TranslationKeys = {
     needMoreImages: "דרושות עוד {count} תמונות להתחלה",
     readyToStart: "מוכן להתחיל!",
     storytellerChoosing: "{name} בוחר קלף...",
-    waitingForStoryteller: "ממתין למספר הסיפור לתת רמז",
+    storytellerThinking: "{name} חושב...",
+    waitingForStoryteller: "ממתין ל-{name} לתת רמז",
     playersChoosing: "שחקנים בוחרים את הקלפים שלהם...",
     matchTheClue: 'התאם לרמז: "{clue}"',
     cardsRevealed: "הקלפים נחשפו!",
@@ -227,7 +237,14 @@ export const he: TranslationKeys = {
     storytellerClue: "רמז מספר הסיפור",
     storytellerClueWithName: "הרמז של {name}",
     continue: "המשך",
+    continueIn: "המשך ({seconds}ש)",
+    autoAdvance: "ממשיך אוטומטית...",
+    waitingWithTimer: "סיבוב הבא בעוד {seconds}ש...",
     waiting: "ממתין...",
+    waitingForAdmin: "ממתין ל-{name} להמשיך...",
+    playerCard: "הקלף של {name}",
+    votedBy: "הצביעו",
+    noVotes: "אין הצבעות!",
   },
 
   // Game End Phase
@@ -255,6 +272,15 @@ export const he: TranslationKeys = {
       "יש לך {count} תמונות שהועלו בחפיסה. אם תתנתק, התמונות האלה יוסרו לצמיתות מהמשחק. האם אתה בטוח שברצונך להתנתק?",
     deleteImageTitle: "מחק תמונה",
     deleteImageMessage: "האם אתה בטוח שברצונך למחוק תמונה זו מהחפיסה?",
+    forcePhaseTitle: "המשך בכפייה",
+    forcePhaseMessage:
+      "לדלג על ההמתנה ולהגיש אוטומטית עבור שחקנים לא פעילים? פעולה זו תבחר באופן אקראי קלפים/הצבעות עבור שחקנים שטרם פעלו.",
+  },
+
+  // Admin Force Phase
+  forcePhase: {
+    button: "המשך בכפייה",
+    tooltip: "דלג על ההמתנה והגש אוטומטית עבור שחקנים לא פעילים",
   },
 
   // Error Messages
@@ -309,5 +335,139 @@ export const he: TranslationKeys = {
     winTargetWarningTitle: "⚠️ לסיים את המשחק מוקדם?",
     winTargetWarningMessage:
       "הגדרת יעד ניצחון ל-{target} נקודות תסיים את המשחק! ל-{winners} כבר יש מספיק נקודות לנצח. להמשיך?",
+    soundSettings: "התראות תור",
+    soundOn: "צליל פעיל",
+    soundOff: "מושתק",
+    soundDesc: "נגן צליל ורטט כשתור של שחקן",
+  },
+
+  // Timer
+  timer: {
+    storytellerSleeping: "{name} ישן/ה...",
+    timeUp: "נגמר הזמן!",
+    secondsRemaining: "נותרו {seconds} שניות",
+  },
+
+  // Rules Modal
+  rules: {
+    title: "איך לשחק",
+    // Tab labels
+    tabs: {
+      tutorial: "הדרכה",
+      quickRef: "עזר מהיר",
+    },
+    // Navigation
+    nav: {
+      next: "הבא",
+      back: "חזרה",
+      skip: "דלג",
+      getStarted: "הבנתי!",
+    },
+    // Tutorial slides (7 slides)
+    tutorial: {
+      slide1: {
+        title: "ברוכים הבאים לדיקסיט!",
+        subtitle: "משחק של סיפור יצירתי",
+        description: "תנו רמזים שהם לא קלים מדי, לא קשים מדי - בדיוק נכון!",
+      },
+      slide2: {
+        title: "תור מספר הסיפור",
+        subtitle: "בחרו קלף, תנו רמז",
+        description:
+          "בחרו קלף אחד מהיד שלכם ותנו רמז יצירתי - מילה, ביטוי, שיר או סיפור!",
+      },
+      slide3: {
+        title: "השחקנים מתאימים",
+        subtitle: "מצאו קלף מתאים",
+        description:
+          "בחרו קלף מהיד שלכם שמתאים לרמז. נסו להטעות אחרים להצביע לקלף שלכם!",
+      },
+      slide4: {
+        title: "זמן להצביע",
+        subtitle: "מצאו את הקלף של מספר הסיפור",
+        description:
+          "כל הקלפים מעורבבים ונחשפים. הצביעו לקלף שלדעתכם שייך למספר הסיפור.",
+      },
+      slide5: {
+        title: "רמז מושלם!",
+        subtitle: "חלק מהשחקנים ניחשו נכון",
+        description:
+          "מספר הסיפור והמנחשים הנכונים מקבלים +3 נקודות. זה מה שאתם רוצים!",
+      },
+      slide6: {
+        title: "שימו לב!",
+        subtitle: "קל מדי או קשה מדי = 0 נקודות",
+        description:
+          "אם כולם או אף אחד לא מנחשים נכון, מספר הסיפור לא מקבל כלום. האחרים מקבלים +2.",
+      },
+      slide7: {
+        title: "מרוץ לניצחון!",
+        subtitle: "הראשון ליעד מנצח",
+        description:
+          "הרוויחו נקודות בונוס כשאחרים מצביעים לקלף שלכם. היו יצירתיים ותהנו!",
+      },
+    },
+    // Quick Reference (existing content)
+    objective: {
+      title: "המטרה",
+      description:
+        "תהיו מספרי הסיפור הטובים ביותר! תנו רמזים יצירתיים שרק חלק מהשחקנים (לא כולם) ינחשו נכון.",
+    },
+    phases: {
+      title: "שלבי המשחק",
+      storytellerTurn: {
+        title: "1. תור מספר הסיפור",
+        description:
+          "מספר הסיפור בוחר קלף מהיד שלו ונותן רמז (מילה, ביטוי או סיפור). הרמז צריך להיות יצירתי - לא ברור מדי, לא מעורפל מדי!",
+      },
+      playersChoice: {
+        title: "2. השחקנים בוחרים קלפים",
+        description:
+          "כל השחקנים האחרים בוחרים קלף מהיד שלהם שמתאים לרמז. נסו להטעות אחרים להצביע לקלף שלכם!",
+      },
+      voting: {
+        title: "3. הצבעה",
+        description:
+          "כל הקלפים מעורבבים ונחשפים. השחקנים מצביעים לקלף שלדעתם שייך למספר הסיפור. אי אפשר להצביע לקלף של עצמך.",
+      },
+      reveal: {
+        title: "4. חשיפה וניקוד",
+        description:
+          "הקלף של מספר הסיפור נחשף ונקודות מחולקות. אחר כך היד מתמלאת והשחקן הבא הופך למספר הסיפור.",
+      },
+    },
+    scoring: {
+      title: "ניקוד",
+      normalCase: {
+        title: "חלק מהשחקנים ניחשו נכון",
+        storyteller: "מספר הסיפור: +3 נקודות",
+        correctGuessers: "מנחשים נכונים: +3 נקודות כל אחד",
+        bonus: "בונוס: +1 נקודה לכל הצבעה על הקלף שלך",
+      },
+      tooObvious: {
+        title: "כולם ניחשו נכון",
+        description: "מספר הסיפור מקבל 0 נקודות (הרמז היה קל מדי!)",
+        others: "כל השאר: +2 נקודות כל אחד",
+      },
+      tooObscure: {
+        title: "אף אחד לא ניחש נכון",
+        description: "מספר הסיפור מקבל 0 נקודות (הרמז היה קשה מדי!)",
+        others: "כל השאר: +2 נקודות כל אחד",
+      },
+      bonusNote:
+        "טיפ: אתם מרוויחים +1 נקודה לכל הצבעה שהקלף שלכם מקבל (חוץ מהקלף של מספר הסיפור).",
+    },
+    winning: {
+      title: "איך לנצח",
+      description:
+        "השחקן הראשון שמגיע לניקוד היעד מנצח! אם החפיסה נגמרת, השחקן עם הכי הרבה נקודות מנצח.",
+    },
+    tips: {
+      title: "טיפים",
+      storytellerTip:
+        "כמספר הסיפור: היו יצירתיים ומעורפלים. השתמשו במושגים מופשטים, לא בתיאורים מילוליים.",
+      playerTip:
+        "כשחקן: בחרו קלפים שעשויים להיראות כמו הקלף של מספר הסיפור. שימו לב מי מספר הסיפור!",
+    },
   },
 };

@@ -26,6 +26,7 @@ export interface TranslationKeys {
   common: {
     loading: string;
     players: string;
+    images: string;
     settings: string;
     close: string;
     cancel: string;
@@ -89,6 +90,7 @@ export interface TranslationKeys {
     gameLanguageDesc: string;
     personalLanguageDesc: string;
     waitingForAdmin: string;
+    waitingForAdminName: string;
     spectatingHelp: string;
     pointsLabel: string;
     adminBoardBackgroundLabel: string;
@@ -102,12 +104,19 @@ export interface TranslationKeys {
   deckUploader: {
     deck: string;
     myImages: string;
+    maxImages: string;
+    minPlayers: string;
+    allImages: string;
     needMore: string;
+    needMorePlayers: string;
+    needOneMorePlayer: string;
+    prefer: string;
     playersCanUpload: string;
     onlyAdminUploads: string;
     uploadImages: string;
     uploadFolder: string;
     uploading: string;
+    processingImages: string;
     onlyHostCanUpload: string;
     processed: string;
     failed: string;
@@ -147,6 +156,7 @@ export interface TranslationKeys {
     needMoreImages: string;
     readyToStart: string;
     storytellerChoosing: string;
+    storytellerThinking: string;
     waitingForStoryteller: string;
     playersChoosing: string;
     matchTheClue: string;
@@ -228,7 +238,14 @@ export interface TranslationKeys {
     storytellerClue: string;
     storytellerClueWithName: string;
     continue: string;
+    continueIn: string;
+    autoAdvance: string;
+    waitingWithTimer: string;
     waiting: string;
+    waitingForAdmin: string;
+    playerCard: string;
+    votedBy: string;
+    noVotes: string;
   };
 
   // Game End Phase
@@ -255,6 +272,14 @@ export interface TranslationKeys {
     logoutWarningMessage: string;
     deleteImageTitle: string;
     deleteImageMessage: string;
+    forcePhaseTitle: string;
+    forcePhaseMessage: string;
+  };
+
+  // Admin Force Phase
+  forcePhase: {
+    button: string;
+    tooltip: string;
   };
 
   // Error Messages
@@ -308,6 +333,125 @@ export interface TranslationKeys {
     wouldEndGame: string;
     winTargetWarningTitle: string;
     winTargetWarningMessage: string;
+    soundSettings: string;
+    soundOn: string;
+    soundOff: string;
+    soundDesc: string;
+  };
+
+  // Timer
+  timer: {
+    storytellerSleeping: string;
+    timeUp: string;
+    secondsRemaining: string;
+  };
+
+  // Rules Modal
+  rules: {
+    title: string;
+    // Tab labels
+    tabs: {
+      tutorial: string;
+      quickRef: string;
+    };
+    // Navigation
+    nav: {
+      next: string;
+      back: string;
+      skip: string;
+      getStarted: string;
+    };
+    // Tutorial slides
+    tutorial: {
+      slide1: {
+        title: string;
+        subtitle: string;
+        description: string;
+      };
+      slide2: {
+        title: string;
+        subtitle: string;
+        description: string;
+      };
+      slide3: {
+        title: string;
+        subtitle: string;
+        description: string;
+      };
+      slide4: {
+        title: string;
+        subtitle: string;
+        description: string;
+      };
+      slide5: {
+        title: string;
+        subtitle: string;
+        description: string;
+      };
+      slide6: {
+        title: string;
+        subtitle: string;
+        description: string;
+      };
+      slide7: {
+        title: string;
+        subtitle: string;
+        description: string;
+      };
+    };
+    // Quick Reference
+    objective: {
+      title: string;
+      description: string;
+    };
+    phases: {
+      title: string;
+      storytellerTurn: {
+        title: string;
+        description: string;
+      };
+      playersChoice: {
+        title: string;
+        description: string;
+      };
+      voting: {
+        title: string;
+        description: string;
+      };
+      reveal: {
+        title: string;
+        description: string;
+      };
+    };
+    scoring: {
+      title: string;
+      normalCase: {
+        title: string;
+        storyteller: string;
+        correctGuessers: string;
+        bonus: string;
+      };
+      tooObvious: {
+        title: string;
+        description: string;
+        others: string;
+      };
+      tooObscure: {
+        title: string;
+        description: string;
+        others: string;
+      };
+      bonusNote: string;
+    };
+    winning: {
+      title: string;
+      description: string;
+    };
+    tips: {
+      title: string;
+      storytellerTip: string;
+      playerTip: string;
+    };
   };
 }
 

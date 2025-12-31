@@ -1,5 +1,4 @@
-import { Modal } from "./Modal";
-import { Button } from "./ui";
+import { Button, CloseButton } from "./ui";
 
 interface ConfirmModalProps {
   isOpen: boolean;
@@ -7,8 +6,7 @@ interface ConfirmModalProps {
   message: string;
   confirmText?: string;
   cancelText?: string;
-  confirmVariant?: "primary" | "secondary" | "danger" | "success";
-  cancelVariant?: "primary" | "secondary" | "danger";
+  confirmVariant?: "primary" | "danger" | "success";
   onConfirm: () => void;
   onCancel: () => void;
 }
@@ -19,13 +17,16 @@ interface ConfirmModalProps {
  * A reusable confirmation dialog with customizable text and styling.
  * Follows mobile-first design principles with clear CTAs.
  *
+ * Button colors:
+ * - Cancel button: Red (danger) - to indicate stopping/canceling the action
+ * - Confirm button: Green (success) - to indicate proceeding with the action
+ *
  * @example
  * <ConfirmModal
  *   isOpen={showConfirm}
  *   title="Confirm Logout"
  *   message="You have 5 uploaded images. Are you sure?"
  *   confirmText="Logout"
- *   confirmVariant="danger"
  *   onConfirm={handleLogout}
  *   onCancel={() => setShowConfirm(false)}
  * />
@@ -36,8 +37,7 @@ export function ConfirmModal({
   message,
   confirmText = "Confirm",
   cancelText = "Cancel",
-  confirmVariant = "primary",
-  cancelVariant = "secondary",
+  confirmVariant = "success",
   onConfirm,
   onCancel,
 }: ConfirmModalProps) {
@@ -46,25 +46,48 @@ export function ConfirmModal({
     onCancel(); // Close modal after confirm
   };
 
+  if (!isOpen) return null;
+
+  // Use custom high-z-index container for nested modal support
   return (
-    <Modal
-      isOpen={isOpen}
-      onClose={onCancel}
-      header={<h2>{title}</h2>}
-      footer={
-        <div className="modal-footer-buttons">
-          <Button variant={cancelVariant} onClick={onCancel}>
+    <>
+      {/* High z-index backdrop */}
+      <div
+        className="confirm-modal-backdrop"
+        onClick={onCancel}
+        aria-hidden="true"
+      />
+
+      {/* High z-index modal popup */}
+      <div
+        className="confirm-modal-popup"
+        role="dialog"
+        aria-modal="true"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Close Button */}
+        <CloseButton onClose={onCancel} />
+
+        {/* Header */}
+        <div className="confirm-modal-header">
+          <h2>{title}</h2>
+        </div>
+
+        {/* Content */}
+        <div className="confirm-modal-content">
+          <p>{message}</p>
+        </div>
+
+        {/* Footer with buttons */}
+        <div className="confirm-modal-footer">
+          <Button variant="danger" onClick={onCancel}>
             {cancelText}
           </Button>
           <Button variant={confirmVariant} onClick={handleConfirm}>
             {confirmText}
           </Button>
         </div>
-      }
-    >
-      <div className="confirm-modal-content">
-        <p>{message}</p>
       </div>
-    </Modal>
+    </>
   );
 }

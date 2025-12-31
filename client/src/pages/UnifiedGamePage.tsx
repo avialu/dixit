@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import type { Socket } from "socket.io-client";
 import { RoomState, PlayerState } from "../hooks/useGameState";
 import { ConnectionQuality } from "../hooks/useSocket";
@@ -12,10 +12,11 @@ import { Button, Icon, IconSize } from "../components/ui";
 import { storage } from "../utils/storage";
 import { ConfirmModal } from "../components/ConfirmModal";
 import { getMinimumDeckSize } from "../utils/imageConstants";
+import { resizeAndCompressImages } from "../utils/imageResize";
 import { useTranslation } from "../i18n";
 import { ConnectionStatus } from "../components/ConnectionStatus";
 import { LatencyIndicator } from "../components/LatencyIndicator";
-import { resizeAndCompressImage } from "../utils/imageResize";
+import { unlockAudio, notifyTurn } from "../utils/notifications";
 
 interface UnifiedGamePageProps {
   roomState: RoomState | null;
@@ -32,6 +33,7 @@ interface UnifiedGamePageProps {
   onSetBoardBackground: (imageData: string | null) => void;
   onSetBoardPattern: (pattern: "snake" | "spiral") => void;
   onSetLanguage: (language: "en" | "he") => void;
+  onSetSoundEnabled: (enabled: boolean) => void;
   onSetWinTarget: (target: number) => void;
   onStartGame: () => void;
   onChangeName: (newName: string) => void;
@@ -68,6 +70,7 @@ export function UnifiedGamePage({
   onSetBoardBackground,
   onSetBoardPattern,
   onSetLanguage,
+  onSetSoundEnabled,
   onSetWinTarget,
   onStartGame,
   onChangeName: _onChangeName,
@@ -86,11 +89,11 @@ export function UnifiedGamePage({
   needsManualReconnect = false,
   onManualReconnect,
   latency = null,
-  connectionQuality = 'unknown',
+  connectionQuality = "unknown",
 }: UnifiedGamePageProps) {
   const { t } = useTranslation(roomState?.language);
   const [name, setName] = useState("");
-  
+
   // Calculate the color the player will actually get when they join
   // Based on current player count (they'll be the next player)
   const joinScreenColor = useMemo(() => {
@@ -108,7 +111,9 @@ export function UnifiedGamePage({
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
   const [clue, setClue] = useState("");
   const [showModal, setShowModal] = useState(false);
-  const [modalType, setModalType] = useState<"settings" | "cards" | "adminSettings">("cards");
+  const [modalType, setModalType] = useState<
+    "settings" | "cards" | "adminSettings" | "rules"
+  >("cards");
   const [manuallyClosedModal, setManuallyClosedModal] = useState(false);
   const [detectedServerUrl, setDetectedServerUrl] = useState<string | null>(
     null
@@ -128,17 +133,19 @@ export function UnifiedGamePage({
   // Track name editing state - which player ID is being edited
   const [editingPlayerId, setEditingPlayerId] = useState<string | null>(null);
   const [newName, setNewName] = useState("");
+
+  // Floating upload button file input ref
+  const floatingUploadRef = useRef<HTMLInputElement>(null);
+  const [isFloatingUploading, setIsFloatingUploading] = useState(false);
   // Track profile image for join screen
   const [profileImage, setProfileImage] = useState<string | null>(null);
-  // Track QR code visibility
-  const [showQR, setShowQR] = useState(true);
+  // Track QR code visibility - starts closed, user can open with QR button
+  const [showQR, setShowQR] = useState(false);
   const [confirmModal, setConfirmModal] = useState<{
     isOpen: boolean;
     title: string;
     message: string;
     onConfirm: () => void;
-    confirmVariant?: "primary" | "secondary" | "danger" | "success";
-    cancelVariant?: "primary" | "secondary" | "danger";
   }>({
     isOpen: false,
     title: "",
@@ -150,9 +157,11 @@ export function UnifiedGamePage({
   const [isJoining, setIsJoining] = useState(false);
   const [isJoiningSpectator, setIsJoiningSpectator] = useState(false);
   const [isStartingGame, setIsStartingGame] = useState(false);
-  
-  // File input ref for floating upload button
-  const floatingUploadRef = useRef<HTMLInputElement>(null);
+
+  // State for REVEAL phase continue button (uses server timer as source of truth)
+  const [hasAdvancedRound, setHasAdvancedRound] = useState(false);
+  const [revealSecondsLeft, setRevealSecondsLeft] = useState(30);
+  const lastRoundForTimer = useRef<number>(-1);
 
   // In demo mode, reset spectator status (demo always starts fresh)
   // isDemoMode is now passed explicitly as a prop, so we don't need complex detection
@@ -240,54 +249,6 @@ export function UnifiedGamePage({
     setManuallyClosedModal(false);
   }, [roomState?.phase]);
 
-  // SYNC LOCAL STATE WITH SERVER STATE
-  // This prevents desync where local says "submitted" but server never received it
-  // Server state (playerState.mySubmittedCardId) is the source of truth
-  // 
-  // How this works:
-  // 1. Player submits → localSubmittedCardId is set immediately (optimistic)
-  // 2. Effect runs: if local is set but server hasn't confirmed, start 3s timeout
-  // 3. If server confirms (mySubmittedCardId becomes set) → effect re-runs, 
-  //    cleanup cancels old timeout, and we return early (no new timeout)
-  // 4. If server doesn't confirm within 3s → timeout fires, clears local state
-  //    so player can retry
-  useEffect(() => {
-    // Server has confirmed - no sync needed
-    if (playerState?.mySubmittedCardId) {
-      return;
-    }
-    
-    // Local says submitted but server hasn't confirmed yet
-    // Start timeout - if server doesn't confirm in 3s, allow retry
-    if (localSubmittedCardId) {
-      const timeout = setTimeout(() => {
-        console.warn("Submission sync issue detected - clearing local state. Server may not have received the submission.");
-        setLocalSubmittedCardId(null);
-      }, 3000);
-      
-      // Cleanup: cancel timeout if effect re-runs (server confirmed or state changed)
-      return () => clearTimeout(timeout);
-    }
-  }, [localSubmittedCardId, playerState?.mySubmittedCardId]);
-
-  // Same sync for voting state
-  useEffect(() => {
-    // Server has confirmed - no sync needed
-    if (playerState?.myVote) {
-      return;
-    }
-    
-    // Local says voted but server hasn't confirmed yet
-    if (localVotedCardId) {
-      const timeout = setTimeout(() => {
-        console.warn("Vote sync issue detected - clearing local state. Server may not have received the vote.");
-        setLocalVotedCardId(null);
-      }, 3000);
-      
-      return () => clearTimeout(timeout);
-    }
-  }, [localVotedCardId, playerState?.myVote]);
-
   const isSpectator = isUserSpectator;
   const isJoined =
     roomState &&
@@ -304,15 +265,102 @@ export function UnifiedGamePage({
   const myPlayer = roomState?.players.find((p) => p.id === playerId);
   const isAdmin = myPlayer?.isAdmin || false;
   const isStoryteller = roomState?.storytellerId === playerId;
+  // Single source of truth for submitted card (local optimistic || server confirmed)
+  const submittedCardId = localSubmittedCardId || playerState?.mySubmittedCardId || null;
+
+  // Reset hasAdvancedRound when entering a new round
+  useEffect(() => {
+    if (roomState?.phase === "REVEAL" && roomState.currentRound !== lastRoundForTimer.current) {
+      lastRoundForTimer.current = roomState.currentRound;
+      setHasAdvancedRound(false);
+    }
+  }, [roomState?.phase, roomState?.currentRound]);
+
+  // Track previous phase for turn notifications
+  const prevPhaseRef = useRef<string | null>(null);
+  const prevRoundRef = useRef<number | null>(null);
+
+  // Notify player when it's their turn (sound + vibration)
+  useEffect(() => {
+    if (!roomState || isDemoMode || isSpectator) return;
+    
+    const phase = roomState.phase;
+    const round = roomState.currentRound;
+    
+    // Skip on initial load
+    if (prevPhaseRef.current === null) {
+      prevPhaseRef.current = phase;
+      prevRoundRef.current = round;
+      return;
+    }
+    
+    // Only notify on phase changes or new rounds
+    const phaseChanged = prevPhaseRef.current !== phase;
+    const newRound = prevRoundRef.current !== round;
+    
+    if (!phaseChanged && !newRound) return;
+    
+    prevPhaseRef.current = phase;
+    prevRoundRef.current = round;
+    
+    // Check if it's my turn to act
+    const isMyTurn = 
+      (phase === 'STORYTELLER_CHOICE' && isStoryteller) ||
+      (phase === 'PLAYERS_CHOICE' && !isStoryteller) ||
+      (phase === 'VOTING' && !isStoryteller);
+    
+    // Only notify if sounds are enabled (admin setting)
+    if (isMyTurn && roomState.soundEnabled) {
+      notifyTurn();
+    }
+  }, [roomState?.phase, roomState?.currentRound, roomState?.soundEnabled, isStoryteller, isSpectator, isDemoMode, roomState]);
+
+  // Handle advancing to next round
+  const handleAdvanceRound = useCallback(() => {
+    if (!hasAdvancedRound) {
+      setHasAdvancedRound(true);
+      if (socket) {
+        socket.emit("advanceRound");
+      } else {
+        _onAdvanceRound();
+      }
+    }
+  }, [hasAdvancedRound, socket, _onAdvanceRound]);
+
+  // Sync revealSecondsLeft with server timer (one source of truth)
+  useEffect(() => {
+    if (roomState?.phase !== "REVEAL" || hasAdvancedRound) {
+      return;
+    }
+
+    // Calculate remaining time from server phaseStartTime and phaseDuration
+    const updateTimer = () => {
+      if (roomState?.phaseStartTime && roomState?.phaseDuration) {
+        const elapsed = Math.floor((Date.now() - roomState.phaseStartTime) / 1000);
+        const remaining = Math.max(0, roomState.phaseDuration - elapsed);
+        setRevealSecondsLeft(remaining);
+      }
+    };
+
+    // Initial update
+    updateTimer();
+
+    // Update every second
+    const interval = setInterval(updateTimer, 1000);
+
+    return () => clearInterval(interval);
+  }, [roomState?.phase, roomState?.phaseStartTime, roomState?.phaseDuration, hasAdvancedRound]);
 
   // Auto-open modal for game phases where player needs to take action
   useEffect(() => {
     const phase = roomState?.phase;
     let shouldAutoOpen = false;
+    let delayMs = 0; // Delay before opening modal
 
     if (phase === "STORYTELLER_CHOICE" && isStoryteller) {
-      // Only open for storyteller
+      // Only open for storyteller - with 2s delay so they can see the board first
       shouldAutoOpen = true;
+      delayMs = 2000;
     } else if (phase === "PLAYERS_CHOICE" && !isStoryteller && !isSpectator) {
       // Only open for non-storyteller players
       shouldAutoOpen = true;
@@ -328,18 +376,41 @@ export function UnifiedGamePage({
       shouldAutoOpen = true;
     }
 
-    if (shouldAutoOpen && !manuallyClosedModal && !showModal && modalType !== "adminSettings") {
+    if (
+      shouldAutoOpen &&
+      !manuallyClosedModal &&
+      !showModal &&
+      modalType !== "adminSettings"
+    ) {
       // Only auto-open if user hasn't manually closed it AND modal isn't already open
       // Don't override adminSettings modal
-      setModalType("cards");
-      setShowModal(true);
+      if (delayMs > 0) {
+        // Delayed open for storyteller to see board positions first
+        const timer = setTimeout(() => {
+          setModalType("cards");
+          setShowModal(true);
+        }, delayMs);
+        return () => clearTimeout(timer);
+      } else {
+        setModalType("cards");
+        setShowModal(true);
+      }
+    } else if (
+      isSpectator &&
+      (phase === "STORYTELLER_CHOICE" ||
+        phase === "PLAYERS_CHOICE" ||
+        phase === "VOTING") &&
+      modalType !== "adminSettings"
+    ) {
+      // Close modal for spectators during action phases (they have no cards to show)
+      setShowModal(false);
     } else if (phase === "DECK_BUILDING" && modalType !== "adminSettings") {
       // When returning to deck building (e.g., after game reset), close modal
       // But don't close if admin settings are open
       setShowModal(false);
       setManuallyClosedModal(false);
     }
-  }, [roomState?.phase, isStoryteller, isSpectator, manuallyClosedModal]);
+  }, [roomState?.phase, isStoryteller, isSpectator, manuallyClosedModal, modalType]);
 
   // Auto-join spectators when they connect (only if not already joined)
   useEffect(() => {
@@ -354,6 +425,8 @@ export function UnifiedGamePage({
     e.preventDefault();
     if (name.trim() && !isJoining) {
       setIsJoining(true);
+      // Unlock audio on user interaction (required for iOS)
+      unlockAudio();
       onJoin(name.trim(), clientId);
       // Upload profile image after joining if one was selected
       if (profileImage) {
@@ -476,13 +549,13 @@ export function UnifiedGamePage({
           socket.emit("adminPromotePlayer", { targetPlayerId });
         }
       },
-      // Swap colors: Cancel is prominent (danger), Confirm is secondary
-      confirmVariant: "secondary",
-      cancelVariant: "danger",
     });
   };
 
-  const handleConfirmWinTargetChange = (target: number, potentialWinners: string[]) => {
+  const handleConfirmWinTargetChange = (
+    target: number,
+    potentialWinners: string[]
+  ) => {
     const winnerNames = potentialWinners.join(", ");
     setConfirmModal({
       isOpen: true,
@@ -528,24 +601,83 @@ export function UnifiedGamePage({
     }
   };
 
-  // Handle floating upload button file selection
-  const handleFloatingUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files || files.length === 0) return;
+  // Auto-submit handlers when timer expires
+  const handleStorytellerTimerExpired = () => {
+    // Already submitted - nothing to do
+    if (submittedCardId) return;
 
-    for (const file of Array.from(files)) {
-      try {
-        const imageData = await resizeAndCompressImage(file);
-        _onUploadImage(imageData);
-      } catch (error) {
-        console.error("Error processing image:", error);
-      }
-    }
+    // Get the card to submit (selected or random)
+    const hand = playerState?.hand || [];
+    if (hand.length === 0) return;
 
-    // Reset the input
-    if (floatingUploadRef.current) {
-      floatingUploadRef.current.value = "";
-    }
+    const cardToSubmit =
+      selectedCardId || hand[Math.floor(Math.random() * hand.length)].id;
+
+    // Get the clue (entered or fallback)
+    const storyteller = roomState?.players.find(
+      (p) => p.id === roomState?.storytellerId
+    );
+    const storytellerName = storyteller?.name || t("common.storyteller");
+    const clueToSubmit =
+      clue.trim() || t("timer.storytellerSleeping", { name: storytellerName });
+
+    onStorytellerSubmit(cardToSubmit, clueToSubmit);
+    setLocalSubmittedCardId(cardToSubmit);
+    setSelectedCardId(null);
+    setClue("");
+    setShowModal(false);
+  };
+
+  const handlePlayerTimerExpired = () => {
+    // Already submitted - nothing to do
+    if (submittedCardId) return;
+
+    // Get the card to submit (selected or random)
+    const hand = playerState?.hand || [];
+    if (hand.length === 0) return;
+
+    const cardToSubmit =
+      selectedCardId || hand[Math.floor(Math.random() * hand.length)].id;
+
+    onPlayerSubmitCard(cardToSubmit);
+    setLocalSubmittedCardId(cardToSubmit);
+    setSelectedCardId(null);
+    setShowModal(false);
+  };
+
+  const handleVoteTimerExpired = () => {
+    // Already voted - nothing to do
+    if (localVotedCardId || playerState?.myVote) return;
+
+    // Get valid cards to vote for (exclude own card)
+    const revealedCards = roomState?.revealedCards || [];
+    const myCardId = playerState?.mySubmittedCardId;
+    const validCards = revealedCards.filter((c) => c.cardId !== myCardId);
+
+    if (validCards.length === 0) return;
+
+    const cardToVote =
+      selectedCardId && validCards.some((c) => c.cardId === selectedCardId)
+        ? selectedCardId
+        : validCards[Math.floor(Math.random() * validCards.length)].cardId;
+
+    onPlayerVote(cardToVote);
+    setLocalVotedCardId(cardToVote);
+    setSelectedCardId(null);
+  };
+
+  // Admin force phase handler - shows confirmation before forcing
+  const handleForcePhase = () => {
+    setConfirmModal({
+      isOpen: true,
+      title: t("confirm.forcePhaseTitle"),
+      message: t("confirm.forcePhaseMessage"),
+      onConfirm: () => {
+        if (socket) {
+          socket.emit("adminForcePhase");
+        }
+      },
+    });
   };
 
   const openCards = () => {
@@ -554,14 +686,46 @@ export function UnifiedGamePage({
     setManuallyClosedModal(false); // Clear manual close flag when user opens it
   };
 
+  // Handle floating upload button file selection
+  const handleFloatingUpload = async (
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    setIsFloatingUploading(true);
+    try {
+      const results = await resizeAndCompressImages(Array.from(files));
+      for (const result of results) {
+        if (!result.error && result.imageData) {
+          _onUploadImage(result.imageData);
+        }
+      }
+    } catch (err) {
+      console.error("Upload error:", err);
+    } finally {
+      setIsFloatingUploading(false);
+      if (floatingUploadRef.current) {
+        floatingUploadRef.current.value = "";
+      }
+    }
+  };
+
   const openAdminSettings = () => {
     setModalType("adminSettings");
     setShowModal(true);
     setManuallyClosedModal(false);
   };
 
+  const openRules = () => {
+    setModalType("rules");
+    setShowModal(true);
+    setManuallyClosedModal(false);
+  };
+
   // Check if we're waiting for reconnection (hasJoined but no roomState yet)
-  const isPendingReconnect = !isDemoMode && !roomState && storage.hasJoined.get();
+  const isPendingReconnect =
+    !isDemoMode && !roomState && storage.hasJoined.get();
 
   // RECONNECTING SCREEN (waiting for server state after refresh)
   if (isPendingReconnect) {
@@ -576,7 +740,7 @@ export function UnifiedGamePage({
         />
         <div className="reconnecting-container">
           <div className="reconnecting-spinner" />
-          <p>{t('connection.reconnecting')}</p>
+          <p>{t("connection.reconnecting")}</p>
         </div>
       </div>
     );
@@ -600,7 +764,7 @@ export function UnifiedGamePage({
             t={t}
           />
         )}
-        
+
         <div className="join-container">
           <div className="join-box">
             <h1>
@@ -692,6 +856,7 @@ export function UnifiedGamePage({
       <div className="board-background">
         <GameBoard
           roomState={roomState}
+          playerId={playerId}
           showQR={showQR}
           onCloseQR={() => setShowQR(false)}
           revealModalOpen={showModal && roomState.phase === "REVEAL"}
@@ -699,13 +864,106 @@ export function UnifiedGamePage({
       </div>
 
       {/* Floating Action Buttons - For Players (not spectators) */}
-      {isJoined && !isSpectator && (
-        <>
-          {/* Cards Button - All Players */}
+      {isJoined && !isSpectator && !showModal && (
+        <div className="floating-buttons-container">
+          {/* Hidden file input for upload */}
+          <input
+            ref={floatingUploadRef}
+            type="file"
+            accept="image/*"
+            multiple
+            onChange={handleFloatingUpload}
+            style={{ display: "none" }}
+            id="floating-upload-input"
+          />
+
+          {/* Admin Start Game Button - During deck building */}
+          {isAdmin &&
+            !isInGame &&
+            (() => {
+              const playersNeeded = 3 - roomState.players.length;
+              const needMorePlayers = playersNeeded > 0;
+              const minImages = getMinimumDeckSize(
+                roomState.players.length,
+                roomState.winTarget
+              );
+              const imagesNeeded = minImages - roomState.deckSize;
+              const needMoreImages = imagesNeeded > 0;
+              const isDisabled =
+                isStartingGame || needMorePlayers || needMoreImages;
+
+              const buttonText = isStartingGame
+                ? t("common.loading")
+                : needMorePlayers
+                ? playersNeeded === 1
+                  ? t("deckUploader.needOneMorePlayer")
+                  : t("deckUploader.needMorePlayers", { count: playersNeeded })
+                : needMoreImages
+                ? t("status.needMoreImages", { count: imagesNeeded })
+                : t("lobby.startGame");
+
+              return (
+                <button
+                  className={`floating-action-button start-game-button ${
+                    isStartingGame ? "btn-loading" : ""
+                  } ${
+                    isDisabled && !isStartingGame ? "btn-disabled-reason" : ""
+                  }`}
+                  onClick={() => {
+                    if (!isStartingGame && !isDisabled) {
+                      setIsStartingGame(true);
+                      onStartGame();
+                    }
+                  }}
+                  disabled={isDisabled}
+                >
+                  {isStartingGame ? (
+                    <Icon.Loader
+                      size={IconSize.large}
+                      className="btn-spinner"
+                    />
+                  ) : (
+                    <Icon.Rocket size={IconSize.large} />
+                  )}
+                  <span className="start-button-text">{buttonText}</span>
+                </button>
+              );
+            })()}
+
+          {/* QR Button - Toggle QR code during deck building */}
+          {!isInGame && (
+            <button
+              className={`floating-action-button qr-button ${
+                showQR ? "active" : ""
+              }`}
+              onClick={() => setShowQR(!showQR)}
+              title={showQR ? "Hide QR Code" : "Show QR Code"}
+            >
+              <Icon.QRCode size={IconSize.large} />
+            </button>
+          )}
+
+          {/* Upload Button - Quick upload during deck building */}
+          {!isInGame && (
+            <button
+              className={`floating-action-button upload-button ${
+                isFloatingUploading ? "btn-loading" : ""
+              }`}
+              onClick={() => floatingUploadRef.current?.click()}
+              disabled={isFloatingUploading}
+              title={t("deckUploader.uploadImages")}
+            >
+              {isFloatingUploading ? (
+                <Icon.Loader size={IconSize.large} className="btn-spinner" />
+              ) : (
+                <Icon.Upload size={IconSize.large} />
+              )}
+            </button>
+          )}
+
+          {/* Cards/Settings Button - All Players */}
           <button
-            className={`floating-action-button cards-button ${
-              showModal ? "hidden" : ""
-            }`}
+            className="floating-action-button cards-button"
             onClick={openCards}
             title={
               !isInGame
@@ -732,95 +990,21 @@ export function UnifiedGamePage({
             ) : roomState.phase === "GAME_END" ? (
               <Icon.Trophy size={IconSize.large} />
             ) : (
-              /* Fallback icon for any unhandled phase */
               <Icon.Cards size={IconSize.large} />
             )}
           </button>
 
-          {/* QR Button - Show when QR is closed during deck building */}
-          {!isInGame && !showQR && !showModal && (
-            <button
-              className="floating-action-button qr-button"
-              onClick={() => setShowQR(true)}
-              title="Show QR Code"
-            >
-              <Icon.QRCode size={IconSize.large} />
-            </button>
-          )}
-
-          {/* Upload Button - During deck building, only if uploads allowed */}
-          {!isInGame && !showModal && (isAdmin || roomState.allowPlayerUploads) && (
-            <>
-              <input
-                ref={floatingUploadRef}
-                type="file"
-                accept="image/*"
-                multiple
-                onChange={handleFloatingUpload}
-                style={{ display: "none" }}
-                id="floating-upload-input"
-              />
-              <button
-                className="floating-action-button upload-button"
-                onClick={() => floatingUploadRef.current?.click()}
-                title={t("tooltips.uploadImage")}
-              >
-                <Icon.Upload size={IconSize.large} />
-              </button>
-            </>
-          )}
-
-          {/* Admin Start Game Button - During deck building */}
-          {isAdmin && !isInGame && !showModal && (
-            <button
-              className={`floating-action-button start-game-button ${isStartingGame ? "btn-loading" : ""}`}
-              onClick={() => {
-                if (!isStartingGame) {
-                  setIsStartingGame(true);
-                  onStartGame();
-                }
-              }}
-              disabled={
-                isStartingGame ||
-                roomState.players.length < 3 ||
-                roomState.deckSize <
-                  getMinimumDeckSize(
-                    roomState.players.length,
-                    roomState.winTarget
-                  )
-              }
-              title={
-                isStartingGame
-                  ? "Starting..."
-                  : roomState.players.length < 3
-                  ? "Need at least 3 players"
-                  : roomState.deckSize <
-                    getMinimumDeckSize(
-                      roomState.players.length,
-                      roomState.winTarget
-                    )
-                  ? `Need ${
-                      getMinimumDeckSize(
-                        roomState.players.length,
-                        roomState.winTarget
-                      ) - roomState.deckSize
-                    } more images (${roomState.deckSize}/${getMinimumDeckSize(
-                      roomState.players.length,
-                      roomState.winTarget
-                    )})`
-                  : "Start Game"
-              }
-            >
-              {isStartingGame ? (
-                <Icon.Loader size={IconSize.large} className="btn-spinner" />
-              ) : (
-                <Icon.Rocket size={IconSize.large} />
-              )}
-            </button>
-          )}
+          {/* Rules Button - Always available */}
+          <button
+            className="floating-action-button rules-button"
+            onClick={openRules}
+            title={t("rules.title")}
+          >
+            <Icon.Book size={IconSize.large} />
+          </button>
 
           {/* Admin Settings Button - During active game */}
-          {isAdmin && isInGame && !showModal && (
+          {isAdmin && isInGame && (
             <button
               className="floating-action-button admin-settings-button"
               onClick={openAdminSettings}
@@ -829,12 +1013,40 @@ export function UnifiedGamePage({
               <Icon.Settings size={IconSize.large} />
             </button>
           )}
-        </>
+
+          {/* Admin Continue Button - During REVEAL phase */}
+          {isAdmin && roomState.phase === "REVEAL" && (
+            <button
+              className="floating-action-button continue-button"
+              onClick={handleAdvanceRound}
+              disabled={hasAdvancedRound}
+              title={t("reveal.continue")}
+            >
+              <Icon.ArrowForward size={IconSize.medium} />{" "}
+              <span className="continue-button-text">
+                {hasAdvancedRound
+                  ? t("reveal.autoAdvance")
+                  : t("reveal.continueIn", { seconds: revealSecondsLeft })}
+              </span>
+            </button>
+          )}
+        </div>
       )}
 
       {/* Floating Action Buttons - For Spectators (only in deck building) */}
       {isJoined && isSpectator && !isInGame && !showModal && (
-        <>
+        <div className="floating-buttons-container">
+          {/* QR Button for spectators - toggle */}
+          <button
+            className={`floating-action-button qr-button ${
+              showQR ? "active" : ""
+            }`}
+            onClick={() => setShowQR(!showQR)}
+            title={showQR ? "Hide QR Code" : "Show QR Code"}
+          >
+            <Icon.QRCode size={IconSize.large} />
+          </button>
+
           <button
             className="floating-action-button cards-button"
             onClick={openCards}
@@ -843,35 +1055,17 @@ export function UnifiedGamePage({
             <Icon.Settings size={IconSize.large} />
           </button>
 
-          {/* QR Button for spectators */}
-          {!showQR && (
-            <button
-              className="floating-action-button qr-button"
-              onClick={() => setShowQR(true)}
-              title="Show QR Code"
-            >
-              <Icon.QRCode size={IconSize.large} />
-            </button>
-          )}
-        </>
+          {/* Rules Button - Available for spectators too */}
+          <button
+            className="floating-action-button rules-button"
+            onClick={openRules}
+            title={t("rules.title")}
+          >
+            <Icon.Book size={IconSize.large} />
+          </button>
+        </div>
       )}
 
-      {/* Admin Continue Button - During REVEAL phase on board */}
-      {isJoined && isAdmin && roomState.phase === "REVEAL" && !showModal && (
-        <button
-          className="floating-action-button continue-button"
-          onClick={() => {
-            if (socket) {
-              socket.emit("advanceRound");
-            } else {
-              // Demo mode fallback
-              _onAdvanceRound();
-            }
-          }}
-        >
-          <Icon.ArrowForward size={IconSize.medium} /> Continue
-        </button>
-      )}
 
       {/* Modal Popup - Shows when player needs to act */}
       {showModal &&
@@ -880,6 +1074,7 @@ export function UnifiedGamePage({
             header: React.ReactNode;
             footer: React.ReactNode;
             content: React.ReactNode;
+            timer?: React.ReactNode;
           } | null = null;
 
           if (modalType === "cards") {
@@ -919,11 +1114,12 @@ export function UnifiedGamePage({
                   playerState,
                   selectedCardId,
                   clue,
-                  localSubmittedCardId,
+                  submittedCardId,
                   roomState,
                   setSelectedCardId,
                   setClue,
                   handleStorytellerSubmit,
+                  onTimerExpired: handleStorytellerTimerExpired,
                   t,
                 });
               } else {
@@ -931,26 +1127,35 @@ export function UnifiedGamePage({
                   playerState,
                   roomState,
                   t,
+                  isAdmin,
+                  onForcePhase: handleForcePhase,
                 });
               }
             }
             // PLAYERS_CHOICE phase
             else if (roomState.phase === "PLAYERS_CHOICE") {
-              if (!isStoryteller) {
+              if (!isStoryteller && !isSpectator) {
+                // Only show card selection to actual players (not storyteller, not spectators)
                 modalContent = ModalContent.PlayerChoiceModal({
                   playerState,
                   selectedCardId,
-                  localSubmittedCardId,
+                  submittedCardId,
                   roomState,
                   setSelectedCardId,
                   handlePlayerSubmit,
+                  onTimerExpired: handlePlayerTimerExpired,
+                  isAdmin,
+                  onForcePhase: handleForcePhase,
                   t,
                 });
               } else {
+                // Storyteller and spectators see waiting view
                 modalContent = ModalContent.WaitingPlayersModal({
                   playerState,
                   roomState,
                   t,
+                  isAdmin,
+                  onForcePhase: handleForcePhase,
                 });
               }
             }
@@ -963,8 +1168,11 @@ export function UnifiedGamePage({
                 localVotedCardId,
                 isStoryteller,
                 isSpectator,
+                isAdmin,
                 setSelectedCardId,
                 handleVote,
+                onTimerExpired: handleVoteTimerExpired,
+                onForcePhase: handleForcePhase,
                 t,
               });
             }
@@ -1005,10 +1213,20 @@ export function UnifiedGamePage({
               isInGame: !!isInGame,
               onSetBoardPattern,
               onSetLanguage,
+              onSetSoundEnabled,
               onSetWinTarget,
               onKickPlayer: handleKickPlayer,
               onPromotePlayer: handlePromotePlayer,
               onConfirmWinTargetChange: handleConfirmWinTargetChange,
+              t,
+            });
+          } else if (modalType === "rules") {
+            // Rules Modal - Available at all times
+            modalContent = ModalContent.RulesModal({
+              onClose: () => {
+                setShowModal(false);
+                setManuallyClosedModal(true);
+              },
               t,
             });
           }
@@ -1023,6 +1241,7 @@ export function UnifiedGamePage({
               header={modalContent.header}
               footer={modalContent.footer}
               opaqueBackdrop={!isInGame}
+              timer={modalContent.timer}
             >
               {modalContent.content}
             </Modal>
@@ -1035,8 +1254,7 @@ export function UnifiedGamePage({
         title={confirmModal.title}
         message={confirmModal.message}
         confirmText="Confirm"
-        confirmVariant={confirmModal.confirmVariant || "danger"}
-        cancelVariant={confirmModal.cancelVariant || "secondary"}
+        confirmVariant="success"
         onConfirm={confirmModal.onConfirm}
         onCancel={() => setConfirmModal({ ...confirmModal, isOpen: false })}
       />

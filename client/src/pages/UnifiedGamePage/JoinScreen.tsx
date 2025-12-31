@@ -2,9 +2,11 @@ import { useState } from "react";
 import { ProfileImageUpload } from "../../components/ProfileImageUpload";
 import { QRCode } from "../../components/QRCode";
 import { Button, Icon, IconSize } from "../../components/ui";
+import { useTranslation } from "../../i18n";
 
 interface JoinScreenProps {
   serverUrl: string;
+  language?: "en" | "he";
   onJoin: (name: string, profileImage: string | null) => void;
   onJoinSpectator: () => void;
   isJoining?: boolean;
@@ -13,11 +15,13 @@ interface JoinScreenProps {
 
 export function JoinScreen({
   serverUrl,
+  language = "en",
   onJoin,
   onJoinSpectator,
   isJoining = false,
   isJoiningSpectator = false,
 }: JoinScreenProps) {
+  const { t } = useTranslation(language);
   const [name, setName] = useState("");
   const [profileImage, setProfileImage] = useState<string | null>(null);
 
@@ -96,7 +100,7 @@ export function JoinScreen({
             </Button>
           </form>
           <div className="qr-code-section">
-            <p className="qr-hint">Scan to join from mobile</p>
+            <p className="qr-hint">{t("join.scanToJoin")}</p>
             <QRCode url={serverUrl} size={180} />
           </div>
         </div>

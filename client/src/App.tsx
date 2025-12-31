@@ -77,6 +77,7 @@ function App() {
                 onSetBoardBackground={actions.setBoardBackground}
                 onSetBoardPattern={actions.setBoardPattern}
                 onSetLanguage={actions.setLanguage}
+                onSetSoundEnabled={actions.setSoundEnabled}
                 onSetWinTarget={actions.setWinTarget}
                 onStartGame={actions.startGame}
                 onChangeName={actions.changeName}

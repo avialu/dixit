@@ -1,3 +1,4 @@
+import { ReactNode, useState, useEffect, useCallback } from "react";
 import { RoomState, PlayerState } from "../hooks/useGameState";
 import { CardView } from "../components/CardView";
 import { DeckUploader } from "../components/DeckUploader";
@@ -11,6 +12,7 @@ import {
   Input,
   Icon,
   IconSize,
+  Timer,
 } from "./ui";
 import {
   getPlayerLanguageOverride,
@@ -18,6 +20,14 @@ import {
   hasPlayerLanguageOverride,
 } from "../i18n";
 import { resizeAndCompressImage } from "../utils/imageResize";
+
+// Common modal return type with optional timer
+export interface ModalContentResult {
+  header: ReactNode;
+  footer: ReactNode;
+  content: ReactNode;
+  timer?: ReactNode;
+}
 
 // Helper function to format waiting message
 function formatWaitingFor(playerNames: string[]): string {
@@ -63,21 +73,27 @@ interface StorytellerModalProps {
   playerState: PlayerState | null;
   selectedCardId: string | null;
   clue: string;
-  localSubmittedCardId: string | null;
+  /** Combined submitted card ID (local optimistic || server confirmed) - single source of truth */
+  submittedCardId: string | null;
   roomState: RoomState;
   setSelectedCardId: (id: string | null) => void;
   setClue: (clue: string) => void;
   handleStorytellerSubmit: () => void;
+  onTimerExpired?: () => void;
   t: (key: string, values?: Record<string, string | number>) => string;
 }
 
 interface PlayerChoiceModalProps {
   playerState: PlayerState | null;
   selectedCardId: string | null;
-  localSubmittedCardId: string | null;
+  /** Combined submitted card ID (local optimistic || server confirmed) - single source of truth */
+  submittedCardId: string | null;
   roomState: RoomState;
   setSelectedCardId: (id: string | null) => void;
   handlePlayerSubmit: () => void;
+  onTimerExpired?: () => void;
+  isAdmin?: boolean;
+  onForcePhase?: () => void;
   t: (key: string, values?: Record<string, string | number>) => string;
 }
 
@@ -88,8 +104,11 @@ interface VotingModalProps {
   localVotedCardId: string | null;
   isStoryteller: boolean;
   isSpectator: boolean;
+  isAdmin?: boolean;
   setSelectedCardId: (id: string | null) => void;
   handleVote: () => void;
+  onTimerExpired?: () => void;
+  onForcePhase?: () => void;
   t: (key: string, values?: Record<string, string | number>) => string;
 }
 
@@ -110,7 +129,7 @@ interface GameEndModalProps {
 }
 
 // Helper function to create Modal with consistent structure
-export function LobbyModal(props: LobbyModalProps) {
+export function LobbyModal(props: LobbyModalProps): ModalContentResult {
   const {
     roomState,
     playerId,
@@ -160,14 +179,7 @@ export function LobbyModal(props: LobbyModalProps) {
     onSetBoardBackground(null);
   };
 
-  const header = (
-    <>
-      <h2>
-        <Icon.People size={IconSize.large} /> {t("common.players")} (
-        {roomState.players.length})
-      </h2>
-    </>
-  );
+  const header = null;
 
   const footer = (
     <>
@@ -180,6 +192,7 @@ export function LobbyModal(props: LobbyModalProps) {
   return {
     header,
     footer,
+    timer: undefined,
     content: (
       <>
         <div className="players-grid">
@@ -209,6 +222,7 @@ export function LobbyModal(props: LobbyModalProps) {
                     playerColor={getPlayerColor(
                       roomState.players.findIndex((p) => p.id === player.id)
                     )}
+                    playerName={player.name}
                     size="small"
                   />
                 )}
@@ -564,7 +578,12 @@ export function LobbyModal(props: LobbyModalProps) {
 
         {!isSpectator && (
           <p style={{ color: "#95a5a6", marginTop: "1rem" }}>
-            {isAdmin ? t("lobby.readyToStart") : t("lobby.waitingForAdmin")}
+            {isAdmin
+              ? t("lobby.readyToStart")
+              : t("lobby.waitingForAdminName", {
+                  name:
+                    roomState.players.find((p) => p.isAdmin)?.name || "admin",
+                })}
           </p>
         )}
         {isSpectator && (
@@ -577,20 +596,34 @@ export function LobbyModal(props: LobbyModalProps) {
   };
 }
 
-export function StorytellerChoiceModal(props: StorytellerModalProps) {
+export function StorytellerChoiceModal(
+  props: StorytellerModalProps
+): ModalContentResult {
   const {
     playerState,
     selectedCardId,
     clue,
-    localSubmittedCardId,
+    submittedCardId,
     roomState,
     setSelectedCardId,
     setClue,
     handleStorytellerSubmit,
+    onTimerExpired,
     t,
   } = props;
 
-  const isSubmitted = localSubmittedCardId || playerState?.mySubmittedCardId;
+  // Single source of truth: submittedCardId is already computed by parent
+  const isSubmitted = !!submittedCardId;
+
+  // Timer for storyteller - always show for everyone
+  const timerElement = (
+    <Timer
+      startTime={roomState.phaseStartTime}
+      duration={roomState.phaseDuration}
+      onTimeUp={!isSubmitted ? onTimerExpired : undefined}
+      size="medium"
+    />
+  );
 
   // Calculate who we're waiting for (players who haven't submitted yet)
   const waitingForPlayers = isSubmitted
@@ -619,9 +652,7 @@ export function StorytellerChoiceModal(props: StorytellerModalProps) {
         <>
           <p className="clue-reminder">
             <strong>{t("storyteller.yourClue")}:</strong>{" "}
-            <strong style={{ fontWeight: 900, fontSize: "1.1em" }}>
-              "{roomState.currentClue}"
-            </strong>
+            <span className="clue-highlight">"{roomState.currentClue}"</span>
           </p>
           {waitingForPlayers.length > 0 && (
             <p
@@ -664,52 +695,40 @@ export function StorytellerChoiceModal(props: StorytellerModalProps) {
   return {
     header,
     footer,
+    timer: timerElement,
     content: (
-      <>
-        {isSubmitted && playerState?.mySubmittedCardImage && (
-          <div className="submitted-card-preview">
-            <img
-              src={playerState.mySubmittedCardImage}
-              alt="Your submitted card"
-              style={{
-                maxWidth: "100%",
-                maxHeight: "40vh",
-                borderRadius: "12px",
-                boxShadow: "0 8px 24px rgba(102, 126, 234, 0.4)",
-                border: "3px solid #667eea",
-              }}
-            />
-          </div>
-        )}
-
-        <div className="modal-hand">
-          <CardView
-            cards={playerState?.hand || []}
-            selectedCardId={isSubmitted ? null : selectedCardId}
-            onSelectCard={isSubmitted ? () => {} : setSelectedCardId}
-            disabled={!!isSubmitted}
-            showDrawer={false}
-          />
-        </div>
-      </>
+      <div className="modal-hand">
+        <CardView
+          cards={playerState?.hand || []}
+          selectedCardId={isSubmitted ? null : selectedCardId}
+          onSelectCard={isSubmitted ? () => {} : setSelectedCardId}
+          disabled={isSubmitted}
+          lockedCardId={submittedCardId}
+          showDrawer={false}
+        />
+      </div>
     ),
   };
 }
 
-export function PlayerChoiceModal(props: PlayerChoiceModalProps) {
+export function PlayerChoiceModal(
+  props: PlayerChoiceModalProps
+): ModalContentResult {
   const {
     playerState,
     selectedCardId,
-    localSubmittedCardId,
+    submittedCardId,
     roomState,
     setSelectedCardId,
     handlePlayerSubmit,
+    onTimerExpired,
+    isAdmin,
+    onForcePhase,
     t,
   } = props;
 
-  // Use BOTH local and server state - server is the source of truth
-  // Local state provides immediate feedback, server state is authoritative
-  const isSubmitted = localSubmittedCardId || playerState?.mySubmittedCardId;
+  // Single source of truth: submittedCardId is already computed by parent
+  const isSubmitted = !!submittedCardId;
 
   // Get storyteller name
   const storyteller = roomState.players.find(
@@ -717,11 +736,23 @@ export function PlayerChoiceModal(props: PlayerChoiceModalProps) {
   );
   const storytellerName = storyteller?.name || t("common.storyteller");
 
+  // Timer for player choice - always show for everyone
+  const timerElement = (
+    <Timer
+      startTime={roomState.phaseStartTime}
+      duration={roomState.phaseDuration}
+      onTimeUp={!isSubmitted ? onTimerExpired : undefined}
+      size="medium"
+    />
+  );
+
   // Calculate who we're waiting for (players who haven't submitted yet)
+  // Also exclude current player if they've locally submitted (before server state updates)
   const waitingForPlayers = isSubmitted
     ? roomState.players
         .filter((p) => p.id !== roomState.storytellerId) // Exclude storyteller
         .filter((p) => !roomState.submittedPlayerIds.includes(p.id)) // Haven't submitted
+        .filter((p) => p.id !== playerState?.playerId) // Exclude self if locally submitted
         .map((p) => p.name)
     : [];
 
@@ -741,10 +772,11 @@ export function PlayerChoiceModal(props: PlayerChoiceModalProps) {
         )}
       </h2>
       <p className="clue-reminder">
-        <strong>{t("playerChoice.storytellerClueWithName", { name: storytellerName })}:</strong>{" "}
-        <strong style={{ fontWeight: 900, fontSize: "1.1em" }}>
-          "{roomState.currentClue}"
-        </strong>
+        <strong>
+          {t("playerChoice.storytellerClueWithName", { name: storytellerName })}
+          :
+        </strong>{" "}
+        <span className="clue-highlight">"{roomState.currentClue}"</span>
       </p>
       {isSubmitted && waitingForPlayers.length > 0 && (
         <p
@@ -760,6 +792,19 @@ export function PlayerChoiceModal(props: PlayerChoiceModalProps) {
     </>
   );
 
+  // Admin Force Continue button (only when submitted and waiting for others)
+  const forceButton =
+    isSubmitted && isAdmin && onForcePhase && waitingForPlayers.length > 0 ? (
+      <Button
+        variant="secondary"
+        size="small"
+        onClick={onForcePhase}
+        title={t("forcePhase.tooltip")}
+      >
+        <Icon.ArrowForward size={IconSize.small} /> {t("forcePhase.button")}
+      </Button>
+    ) : null;
+
   const footer = !isSubmitted ? (
     <Button
       variant="primary"
@@ -769,38 +814,25 @@ export function PlayerChoiceModal(props: PlayerChoiceModalProps) {
     >
       {t("playerChoice.submitCard")}
     </Button>
-  ) : null;
+  ) : (
+    forceButton
+  );
 
   return {
     header,
     footer,
+    timer: timerElement,
     content: (
-      <>
-        {isSubmitted && playerState?.mySubmittedCardImage && (
-          <div className="submitted-card-preview">
-            <img
-              src={playerState.mySubmittedCardImage}
-              alt="Your submitted card"
-              style={{
-                maxWidth: "100%",
-                maxHeight: "35vh",
-                borderRadius: "12px",
-                boxShadow: "0 8px 24px rgba(102, 126, 234, 0.4)",
-                border: "3px solid #667eea",
-              }}
-            />
-          </div>
-        )}
-        <div className="modal-hand">
-          <CardView
-            cards={playerState?.hand || []}
-            selectedCardId={isSubmitted ? null : selectedCardId}
-            onSelectCard={isSubmitted ? () => {} : setSelectedCardId}
-            disabled={!!isSubmitted}
-            showDrawer={false}
-          />
-        </div>
-      </>
+      <div className="modal-hand">
+        <CardView
+          cards={playerState?.hand || []}
+          selectedCardId={isSubmitted ? null : selectedCardId}
+          onSelectCard={isSubmitted ? () => {} : setSelectedCardId}
+          disabled={isSubmitted}
+          lockedCardId={submittedCardId}
+          showDrawer={false}
+        />
+      </div>
     ),
   };
 }
@@ -809,36 +841,68 @@ export function WaitingStorytellerModal(props: {
   playerState: PlayerState | null;
   roomState: RoomState;
   t: (key: string, values?: Record<string, string | number>) => string;
-}) {
-  const { roomState, t } = props;
-  
+  isAdmin?: boolean;
+  onForcePhase?: () => void;
+}): ModalContentResult {
+  const { roomState, t, isAdmin, onForcePhase } = props;
+
   // Get storyteller name
   const storyteller = roomState.players.find(
     (p) => p.id === roomState.storytellerId
   );
   const storytellerName = storyteller?.name || t("common.storyteller");
-  
+
+  // Timer - show for everyone waiting
+  const timerElement = (
+    <Timer
+      startTime={roomState.phaseStartTime}
+      duration={roomState.phaseDuration}
+      size="medium"
+    />
+  );
+
   const header = (
     <>
-      <h2>⏳ {t("playerChoice.waitingForStoryteller", { name: storytellerName })}</h2>
+      <h2>🤔 {t("status.storytellerThinking", { name: storytellerName })}</h2>
     </>
   );
 
+  // Admin can force the phase to continue
+  const footer =
+    isAdmin && onForcePhase ? (
+      <Button
+        variant="secondary"
+        size="small"
+        onClick={onForcePhase}
+        title={t("forcePhase.tooltip")}
+      >
+        <Icon.ArrowForward size={IconSize.small} /> {t("forcePhase.button")}
+      </Button>
+    ) : null;
+
+  // Check if this is a spectator (no hand)
+  const hasHand = props.playerState?.hand && props.playerState.hand.length > 0;
+
   return {
     header,
-    footer: null,
-    content: (
-      <>
-        <div className="modal-hand">
-          <CardView
-            cards={props.playerState?.hand || []}
-            selectedCardId={null}
-            onSelectCard={() => {}}
-            disabled={true}
-            showDrawer={false}
-          />
-        </div>
-      </>
+    footer,
+    timer: timerElement,
+    content: hasHand ? (
+      <div className="modal-hand">
+        <CardView
+          cards={props.playerState?.hand || []}
+          selectedCardId={null}
+          onSelectCard={() => {}}
+          disabled={true}
+          showDrawer={false}
+        />
+      </div>
+    ) : (
+      <div className="spectator-waiting">
+        <p style={{ textAlign: "center", color: "#95a5a6", padding: "2rem" }}>
+          <Icon.Eye size={IconSize.large} /> {t("lobby.spectatingHelp")}
+        </p>
+      </div>
     ),
   };
 }
@@ -847,14 +911,25 @@ export function WaitingPlayersModal(props: {
   playerState: PlayerState | null;
   roomState: RoomState;
   t: (key: string, values?: Record<string, string | number>) => string;
-}) {
-  const { playerState, roomState, t } = props;
+  isAdmin?: boolean;
+  onForcePhase?: () => void;
+}): ModalContentResult {
+  const { playerState, roomState, t, isAdmin, onForcePhase } = props;
 
   // Get storyteller name
   const storyteller = roomState.players.find(
     (p) => p.id === roomState.storytellerId
   );
   const storytellerName = storyteller?.name || t("common.storyteller");
+
+  // Timer - show for everyone waiting
+  const timerElement = (
+    <Timer
+      startTime={roomState.phaseStartTime}
+      duration={roomState.phaseDuration}
+      size="medium"
+    />
+  );
 
   // Calculate who we're waiting for (players who haven't submitted yet)
   const waitingForPlayers = roomState.players
@@ -866,10 +941,11 @@ export function WaitingPlayersModal(props: {
     <>
       <h2>⏳ {t("playerChoice.waitingTitle")}</h2>
       <p className="clue-reminder">
-        <strong>{t("playerChoice.storytellerClueWithName", { name: storytellerName })}:</strong>{" "}
-        <strong style={{ fontWeight: 900, fontSize: "1.1em" }}>
-          "{roomState.currentClue}"
-        </strong>
+        <strong>
+          {t("playerChoice.storytellerClueWithName", { name: storytellerName })}
+          :
+        </strong>{" "}
+        <span className="clue-highlight">"{roomState.currentClue}"</span>
       </p>
       {waitingForPlayers.length > 0 && (
         <p
@@ -885,42 +961,48 @@ export function WaitingPlayersModal(props: {
     </>
   );
 
+  // Admin can force the phase to continue
+  const footer =
+    isAdmin && onForcePhase ? (
+      <Button
+        variant="secondary"
+        size="small"
+        onClick={onForcePhase}
+        title={t("forcePhase.tooltip")}
+      >
+        <Icon.ArrowForward size={IconSize.small} /> {t("forcePhase.button")}
+      </Button>
+    ) : null;
+
+  // Check if this is a spectator (no hand)
+  const hasHand = playerState?.hand && playerState.hand.length > 0;
+
   return {
     header,
-    footer: null,
-    content: (
-      <>
-        {playerState?.mySubmittedCardImage && (
-          <div className="submitted-card-preview">
-            <img
-              src={playerState.mySubmittedCardImage}
-              alt="Your submitted card"
-              style={{
-                maxWidth: "100%",
-                maxHeight: "35vh",
-                borderRadius: "12px",
-                boxShadow: "0 8px 24px rgba(102, 126, 234, 0.4)",
-                border: "3px solid #667eea",
-              }}
-            />
-          </div>
-        )}
-
-        <div className="modal-hand">
-          <CardView
-            cards={playerState?.hand || []}
-            selectedCardId={null}
-            onSelectCard={() => {}}
-            disabled={true}
-            showDrawer={false}
-          />
-        </div>
-      </>
+    footer,
+    timer: timerElement,
+    content: hasHand ? (
+      <div className="modal-hand">
+        <CardView
+          cards={playerState?.hand || []}
+          selectedCardId={null}
+          onSelectCard={() => {}}
+          disabled={true}
+          lockedCardId={playerState?.mySubmittedCardId}
+          showDrawer={false}
+        />
+      </div>
+    ) : (
+      <div className="spectator-waiting">
+        <p style={{ textAlign: "center", color: "#95a5a6", padding: "2rem" }}>
+          <Icon.Eye size={IconSize.large} /> {t("lobby.spectatingHelp")}
+        </p>
+      </div>
     ),
   };
 }
 
-export function VotingModal(props: VotingModalProps) {
+export function VotingModal(props: VotingModalProps): ModalContentResult {
   const {
     roomState,
     playerState,
@@ -928,10 +1010,20 @@ export function VotingModal(props: VotingModalProps) {
     localVotedCardId,
     isStoryteller,
     isSpectator,
+    isAdmin,
     setSelectedCardId,
     handleVote,
+    onTimerExpired,
+    onForcePhase,
     t,
   } = props;
+
+  const eligiblePlayers = roomState.players.filter(
+    (p) => p.id !== roomState.storytellerId
+  );
+  const allVotesIn = roomState.votes.length >= eligiblePlayers.length;
+  const hasVoted = localVotedCardId !== null;
+  const canVote = !isStoryteller && !isSpectator && !hasVoted;
 
   // Get storyteller name
   const storyteller = roomState.players.find(
@@ -939,20 +1031,23 @@ export function VotingModal(props: VotingModalProps) {
   );
   const storytellerName = storyteller?.name || t("common.storyteller");
 
-  const eligiblePlayers = roomState.players.filter(
-    (p) => p.id !== roomState.storytellerId
+  // Timer for voting - always show for everyone
+  const timerElement = (
+    <Timer
+      startTime={roomState.phaseStartTime}
+      duration={roomState.phaseDuration}
+      onTimeUp={canVote ? onTimerExpired : undefined}
+      size="medium"
+    />
   );
-  const allVotesIn = roomState.votes.length >= eligiblePlayers.length;
-  // Use BOTH local and server state - server is the source of truth
-  // Local state provides immediate feedback, server state is authoritative
-  const hasVoted = localVotedCardId !== null || playerState?.myVote !== null;
-  const canVote = !isStoryteller && !isSpectator && !hasVoted;
 
   // Calculate who we're waiting for (players who haven't voted yet)
+  // Also exclude current player if they've locally voted (before server state updates)
   const votedPlayerIds = roomState.votes.map((v) => v.voterId);
   const waitingForPlayers = hasVoted
     ? eligiblePlayers
         .filter((p) => !votedPlayerIds.includes(p.id))
+        .filter((p) => p.id !== playerState?.playerId) // Exclude self if locally voted
         .map((p) => p.name)
     : [];
 
@@ -998,10 +1093,10 @@ export function VotingModal(props: VotingModalProps) {
     <>
       <h2>{getHeaderTitle()}</h2>
       <p className="clue-reminder">
-        <strong>{t("voting.storytellerClueWithName", { name: storytellerName })}:</strong>{" "}
-        <strong style={{ fontWeight: 900, fontSize: "1.1em" }}>
-          "{roomState.currentClue}"
-        </strong>
+        <strong>
+          {t("voting.storytellerClueWithName", { name: storytellerName })}:
+        </strong>{" "}
+        <span className="clue-highlight">"{roomState.currentClue}"</span>
       </p>
       {hasVoted && waitingForPlayers.length > 0 && !allVotesIn && (
         <p
@@ -1017,6 +1112,19 @@ export function VotingModal(props: VotingModalProps) {
     </>
   );
 
+  // Admin Force Continue button
+  const forceButton =
+    isAdmin && onForcePhase && !allVotesIn ? (
+      <Button
+        variant="secondary"
+        size="small"
+        onClick={onForcePhase}
+        title={t("forcePhase.tooltip")}
+      >
+        <Icon.ArrowForward size={IconSize.small} /> {t("forcePhase.button")}
+      </Button>
+    ) : null;
+
   const footer = canVote ? (
     <Button
       variant="primary"
@@ -1026,18 +1134,31 @@ export function VotingModal(props: VotingModalProps) {
     >
       {t("voting.submitVote")}
     </Button>
-  ) : hasVoted && !allVotesIn && waitingForPlayers.length > 0 ? (
-    <p style={{ color: "#95a5a6", margin: 0 }}>
-      ⏳{" "}
-      {t("storyteller.waitingFor", {
-        names: formatWaitingFor(waitingForPlayers),
-      })}
-    </p>
+  ) : (hasVoted || isStoryteller) && !allVotesIn ? (
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        gap: "0.5rem",
+        alignItems: "center",
+      }}
+    >
+      {waitingForPlayers.length > 0 && (
+        <p style={{ color: "#95a5a6", margin: 0 }}>
+          ⏳{" "}
+          {t("storyteller.waitingFor", {
+            names: formatWaitingFor(waitingForPlayers),
+          })}
+        </p>
+      )}
+      {forceButton}
+    </div>
   ) : null;
 
   return {
     header,
     footer,
+    timer: timerElement,
     content: (
       <div className="modal-voting-cards">
         <CardView
@@ -1056,18 +1177,91 @@ export function VotingModal(props: VotingModalProps) {
   };
 }
 
-export function RevealModal(props: RevealModalProps) {
+// Reveal Footer Component using server timer (one source of truth)
+function RevealFooter({
+  isAdmin,
+  onAdvanceRound,
+  phaseStartTime,
+  phaseDuration,
+  t,
+}: {
+  isAdmin: boolean;
+  onAdvanceRound: () => void;
+  phaseStartTime: number | null;
+  phaseDuration: number | null;
+  t: (key: string, values?: Record<string, string | number>) => string;
+}) {
+  const [hasAdvanced, setHasAdvanced] = useState(false);
+  const [secondsLeft, setSecondsLeft] = useState<number>(() => {
+    // Calculate initial seconds based on server time
+    if (phaseStartTime && phaseDuration) {
+      const elapsed = Math.floor((Date.now() - phaseStartTime) / 1000);
+      return Math.max(0, phaseDuration - elapsed);
+    }
+    return 30; // Fallback
+  });
+
+  const handleAdvance = useCallback(() => {
+    if (!hasAdvanced) {
+      setHasAdvanced(true);
+      onAdvanceRound();
+    }
+  }, [hasAdvanced, onAdvanceRound]);
+
+  // Sync with server timer every second
+  useEffect(() => {
+    if (hasAdvanced) return;
+
+    const interval = setInterval(() => {
+      if (phaseStartTime && phaseDuration) {
+        const elapsed = Math.floor((Date.now() - phaseStartTime) / 1000);
+        const remaining = Math.max(0, phaseDuration - elapsed);
+        setSecondsLeft(remaining);
+      }
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [phaseStartTime, phaseDuration, hasAdvanced]);
+
+  // For admin: show clickable button with timer
+  if (isAdmin) {
+    return (
+      <Button variant="continue" onClick={handleAdvance} disabled={hasAdvanced}>
+        <Icon.ArrowForward size={IconSize.medium} />{" "}
+        {hasAdvanced
+          ? t("reveal.autoAdvance")
+          : t("reveal.continueIn", { seconds: secondsLeft })}
+      </Button>
+    );
+  }
+
+  // For non-admin players: show timer countdown
+  return (
+    <p
+      style={{
+        color: secondsLeft <= 5 ? "#e74c3c" : "#f39c12",
+        fontWeight: "bold",
+        margin: 0,
+        fontSize: "1.1rem",
+      }}
+    >
+      ⏳ {t("reveal.waitingWithTimer", { seconds: secondsLeft })}
+    </p>
+  );
+}
+
+export function RevealModal(props: RevealModalProps): ModalContentResult {
   const { roomState, playerState, isAdmin, onAdvanceRound, t } = props;
 
   const storytellerId = roomState.storytellerId;
   const storytellerCard = roomState.revealedCards.find(
-    (card) => (card as any).playerId === storytellerId
+    (card) => card.playerId === storytellerId
   );
   const storytellerCardId = storytellerCard?.cardId;
 
   // Get storyteller name
   const storyteller = roomState.players.find(
-    (p) => p.id === storytellerId
+    (p) => p.id === roomState.storytellerId
   );
   const storytellerName = storyteller?.name || t("common.storyteller");
 
@@ -1082,27 +1276,26 @@ export function RevealModal(props: RevealModalProps) {
         <Icon.Results size={IconSize.large} /> {t("reveal.results")}
       </h2>
       <p className="clue-reminder">
-        <strong>{t("reveal.storytellerClueWithName", { name: storytellerName })}:</strong>{" "}
-        <strong style={{ fontWeight: 900, fontSize: "1.1em" }}>
-          "{roomState.currentClue}"
-        </strong>
+        <strong>
+          {t("reveal.storytellerClueWithName", { name: storytellerName })}:
+        </strong>{" "}
+        <span className="clue-highlight">"{roomState.currentClue}"</span>
       </p>
     </>
   );
 
-  const footer = isAdmin ? (
-    <Button variant="continue" onClick={onAdvanceRound}>
-      <Icon.ArrowForward size={IconSize.medium} /> {t("reveal.continue")}
-    </Button>
-  ) : (
-    <p style={{ color: "#95a5a6", fontStyle: "italic", margin: 0 }}>
-      ⏳ {t("reveal.waiting")}
-    </p>
-  );
-
   return {
     header,
-    footer,
+    footer: (
+      <RevealFooter
+        isAdmin={isAdmin}
+        onAdvanceRound={onAdvanceRound}
+        phaseStartTime={roomState.phaseStartTime}
+        phaseDuration={roomState.phaseDuration}
+        t={t}
+      />
+    ),
+    timer: undefined,
     content: (
       <div className="modal-voting-cards">
         <CardView
@@ -1116,18 +1309,19 @@ export function RevealModal(props: RevealModalProps) {
           players={roomState.players}
           cardOwners={roomState.revealedCards.map((card) => ({
             cardId: card.cardId,
-            playerId: (card as any).playerId || "unknown",
+            playerId: card.playerId,
           }))}
           storytellerCardId={storytellerCardId || null}
           showResults={true}
           scoreDeltas={scoreDeltas}
+          t={t}
         />
       </div>
     ),
   };
 }
 
-export function GameEndModal(props: GameEndModalProps) {
+export function GameEndModal(props: GameEndModalProps): ModalContentResult {
   const { roomState, isAdmin, onResetGame, onNewDeck, t } = props;
 
   const sortedPlayers = [...roomState.players].sort(
@@ -1159,6 +1353,7 @@ export function GameEndModal(props: GameEndModalProps) {
   return {
     header,
     footer,
+    timer: undefined,
     content: (
       <div className="game-end-content">
         <div className="winner-announcement">
@@ -1187,6 +1382,129 @@ export function GameEndModal(props: GameEndModalProps) {
             </div>
           ))}
         </div>
+      </div>
+    ),
+  };
+}
+
+// Rules Modal - Available at all times to explain game rules
+interface RulesModalProps {
+  onClose: () => void;
+  t: (key: string, values?: Record<string, string | number>) => string;
+}
+
+export function RulesModal(props: RulesModalProps): ModalContentResult {
+  const { onClose, t } = props;
+
+  const header = (
+    <>
+      <h2>
+        <Icon.Book size={IconSize.large} /> {t("rules.title")}
+      </h2>
+    </>
+  );
+
+  const footer = (
+    <Button variant="primary" onClick={onClose}>
+      {t("common.close")}
+    </Button>
+  );
+
+  return {
+    header,
+    footer,
+    timer: undefined,
+    content: (
+      <div className="rules-content">
+        {/* Objective Section */}
+        <section className="rules-section">
+          <h3 className="rules-section-title">
+            <Icon.Star size={IconSize.medium} /> {t("rules.objective.title")}
+          </h3>
+          <p className="rules-description">
+            {t("rules.objective.description")}
+          </p>
+        </section>
+
+        {/* Game Phases Section */}
+        <section className="rules-section">
+          <h3 className="rules-section-title">
+            <Icon.Cards size={IconSize.medium} /> {t("rules.phases.title")}
+          </h3>
+
+          <div className="rules-phase">
+            <h4>{t("rules.phases.storytellerTurn.title")}</h4>
+            <p>{t("rules.phases.storytellerTurn.description")}</p>
+          </div>
+
+          <div className="rules-phase">
+            <h4>{t("rules.phases.playersChoice.title")}</h4>
+            <p>{t("rules.phases.playersChoice.description")}</p>
+          </div>
+
+          <div className="rules-phase">
+            <h4>{t("rules.phases.voting.title")}</h4>
+            <p>{t("rules.phases.voting.description")}</p>
+          </div>
+
+          <div className="rules-phase">
+            <h4>{t("rules.phases.reveal.title")}</h4>
+            <p>{t("rules.phases.reveal.description")}</p>
+          </div>
+        </section>
+
+        {/* Scoring Section */}
+        <section className="rules-section">
+          <h3 className="rules-section-title">
+            <Icon.Trophy size={IconSize.medium} /> {t("rules.scoring.title")}
+          </h3>
+
+          <div className="rules-scoring-case rules-scoring-normal">
+            <h4>{t("rules.scoring.normalCase.title")}</h4>
+            <ul>
+              <li>{t("rules.scoring.normalCase.storyteller")}</li>
+              <li>{t("rules.scoring.normalCase.correctGuessers")}</li>
+              <li>{t("rules.scoring.normalCase.bonus")}</li>
+            </ul>
+          </div>
+
+          <div className="rules-scoring-case rules-scoring-warning">
+            <h4>{t("rules.scoring.tooObvious.title")}</h4>
+            <p>{t("rules.scoring.tooObvious.description")}</p>
+            <p>{t("rules.scoring.tooObvious.others")}</p>
+          </div>
+
+          <div className="rules-scoring-case rules-scoring-warning">
+            <h4>{t("rules.scoring.tooObscure.title")}</h4>
+            <p>{t("rules.scoring.tooObscure.description")}</p>
+            <p>{t("rules.scoring.tooObscure.others")}</p>
+          </div>
+
+          <p className="rules-bonus-note">
+            <Icon.Info size={IconSize.small} /> {t("rules.scoring.bonusNote")}
+          </p>
+        </section>
+
+        {/* Winning Section */}
+        <section className="rules-section">
+          <h3 className="rules-section-title">
+            <Icon.Crown size={IconSize.medium} /> {t("rules.winning.title")}
+          </h3>
+          <p className="rules-description">{t("rules.winning.description")}</p>
+        </section>
+
+        {/* Tips Section */}
+        <section className="rules-section rules-tips">
+          <h3 className="rules-section-title">
+            <Icon.Sparkles size={IconSize.medium} /> {t("rules.tips.title")}
+          </h3>
+          <div className="rules-tip">
+            <p>{t("rules.tips.storytellerTip")}</p>
+          </div>
+          <div className="rules-tip">
+            <p>{t("rules.tips.playerTip")}</p>
+          </div>
+        </section>
       </div>
     ),
   };

@@ -25,6 +25,7 @@ import {
   setBoardBackgroundSchema,
   setBoardPatternSchema,
   adminSetLanguageSchema,
+  adminSetSoundEnabledSchema,
 } from "./utils/validation.js";
 import { getLanIpAddress } from "./utils/network.js";
 import {
@@ -55,7 +56,7 @@ export function createApp(port: number = serverConfig.port) {
   const httpServer = createServer(app);
   // CORS configuration - restrict to allowed origins
   const allowedOrigins = [...serverConfig.allowedOrigins];
-  
+
   // Add LAN IP if available
   if (lanIp) {
     allowedOrigins.push(`http://${lanIp}:${port}`);
@@ -87,34 +88,122 @@ export function createApp(port: number = serverConfig.port) {
 
   // Map socket.id to clientId
   const socketToClient = new Map<string, string>();
-  
+
   // Disconnect grace period timers - gives players 5 seconds to reconnect
   const disconnectTimers = new Map<string, NodeJS.Timeout>();
   const DISCONNECT_GRACE_PERIOD = 5000; // 5 seconds
-  
+
+  // Server-side phase timer - auto-advances game when timer expires
+  let phaseTimer: NodeJS.Timeout | null = null;
+
+  function clearPhaseTimer(): void {
+    if (phaseTimer) {
+      clearTimeout(phaseTimer);
+      phaseTimer = null;
+    }
+  }
+
+  function startPhaseTimer(durationSeconds: number, phase: string): void {
+    clearPhaseTimer();
+
+    // Add 1 second buffer to allow client-side timers to fire first
+    const timeoutMs = (durationSeconds + 1) * 1000;
+
+    phaseTimer = setTimeout(() => {
+      logger.info("Phase timer expired", { phase });
+
+      try {
+        let advanced = false;
+
+        if (phase === "STORYTELLER_CHOICE") {
+          advanced = gameManager.autoSubmitStoryteller();
+          if (advanced) {
+            logger.info("Auto-submitted for storyteller");
+            // Start timer for next phase
+            startPhaseTimer(
+              gameManager.getRoomState().phaseDuration || 30,
+              "PLAYERS_CHOICE"
+            );
+          }
+        } else if (phase === "PLAYERS_CHOICE") {
+          advanced = gameManager.autoSubmitPlayers();
+          if (advanced) {
+            logger.info("Auto-submitted for players, advancing to voting");
+            // Start timer for voting phase
+            startPhaseTimer(
+              gameManager.getRoomState().phaseDuration || 30,
+              "VOTING"
+            );
+          }
+        } else if (phase === "VOTING") {
+          advanced = gameManager.autoVotePlayers();
+          if (advanced) {
+            logger.info("Auto-voted for players, advancing to reveal");
+            // Start timer for reveal phase
+            startPhaseTimer(
+              gameManager.getRoomState().phaseDuration || 30,
+              "REVEAL"
+            );
+          }
+        } else if (phase === "REVEAL") {
+          // Auto-advance to next round when reveal timer expires
+          gameManager.autoAdvanceFromReveal();
+          advanced = true;
+          logger.info("Auto-advanced from reveal to next round");
+          // Start timer for next storyteller phase
+          const roomState = gameManager.getRoomState();
+          if (
+            roomState.phaseDuration &&
+            roomState.phase === "STORYTELLER_CHOICE"
+          ) {
+            startPhaseTimer(roomState.phaseDuration, "STORYTELLER_CHOICE");
+          } else {
+            clearPhaseTimer(); // Game ended
+          }
+        }
+
+        if (advanced) {
+          // Send updated state to all clients
+          broadcastRoomState();
+          for (const [socketId, cId] of socketToClient.entries()) {
+            sendPlayerState(socketId, cId);
+          }
+          io.emit("phaseChanged", { phase: gameManager.getCurrentPhase() });
+        }
+      } catch (error) {
+        logger.error("Error in phase timer handler", { error, phase });
+      }
+    }, timeoutMs);
+
+    logger.debug("Started phase timer", { phase, durationSeconds });
+  }
+
   // Socket event rate limiting (per socket)
-  const socketEventCounts = new Map<string, { count: number; resetTime: number }>();
-  
+  const socketEventCounts = new Map<
+    string,
+    { count: number; resetTime: number }
+  >();
+
   // Track last rate limit warning per socket to avoid spam
   const lastRateLimitWarning = new Map<string, number>();
   const RATE_LIMIT_WARNING_COOLDOWN = 5000; // Only log once per 5 seconds per socket
-  
+
   function checkSocketRateLimit(socketId: string): boolean {
     const now = Date.now();
     const record = socketEventCounts.get(socketId);
-    
+
     if (!record || now > record.resetTime) {
-      socketEventCounts.set(socketId, { 
-        count: 1, 
-        resetTime: now + rateLimitConfig.socketWindowMs 
+      socketEventCounts.set(socketId, {
+        count: 1,
+        resetTime: now + rateLimitConfig.socketWindowMs,
       });
       return true;
     }
-    
+
     if (record.count >= rateLimitConfig.socketMax) {
       return false;
     }
-    
+
     record.count++;
     return true;
   }
@@ -122,12 +211,18 @@ export function createApp(port: number = serverConfig.port) {
   // Helper: Validate client is registered (middleware pattern with async support + rate limiting)
   type SocketCallback = (clientId: string) => void | Promise<void>;
 
-  async function withClientId(socket: any, callback: SocketCallback): Promise<void> {
+  async function withClientId(
+    socket: any,
+    callback: SocketCallback
+  ): Promise<void> {
     // Check rate limit first
     if (!checkSocketRateLimit(socket.id)) {
-      const error = new RateLimitError("Too many requests. Please slow down.", 10);
+      const error = new RateLimitError(
+        "Too many requests. Please slow down.",
+        10
+      );
       socket.emit("error", error.toJSON());
-      
+
       // Only log rate limit warning if we haven't logged recently
       const now = Date.now();
       const lastWarning = lastRateLimitWarning.get(socket.id) || 0;
@@ -137,7 +232,7 @@ export function createApp(port: number = serverConfig.port) {
       }
       return;
     }
-    
+
     const clientId = socketToClient.get(socket.id);
     if (!clientId) {
       const error = new ValidationError("Please join the game first");
@@ -162,7 +257,13 @@ export function createApp(port: number = serverConfig.port) {
         logger.error("Game error", { clientId, error: error.message });
       } else {
         const message = getErrorMessage(error);
-        const gameError = new GameError(message, 'UNKNOWN_ERROR', 500, ErrorSeverity.ERROR, false);
+        const gameError = new GameError(
+          message,
+          "UNKNOWN_ERROR",
+          500,
+          ErrorSeverity.ERROR,
+          false
+        );
         socket.emit("error", gameError.toJSON());
         logger.error("Unexpected error", { clientId, error: message });
       }
@@ -297,18 +398,23 @@ npm start</pre>
         if (existingTimer) {
           clearTimeout(existingTimer);
           disconnectTimers.delete(clientId);
-          logger.debug("Cancelled disconnect timer for reconnecting client", { clientId });
+          logger.debug("Cancelled disconnect timer for reconnecting client", {
+            clientId,
+          });
         }
 
         // Check if this is a player (in game) or spectator (just watching)
         const player = gameManager.getPlayer(clientId);
         const isSpectator = !player;
-        
+
         if (isSpectator) {
           // Spectator reconnection - just re-register the socket
           socketToClient.set(socket.id, clientId);
-          logger.info("Spectator reconnected", { clientId, socketId: socket.id });
-          
+          logger.info("Spectator reconnected", {
+            clientId,
+            socketId: socket.id,
+          });
+
           // Send fresh state
           broadcastRoomState();
           socket.emit("reconnectSuccess", { playerId: clientId });
@@ -316,41 +422,49 @@ npm start</pre>
           // Player reconnection - verify player exists and mark as connected
           socketToClient.set(socket.id, clientId);
           player.reconnect(); // Mark player as connected
-          
-          logger.info("Player reconnected", { clientId, socketId: socket.id, playerName: player.name });
+
+          logger.info("Player reconnected", {
+            clientId,
+            socketId: socket.id,
+            playerName: player.name,
+          });
 
           // Check if player needs hand repair (edge case recovery)
           const currentPhase = gameManager.getCurrentPhase();
           const repaired = gameManager.repairPlayerHand(clientId);
           if (repaired) {
-            logger.warn("Player hand was repaired on reconnect", { clientId, playerName: player.name, phase: currentPhase });
+            logger.warn("Player hand was repaired on reconnect", {
+              clientId,
+              playerName: player.name,
+              phase: currentPhase,
+            });
           }
 
           // Send fresh state
           broadcastRoomState();
-          
+
           // Always send player state, especially important during game phases
           sendPlayerState(socket.id, clientId);
-          
+
           // Log hand size for debugging
           const playerState = gameManager.getPlayerState(clientId);
           if (playerState) {
-            logger.info("Sent hand to reconnected player", { 
-              clientId, 
+            logger.info("Sent hand to reconnected player", {
+              clientId,
               handSize: playerState.hand.length,
-              phase: currentPhase
+              phase: currentPhase,
             });
           }
-          
+
           socket.emit("reconnectSuccess", { playerId: clientId });
         }
       } catch (error) {
         const message =
           error instanceof Error ? error.message : "Reconnection failed";
-        socket.emit("error", { 
-          message, 
-          code: 'RECONNECT_ERROR',
-          severity: 'error'
+        socket.emit("error", {
+          message,
+          code: "RECONNECT_ERROR",
+          severity: "error",
         });
         logger.error("Reconnection error", { error: message });
       }
@@ -445,6 +559,16 @@ npm start</pre>
       });
     });
 
+    socket.on("adminSetSoundEnabled", (data) => {
+      withClientId(socket, (clientId) => {
+        const { enabled } = adminSetSoundEnabledSchema.parse(data);
+        gameManager.setSoundEnabled(enabled, clientId);
+
+        logger.playerAction(clientId, "set sound enabled", { enabled });
+        broadcastRoomState();
+      });
+    });
+
     socket.on("uploadImage", (data) => {
       withClientId(socket, (clientId) => {
         try {
@@ -453,23 +577,27 @@ npm start</pre>
 
           logger.playerAction(clientId, "uploaded image", { cardId: card.id });
 
-          // Send the new image to all clients via incremental update (more efficient)
+          // Send the new image to all clients via incremental update
+          // Include deckSize so clients can update their count without needing full roomState
           io.emit("imageAdded", {
             id: card.id,
             uploadedBy: clientId,
             imageData: card.imageData,
+            deckSize: gameManager.getDeckSize(),
           });
-          
-          // Send lightweight room state update (without all images)
-          const roomState = gameManager.getRoomState();
-          roomState.serverUrl = serverUrl;
-          io.emit("roomState", roomState);
-          
+
+          // No roomState broadcast needed - imageAdded provides all necessary info
+          // This reduces network traffic by ~50% during bulk uploads
+
           // Acknowledge successful upload
           socket.emit("uploadImageAck", { success: true, imageId: card.id });
         } catch (error) {
-          const errorMessage = error instanceof Error ? error.message : "Upload failed";
-          socket.emit("uploadImageAck", { success: false, error: errorMessage });
+          const errorMessage =
+            error instanceof Error ? error.message : "Upload failed";
+          socket.emit("uploadImageAck", {
+            success: false,
+            error: errorMessage,
+          });
         }
       });
     });
@@ -481,12 +609,17 @@ npm start</pre>
 
         if (deleted) {
           logger.playerAction(clientId, "deleted image", { imageId });
-          
-          // Send incremental delete update
-          io.emit("imageDeleted", { id: imageId });
+
+          // Send incremental delete update with deckSize for consistency with imageAdded
+          // This prevents client deck size from drifting during bulk deletions
+          io.emit("imageDeleted", {
+            id: imageId,
+            deckSize: gameManager.getDeckSize(),
+          });
         }
 
-        broadcastRoomState();
+        // No roomState broadcast needed - imageDeleted provides all necessary info
+        // This reduces network traffic during bulk deletions
       });
     });
 
@@ -509,7 +642,13 @@ npm start</pre>
         }
 
         io.emit("phaseChanged", { phase: gameManager.getCurrentPhase() });
-        
+
+        // Start server-side timer for storyteller phase
+        const roomState = gameManager.getRoomState();
+        if (roomState.phaseDuration) {
+          startPhaseTimer(roomState.phaseDuration, "STORYTELLER_CHOICE");
+        }
+
         // Acknowledge the action
         socket.emit("startGameAck", { success: true });
       });
@@ -524,7 +663,13 @@ npm start</pre>
         broadcastRoomState();
         sendPlayerState(socket.id, clientId);
         io.emit("phaseChanged", { phase: gameManager.getCurrentPhase() });
-        
+
+        // Start server-side timer for players choice phase
+        const roomState = gameManager.getRoomState();
+        if (roomState.phaseDuration) {
+          startPhaseTimer(roomState.phaseDuration, "PLAYERS_CHOICE");
+        }
+
         // Acknowledge the action
         socket.emit("storytellerSubmitAck", { success: true, cardId, clue });
       });
@@ -543,8 +688,14 @@ npm start</pre>
         const currentPhase = gameManager.getCurrentPhase();
         if (currentPhase !== "PLAYERS_CHOICE") {
           io.emit("phaseChanged", { phase: currentPhase });
+
+          // Start voting phase timer
+          const roomState = gameManager.getRoomState();
+          if (currentPhase === "VOTING" && roomState.phaseDuration) {
+            startPhaseTimer(roomState.phaseDuration, "VOTING");
+          }
         }
-        
+
         // Acknowledge the action
         socket.emit("playerSubmitCardAck", { success: true, cardId });
       });
@@ -563,8 +714,14 @@ npm start</pre>
         if (currentPhase === "REVEAL") {
           io.emit("phaseChanged", { phase: currentPhase });
           broadcastRoomState();
+
+          // Start timer for reveal phase
+          const roomState = gameManager.getRoomState();
+          if (roomState.phaseDuration) {
+            startPhaseTimer(roomState.phaseDuration, "REVEAL");
+          }
         }
-        
+
         // Acknowledge the action
         socket.emit("playerVoteAck", { success: true, cardId });
       });
@@ -581,15 +738,93 @@ npm start</pre>
 
         broadcastRoomState();
         io.emit("phaseChanged", { phase: gameManager.getCurrentPhase() });
-        
+
+        // Start server-side timer for new storyteller phase
+        const roomState = gameManager.getRoomState();
+        if (
+          roomState.phaseDuration &&
+          roomState.phase === "STORYTELLER_CHOICE"
+        ) {
+          startPhaseTimer(roomState.phaseDuration, "STORYTELLER_CHOICE");
+        } else {
+          clearPhaseTimer(); // Game ended
+        }
+
         // Acknowledge the action
         socket.emit("advanceRoundAck", { success: true });
+      });
+    });
+
+    // Admin force phase - skip waiting and auto-submit for inactive players
+    socket.on("adminForcePhase", () => {
+      withClientId(socket, (clientId) => {
+        const currentPhase = gameManager.getCurrentPhase();
+        let advanced = false;
+
+        // Validate admin
+        const player = gameManager.getPlayer(clientId);
+        if (!player?.isAdmin) {
+          socket.emit("error", {
+            severity: "ERROR",
+            message: "Only admin can force phase",
+          });
+          return;
+        }
+
+        // Force the current phase to complete
+        if (currentPhase === "STORYTELLER_CHOICE") {
+          advanced = gameManager.autoSubmitStoryteller();
+          if (advanced) {
+            clearPhaseTimer();
+            const roomState = gameManager.getRoomState();
+            if (roomState.phaseDuration) {
+              startPhaseTimer(roomState.phaseDuration, "PLAYERS_CHOICE");
+            }
+          }
+        } else if (currentPhase === "PLAYERS_CHOICE") {
+          advanced = gameManager.autoSubmitPlayers();
+          if (advanced) {
+            clearPhaseTimer();
+            const roomState = gameManager.getRoomState();
+            if (roomState.phaseDuration) {
+              startPhaseTimer(roomState.phaseDuration, "VOTING");
+            }
+          }
+        } else if (currentPhase === "VOTING") {
+          advanced = gameManager.autoVotePlayers();
+          if (advanced) {
+            clearPhaseTimer();
+            // Start timer for reveal phase
+            const roomState = gameManager.getRoomState();
+            if (roomState.phaseDuration) {
+              startPhaseTimer(roomState.phaseDuration, "REVEAL");
+            }
+          }
+        }
+
+        if (advanced) {
+          broadcastRoomState();
+          for (const [socketId, cId] of socketToClient.entries()) {
+            sendPlayerState(socketId, cId);
+          }
+          io.emit("phaseChanged", { phase: gameManager.getCurrentPhase() });
+          logger.info("Admin forced phase advance", {
+            clientId,
+            fromPhase: currentPhase,
+            toPhase: gameManager.getCurrentPhase(),
+          });
+        }
+
+        socket.emit("adminForcePhaseAck", { success: advanced });
       });
     });
 
     socket.on("adminResetGame", () => {
       withClientId(socket, (clientId) => {
         gameManager.resetGame(clientId);
+
+        // Clear any running phase timer
+        clearPhaseTimer();
 
         broadcastRoomState();
 
@@ -598,7 +833,7 @@ npm start</pre>
         }
 
         io.emit("phaseChanged", { phase: gameManager.getCurrentPhase() });
-        
+
         // Acknowledge the action
         socket.emit("adminResetGameAck", { success: true });
       });
@@ -608,6 +843,9 @@ npm start</pre>
       withClientId(socket, (clientId) => {
         gameManager.newDeck(clientId);
 
+        // Clear any running phase timer
+        clearPhaseTimer();
+
         broadcastRoomState();
 
         for (const [socketId, cId] of socketToClient.entries()) {
@@ -615,7 +853,7 @@ npm start</pre>
         }
 
         io.emit("phaseChanged", { phase: gameManager.getCurrentPhase() });
-        
+
         // Acknowledge the action
         socket.emit("adminNewDeckAck", { success: true });
       });
@@ -723,20 +961,25 @@ npm start</pre>
     socket.on("disconnect", () => {
       const clientId = socketToClient.get(socket.id);
       if (clientId) {
-        logger.info("Player disconnected - starting grace period", { 
-          clientId, 
+        // Check if this player was admin before marking as disconnected
+        const player = gameManager.getPlayer(clientId);
+        const wasAdmin = player?.isAdmin || false;
+
+        logger.info("Player disconnected - starting grace period", {
+          clientId,
           socketId: socket.id,
-          gracePeriodMs: DISCONNECT_GRACE_PERIOD 
+          gracePeriodMs: DISCONNECT_GRACE_PERIOD,
+          wasAdmin,
         });
-        
+
         // Mark player as disconnected immediately
         gameManager.removePlayer(clientId);
-        
+
         // Clean up socket tracking immediately
         socketToClient.delete(socket.id);
         socketEventCounts.delete(socket.id);
         lastRateLimitWarning.delete(socket.id);
-        
+
         // Set a timer to fully remove player if they don't reconnect
         const timer = setTimeout(() => {
           // Check if player reconnected (would have a new socket mapping)
@@ -747,18 +990,32 @@ npm start</pre>
               break;
             }
           }
-          
+
           if (!hasReconnected) {
-            logger.info("Grace period expired - player did not reconnect", { clientId });
-            // Player is already marked as disconnected, just broadcast state
+            logger.info("Grace period expired - player did not reconnect", {
+              clientId,
+              wasAdmin,
+            });
+
+            // If disconnected player was admin, transfer admin to another connected player
+            if (wasAdmin) {
+              const transferred = gameManager.autoTransferAdmin(clientId);
+              if (transferred) {
+                logger.info("Admin role auto-transferred after grace period", {
+                  previousAdminId: clientId,
+                });
+              }
+            }
+
+            // Broadcast updated state
             broadcastRoomState();
           }
-          
+
           disconnectTimers.delete(clientId);
         }, DISCONNECT_GRACE_PERIOD);
-        
+
         disconnectTimers.set(clientId, timer);
-        
+
         // Broadcast state immediately to show player as disconnected
         broadcastRoomState();
       }

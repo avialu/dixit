@@ -253,7 +253,8 @@ button svg {
 }
 
 @keyframes pulse-poor {
-  0%, 100% {
+  0%,
+  100% {
     opacity: 1;
   }
   50% {
@@ -262,7 +263,8 @@ button svg {
 }
 
 @keyframes pulse-unknown {
-  0%, 100% {
+  0%,
+  100% {
     opacity: 0.5;
   }
   50% {
@@ -739,6 +741,98 @@ select {
   font-size: 0.9rem;
 }
 
+/* Deck Stats Grid - Clear visual display */
+.deck-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.deck-stat-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem 0.5rem;
+  background: rgba(26, 26, 46, 0.7);
+  border-radius: 12px;
+  border: 2px solid rgba(74, 144, 226, 0.3);
+  transition: all 0.3s ease;
+}
+
+.deck-stat-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(74, 144, 226, 0.5);
+}
+
+.deck-stat-title {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #95a5a6;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 0.25rem;
+}
+
+.deck-stat-value {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #4a90e2;
+  line-height: 1.2;
+}
+
+.deck-stat-subtitle {
+  font-size: 0.7rem;
+  color: #95a5a6;
+  text-align: center;
+  margin-top: 0.25rem;
+  min-height: 1rem;
+}
+
+/* Ready state - green glow */
+.deck-stat-ready {
+  border-color: rgba(39, 174, 96, 0.5);
+  background: rgba(39, 174, 96, 0.1);
+}
+
+.deck-stat-ready .deck-stat-value {
+  color: #27ae60;
+}
+
+.deck-stat-ready .deck-stat-subtitle {
+  color: #27ae60;
+}
+
+/* Warning state - orange */
+.deck-stat-warning .deck-stat-subtitle {
+  color: #f39c12;
+}
+
+/* Mobile: Stack stats vertically or 2+1 */
+@media (max-width: 480px) {
+  .deck-stats-grid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.5rem;
+  }
+
+  .deck-stat-card {
+    padding: 0.75rem 0.25rem;
+  }
+
+  .deck-stat-title {
+    font-size: 0.6rem;
+  }
+
+  .deck-stat-value {
+    font-size: 1.5rem;
+  }
+
+  .deck-stat-subtitle {
+    font-size: 0.55rem;
+  }
+}
+
 /* Inline Admin Toggle */
 .admin-toggle-inline {
   display: flex;
@@ -963,6 +1057,19 @@ select {
   background: linear-gradient(90deg, #4a90e2, #667eea);
   transition: width 0.3s ease;
   box-shadow: 0 0 10px rgba(74, 144, 226, 0.5);
+}
+
+/* Processing animation for upload indicator */
+@keyframes progress-pulse {
+  0%,
+  100% {
+    width: 10%;
+    opacity: 0.6;
+  }
+  50% {
+    width: 30%;
+    opacity: 1;
+  }
 }
 
 .progress-stats {
@@ -1213,21 +1320,59 @@ select {
   box-sizing: border-box;
 }
 
+/* Board Continue Button - Floating button for admin during REVEAL */
+.board-continue-button {
+  position: fixed;
+  bottom: 2rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 100;
+  animation: float-in 0.3s ease-out;
+}
+
+.board-continue-button button {
+  box-shadow: 0 4px 20px rgba(46, 204, 113, 0.4), 0 2px 10px rgba(0, 0, 0, 0.2);
+  padding: 1rem 2rem;
+  font-size: 1.1rem;
+}
+
+@keyframes float-in {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+@media (max-width: 768px) {
+  .board-continue-button {
+    bottom: 1.5rem;
+  }
+
+  .board-continue-button button {
+    padding: 0.875rem 1.5rem;
+    font-size: 1rem;
+  }
+}
+
 /* Game Status Bar */
 .game-status-bar {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 0.75rem;
-  padding: 0.5rem 1rem;
+  gap: 1rem;
+  padding: 0.75rem 1.5rem;
   background: linear-gradient(
     135deg,
     rgba(74, 144, 226, 0.25),
     rgba(74, 144, 226, 0.15)
   );
-  border-radius: 8px;
+  border-radius: 10px;
   border: 2px solid rgba(74, 144, 226, 0.4);
-  margin-bottom: 0.25rem;
+  margin-bottom: 0.5rem;
   box-shadow: 0 4px 16px rgba(74, 144, 226, 0.2),
     inset 0 2px 4px rgba(255, 255, 255, 0.1);
   backdrop-filter: blur(10px);
@@ -1247,7 +1392,7 @@ select {
 }
 
 .status-icon {
-  font-size: 2rem;
+  font-size: 2.5rem;
   animation: status-icon-bounce 2s infinite;
   flex-shrink: 0;
 }
@@ -1271,18 +1416,31 @@ select {
 }
 
 .status-text {
-  font-size: 1.2rem;
+  font-size: 1.5rem;
   font-weight: bold;
   color: #fff;
   text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
-  line-height: 1.2;
+  line-height: 1.3;
 }
 
 .status-subtext {
-  font-size: 0.9rem;
+  font-size: 1.1rem;
   color: #4a90e2;
   font-weight: 500;
   opacity: 0.9;
+}
+
+/* Deck count colors in status bar */
+.deck-count {
+  font-weight: 700;
+}
+
+.deck-count.deck-ready {
+  color: #2ecc71;
+}
+
+.deck-count.deck-warning {
+  color: #e74c3c;
 }
 
 /* QR Code on Board during DECK_BUILDING */
@@ -1483,6 +1641,12 @@ select {
     filter 0.3s ease;
   cursor: pointer;
   will-change: cx, cy;
+}
+
+/* Token group wrapper for fallback tokens - animates with transform */
+.player-token-group {
+  transition: transform 1.5s ease-in-out;
+  will-change: transform;
 }
 
 /* Bounce animation removed for simpler, more relaxed movement */
@@ -1834,17 +1998,20 @@ select {
   gap: 0.75rem;
   width: 100%;
   align-items: center;
-  margin-top: 0.5rem;
+  /* Removed margin-top to better fit in fixed-height footer */
 }
 
 .clue-input-inline {
   flex: 1;
+  min-width: 0; /* Allow shrinking below content size */
   padding: 0.75rem 1rem;
   font-size: 1rem;
   border: 2px solid #4a90e2;
   border-radius: 8px;
   background: #2a2a3e;
   color: #fff;
+  min-height: 44px; /* Touch target minimum */
+  box-sizing: border-box;
 }
 
 .clue-input-inline:focus {
@@ -1854,10 +2021,12 @@ select {
 }
 
 .btn-inline {
-  padding: 0.75rem 2rem;
+  padding: 0.75rem 1.5rem;
   font-size: 1rem;
   white-space: nowrap;
   flex-shrink: 0;
+  min-height: 44px; /* Touch target minimum */
+  min-width: 80px;
 }
 
 .hand-container {
@@ -2024,6 +2193,329 @@ select {
 }
 
 /* .game-end-actions defined earlier - see line 1627 */
+
+/* ========================================
+   RULES MODAL CONTENT
+   ======================================== */
+
+/* Tab Switch Button */
+.rules-tab-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  background: none;
+  border: none;
+  color: #667eea;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 0.5rem 0;
+  margin-bottom: 0.5rem;
+  transition: color 0.2s;
+}
+
+.rules-tab-switch:hover {
+  color: #8b9ff0;
+  text-decoration: underline;
+}
+
+/* Tutorial Slides View */
+.rules-tutorial {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 0.5rem 0;
+  min-height: 400px;
+}
+
+.rules-tutorial .rules-tab-switch {
+  align-self: flex-end;
+  margin-bottom: 1rem;
+}
+
+.rules-slide {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem 0;
+  max-width: 320px;
+}
+
+.rules-slide-icon {
+  margin-bottom: 1.5rem;
+  animation: rules-icon-bounce 2s ease-in-out infinite;
+}
+
+@keyframes rules-icon-bounce {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+.rules-slide-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #fff;
+  margin: 0 0 0.5rem 0;
+}
+
+.rules-slide-subtitle {
+  font-size: 1rem;
+  color: #667eea;
+  font-weight: 600;
+  margin: 0 0 1rem 0;
+}
+
+.rules-slide-description {
+  font-size: 0.95rem;
+  color: rgba(255, 255, 255, 0.85);
+  line-height: 1.6;
+  margin: 0;
+}
+
+/* Progress Dots */
+.rules-progress-dots {
+  display: flex;
+  gap: 0.5rem;
+  margin: 1.5rem 0;
+}
+
+.rules-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.3);
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  transition: all 0.2s;
+}
+
+.rules-dot:hover {
+  background: rgba(255, 255, 255, 0.5);
+}
+
+.rules-dot.active {
+  background: #667eea;
+  transform: scale(1.2);
+}
+
+/* Navigation Buttons */
+.rules-nav-buttons {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+  gap: 1rem;
+  margin-top: auto;
+  padding-top: 1rem;
+}
+
+.rules-nav-buttons button {
+  min-width: 120px;
+}
+
+/* Close Button at Bottom of Quick Ref */
+.rules-close-btn {
+  display: flex;
+  justify-content: center;
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.rules-close-btn button {
+  min-width: 150px;
+}
+
+/* Quick Reference Content */
+.rules-content {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  padding: 0.5rem 0;
+}
+
+.rules-content .rules-tab-switch {
+  margin-bottom: 0;
+}
+
+.rules-section {
+  background: rgba(42, 42, 62, 0.6);
+  border-radius: 12px;
+  padding: 1rem 1.25rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.rules-section-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #f39c12;
+  margin: 0 0 0.75rem 0;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid rgba(243, 156, 18, 0.3);
+}
+
+.rules-section-title svg {
+  flex-shrink: 0;
+}
+
+.rules-description {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.9);
+  line-height: 1.6;
+  font-size: 0.95rem;
+}
+
+/* Game Phases */
+.rules-phase {
+  margin-bottom: 1rem;
+  padding-left: 0.5rem;
+  border-left: 3px solid rgba(102, 126, 234, 0.5);
+}
+
+.rules-phase:last-child {
+  margin-bottom: 0;
+}
+
+.rules-phase h4 {
+  margin: 0 0 0.35rem 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #667eea;
+}
+
+.rules-phase p {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+/* Scoring Cases */
+.rules-scoring-case {
+  margin-bottom: 1rem;
+  padding: 0.75rem;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.rules-scoring-case:last-of-type {
+  margin-bottom: 0.75rem;
+}
+
+.rules-scoring-case h4 {
+  margin: 0 0 0.5rem 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.rules-scoring-normal h4 {
+  color: #2ecc71;
+}
+
+.rules-scoring-warning h4 {
+  color: #e74c3c;
+}
+
+.rules-scoring-case ul {
+  margin: 0;
+  padding-left: 1.25rem;
+  list-style-type: disc;
+}
+
+.rules-scoring-case li {
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 0.9rem;
+  line-height: 1.6;
+}
+
+.rules-scoring-case p {
+  margin: 0 0 0.25rem 0;
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.rules-bonus-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0.75rem;
+  background: rgba(52, 152, 219, 0.15);
+  border-radius: 8px;
+  border: 1px solid rgba(52, 152, 219, 0.3);
+  color: #3498db;
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.rules-bonus-note svg {
+  flex-shrink: 0;
+  margin-top: 0.15rem;
+}
+
+/* Tips Section */
+.rules-tips {
+  background: rgba(155, 89, 182, 0.1);
+  border-color: rgba(155, 89, 182, 0.3);
+}
+
+.rules-tip {
+  padding: 0.6rem 0.75rem;
+  margin-bottom: 0.5rem;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+  border-left: 3px solid #9b59b6;
+}
+
+.rules-tip:last-child {
+  margin-bottom: 0;
+}
+
+.rules-tip p {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+/* RTL support for rules */
+[dir="rtl"] .rules-phase {
+  padding-left: 0;
+  padding-right: 0.5rem;
+  border-left: none;
+  border-right: 3px solid rgba(102, 126, 234, 0.5);
+}
+
+[dir="rtl"] .rules-tip {
+  border-left: none;
+  border-right: 3px solid #9b59b6;
+}
+
+[dir="rtl"] .rules-scoring-case ul {
+  padding-left: 0;
+  padding-right: 1.25rem;
+}
+
+/* RTL support for tutorial */
+[dir="rtl"] .rules-tutorial .rules-tab-switch {
+  align-self: flex-start;
+}
+
+[dir="rtl"] .rules-nav-buttons {
+  flex-direction: row-reverse;
+}
 
 /* Old game page styles (kept for compatibility) */
 .game-page {
@@ -3011,6 +3503,29 @@ select {
   pointer-events: none;
 }
 
+/* Player initials in token fallback */
+.token-initials {
+  font-size: 1rem;
+  font-weight: 700;
+  color: white;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+  line-height: 1;
+  pointer-events: none;
+  letter-spacing: 0.5px;
+}
+
+.token-small .token-initials {
+  font-size: 0.65rem;
+}
+
+.token-medium .token-initials {
+  font-size: 0.9rem;
+}
+
+.token-large .token-initials {
+  font-size: 1.2rem;
+}
+
 .token-upload-overlay {
   position: absolute;
   top: 0;
@@ -3323,11 +3838,27 @@ select {
   }
 }
 
-.floating-action-button {
+/* Floating Buttons Container */
+.floating-buttons-container {
   position: fixed;
   bottom: 2rem;
   right: 2rem;
-  z-index: 1000; /* Increased from 100 to ensure visibility above board */
+  z-index: 1000;
+  display: flex;
+  flex-direction: row-reverse; /* Right-to-left order (rightmost button first in DOM) */
+  align-items: center;
+  gap: 1rem;
+}
+
+[dir="rtl"] .floating-buttons-container {
+  right: 2rem;
+  left: auto;
+  flex-direction: row-reverse; /* Keep same visual order in RTL */
+}
+
+.floating-action-button {
+  position: relative; /* Changed from fixed - container handles positioning */
+  z-index: 1000;
   padding: 1.25rem 2rem;
   font-size: 1.2rem;
   font-weight: bold;
@@ -3359,8 +3890,9 @@ select {
   display: none;
 }
 
+/* RTL Support now handled by container */
+
 .floating-action-button.settings-button {
-  bottom: 8rem;
   background: linear-gradient(135deg, #e67e22 0%, #e74c3c 100%);
   box-shadow: 0 8px 24px rgba(230, 126, 34, 0.4);
 }
@@ -3370,16 +3902,19 @@ select {
 }
 
 .floating-action-button.cards-button {
-  bottom: 2rem;
-  right: 2rem;
+  /* No positioning needed - container handles layout */
 }
 
 .floating-action-button.qr-button {
-  bottom: 2rem;
-  right: 7.5rem; /* Middle position - to the left of settings */
   background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
   box-shadow: 0 8px 24px rgba(52, 152, 219, 0.4);
   animation: pulse-glow-blue 2s ease-in-out infinite;
+}
+
+.floating-action-button.qr-button.active {
+  background: linear-gradient(135deg, #2ecc71 0%, #27ae60 100%);
+  box-shadow: 0 8px 24px rgba(46, 204, 113, 0.5);
+  animation: pulse-glow-green 2s ease-in-out infinite;
 }
 
 .floating-action-button.qr-button:hover {
@@ -3389,6 +3924,32 @@ select {
 
 .floating-action-button.qr-button:active {
   transform: translateY(-2px) scale(1.02);
+}
+
+/* Floating Upload Button - Quick upload during deck building */
+.floating-action-button.upload-button {
+  background: linear-gradient(135deg, #9b59b6 0%, #8e44ad 100%);
+  box-shadow: 0 8px 24px rgba(155, 89, 182, 0.4);
+  animation: pulse-glow-purple 2s ease-in-out infinite;
+}
+
+.floating-action-button.upload-button:hover {
+  transform: translateY(-4px) scale(1.05);
+  box-shadow: 0 12px 32px rgba(155, 89, 182, 0.6);
+}
+
+.floating-action-button.upload-button:active {
+  transform: translateY(-2px) scale(1.02);
+}
+
+@keyframes pulse-glow-purple {
+  0%,
+  100% {
+    box-shadow: 0 8px 24px rgba(155, 89, 182, 0.4);
+  }
+  50% {
+    box-shadow: 0 8px 32px rgba(155, 89, 182, 0.7);
+  }
 }
 
 @keyframes pulse-glow-blue {
@@ -3401,29 +3962,31 @@ select {
   }
 }
 
-/* Upload Button - During deck building when uploads allowed */
-.floating-action-button.upload-button {
-  bottom: 2rem;
-  right: 13rem; /* Between QR and Start Game */
-  background: linear-gradient(135deg, #2ecc71 0%, #27ae60 100%);
-  box-shadow: 0 8px 24px rgba(46, 204, 113, 0.4);
-}
-
-.floating-action-button.upload-button:hover {
-  transform: translateY(-4px) scale(1.05);
-  box-shadow: 0 12px 32px rgba(46, 204, 113, 0.6);
-}
-
-.floating-action-button.upload-button:active {
-  transform: translateY(-2px) scale(1.02);
-}
-
 .floating-action-button.start-game-button {
-  bottom: 2rem;
-  right: 18.5rem; /* Leftmost position - to the left of upload */
   background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%);
   box-shadow: 0 8px 24px rgba(243, 156, 18, 0.4);
   animation: pulse-glow-orange 2s ease-in-out infinite;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.floating-action-button.start-game-button .start-button-text {
+  font-size: 0.9rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* Disabled state with reason - solid gray, same size as other buttons */
+.floating-action-button.start-game-button.btn-disabled-reason {
+  background: #7f8c8d;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  animation: none;
+}
+
+.floating-action-button.start-game-button.btn-disabled-reason
+  .start-button-text {
+  color: #ffffff;
 }
 
 .floating-action-button.start-game-button:hover {
@@ -3436,10 +3999,14 @@ select {
 }
 
 .floating-action-button.start-game-button:disabled {
-  opacity: 0.5;
   cursor: not-allowed;
   animation: none;
   transform: none;
+}
+
+.floating-action-button.start-game-button:disabled:hover {
+  transform: none;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 }
 
 @keyframes pulse-glow-orange {
@@ -3454,8 +4021,6 @@ select {
 
 /* Admin Settings Button - Available during active game */
 .floating-action-button.admin-settings-button {
-  bottom: 2rem;
-  right: 7.5rem; /* Left of main cards button */
   background: linear-gradient(135deg, #9b59b6 0%, #8e44ad 100%);
   box-shadow: 0 8px 24px rgba(155, 89, 182, 0.4);
 }
@@ -3470,14 +4035,28 @@ select {
 }
 
 .floating-action-button.continue-button {
-  bottom: 8rem;
   background: linear-gradient(135deg, #27ae60 0%, #2ecc71 100%);
   box-shadow: 0 8px 24px rgba(39, 174, 96, 0.4);
   animation: pulse-glow-green 2s ease-in-out infinite;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
 .floating-action-button.continue-button:hover {
   box-shadow: 0 12px 32px rgba(39, 174, 96, 0.6);
+}
+
+.floating-action-button.continue-button .continue-button-text {
+  font-size: 0.9rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.floating-action-button.continue-button:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+  animation: none;
 }
 
 @keyframes pulse-glow-green {
@@ -3488,6 +4067,22 @@ select {
   50% {
     box-shadow: 0 8px 32px rgba(39, 174, 96, 0.7);
   }
+}
+
+/* Rules Button - Subtle styling to not compete with primary actions */
+.floating-action-button.rules-button {
+  background: linear-gradient(135deg, #6c757d 0%, #868e96 100%);
+  box-shadow: 0 4px 16px rgba(108, 117, 125, 0.3);
+  opacity: 0.85;
+}
+
+.floating-action-button.rules-button:hover {
+  opacity: 1;
+  box-shadow: 0 6px 20px rgba(108, 117, 125, 0.5);
+}
+
+.floating-action-button.rules-button:active {
+  transform: translateY(-2px) scale(1.02);
 }
 
 @keyframes pulse-glow {
@@ -3509,6 +4104,54 @@ select {
   height: 2.75rem;
   font-size: 1.5rem;
   z-index: 102;
+}
+
+/* Modal Timer - positioned opposite the close button */
+/* Modal Timer - positioned inside modal, opposite close button */
+.modal-timer {
+  position: absolute;
+  top: 0.75rem;
+  left: 0.75rem;
+  z-index: 102;
+}
+
+/* Phase Timer Component */
+.phase-timer {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+}
+
+.phase-timer svg {
+  display: block;
+}
+
+.phase-timer .timer-text {
+  position: absolute;
+  font-weight: 700;
+  font-size: 0.9rem !important;
+  font-family: var(--font-mono, "SF Mono", Monaco, monospace);
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
+  pointer-events: none;
+  color: white !important;
+}
+
+/* Timer pulse animation when time is low */
+.phase-timer.timer-pulse {
+  animation: timer-pulse 1s ease-in-out infinite;
+}
+
+@keyframes timer-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.08);
+  }
 }
 
 .modal-content {
@@ -3556,6 +4199,17 @@ select {
   line-height: 1.3;
 }
 
+/* Clue text highlight - makes the clue stand out everywhere */
+.clue-highlight {
+  display: inline;
+  color: #cc0b0b;
+  font-weight: 900;
+  font-size: 1.15em;
+  text-shadow: 0 0 10px rgba(241, 196, 15, 0.4), 1px 1px 2px rgba(0, 0, 0, 0.5);
+  letter-spacing: 0.02em;
+  padding: 0.1em 0.4em;
+}
+
 .modal-header h3 {
   margin: 0;
   font-size: 1.1rem;
@@ -3570,6 +4224,103 @@ select {
   text-align: center;
   font-size: 0.85rem;
   line-height: 1.3;
+}
+
+/* Lobby Image Progress Bar */
+.lobby-image-progress {
+  width: 100%;
+  margin-top: 0.75rem;
+  padding: 0.5rem 0.75rem;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+}
+
+.lobby-progress-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.4rem;
+  font-size: 0.85rem;
+}
+
+.lobby-progress-header svg {
+  color: #95a5a6;
+  flex-shrink: 0;
+}
+
+.lobby-progress-label {
+  flex: 1;
+  text-align: start;
+  color: #f39c12;
+  font-weight: 500;
+}
+
+.lobby-progress-label:has(+ .lobby-progress-count) {
+  /* When ready, show in green */
+}
+
+.lobby-progress-count {
+  color: #95a5a6;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.lobby-progress-bar {
+  width: 100%;
+  height: 8px;
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.lobby-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #f39c12, #e67e22);
+  border-radius: 4px;
+  transition: width 0.3s ease-out;
+}
+
+.lobby-progress-fill.ready {
+  background: linear-gradient(90deg, #2ecc71, #27ae60);
+}
+
+/* When ready, also update the label color */
+.lobby-progress-fill.ready ~ .lobby-progress-label,
+.lobby-image-progress:has(.lobby-progress-fill.ready) .lobby-progress-label {
+  color: #2ecc71;
+}
+
+/* Mobile adjustments for lobby progress */
+@media (max-width: 768px) {
+  .lobby-image-progress {
+    margin-top: 0.5rem;
+    padding: 0.4rem 0.5rem;
+  }
+
+  .lobby-progress-header {
+    font-size: 0.8rem;
+    margin-bottom: 0.3rem;
+  }
+
+  .lobby-progress-bar {
+    height: 6px;
+  }
+}
+
+@media (max-width: 480px) {
+  .lobby-image-progress {
+    margin-top: 0.4rem;
+    padding: 0.35rem 0.4rem;
+  }
+
+  .lobby-progress-header {
+    font-size: 0.75rem;
+  }
+
+  .lobby-progress-bar {
+    height: 5px;
+  }
 }
 
 .modal-body {
@@ -3588,18 +4339,20 @@ select {
 
 .modal-footer {
   flex-shrink: 0;
-  height: 70px; /* Fixed height */
-  min-height: 70px;
-  max-height: 70px;
+  min-height: 60px; /* Minimum height for content */
   display: flex;
-  flex-direction: column;
+  flex-direction: row; /* Row layout for inline content like clue input + button */
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
   width: 100%;
-  padding: 0 1rem;
+  padding: 0.75rem 1rem;
+  padding-bottom: max(
+    0.75rem,
+    env(safe-area-inset-bottom, 0.75rem)
+  ); /* iOS safe area */
   box-sizing: border-box;
-  overflow: hidden;
+  /* Removed overflow: hidden - content should be visible */
 }
 
 .modal-footer-buttons {
@@ -3615,8 +4368,58 @@ select {
   max-width: 200px;
 }
 
+/* ConfirmModal - High z-index for nested modal support */
+.confirm-modal-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  height: 100dvh;
+  background: rgba(0, 0, 0, 0.85);
+  z-index: 200; /* Higher than regular modal (100) */
+  animation: fade-in 0.15s ease-out;
+}
+
+.confirm-modal-popup {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 201; /* Higher than regular modal popup (101) */
+  width: 90%;
+  max-width: 400px;
+  background: linear-gradient(180deg, #2c3e50 0%, #1a1a2e 100%);
+  border-radius: 16px;
+  border: 2px solid rgba(74, 144, 226, 0.3);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+  display: flex;
+  flex-direction: column;
+  padding: 1.5rem;
+  animation: modal-slide-up 0.2s ease-out;
+}
+
+.confirm-modal-popup .x-button {
+  position: absolute;
+  top: -12px;
+  right: -12px;
+  width: 32px;
+  height: 32px;
+}
+
+.confirm-modal-header {
+  text-align: center;
+  margin-bottom: 1rem;
+}
+
+.confirm-modal-header h2 {
+  font-size: 1.25rem;
+  color: #fff;
+  margin: 0;
+}
+
 .confirm-modal-content {
-  padding: 1rem;
+  padding: 1rem 0;
   text-align: center;
 }
 
@@ -3625,6 +4428,45 @@ select {
   line-height: 1.5;
   color: #ecf0f1;
   margin: 0;
+}
+
+.confirm-modal-footer {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.confirm-modal-footer button {
+  flex: 1;
+  max-width: 150px;
+  min-height: 44px; /* Touch target */
+}
+
+@keyframes modal-slide-up {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -45%);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%);
+  }
+}
+
+/* Mobile adjustments for confirm modal */
+@media (max-width: 480px) {
+  .confirm-modal-popup {
+    width: 95%;
+    padding: 1.25rem;
+  }
+
+  .confirm-modal-footer button {
+    min-height: 48px; /* Larger touch target on mobile */
+    font-size: 1rem;
+  }
 }
 
 /* Legacy modal-section support (for old code) */
@@ -3881,15 +4723,22 @@ select {
     line-height: 1.2;
   }
 
+  .clue-highlight {
+    font-size: 1.1em;
+    padding: 0.05em 0.3em;
+  }
+
   .modal-header h3 {
     font-size: 1rem;
   }
 
   .modal-footer {
-    height: 65px; /* Slightly smaller on mobile */
-    min-height: 65px;
-    max-height: 65px;
-    padding: 0 0.75rem;
+    min-height: 55px; /* Slightly smaller on mobile */
+    padding: 0.5rem 0.75rem;
+    padding-bottom: max(
+      0.5rem,
+      env(safe-area-inset-bottom, 0.5rem)
+    ); /* iOS safe area */
   }
 }
 
@@ -3979,19 +4828,36 @@ select {
   opacity: 0.6;
 }
 
+/* Locked card should maintain full visibility even when deck is disabled */
+.card.disabled.locked {
+  opacity: 1;
+}
+
 .card.locked {
   cursor: default;
   border-color: #2ecc71;
+  border-width: 3px;
   position: relative;
+  box-shadow: 0 0 20px rgba(46, 204, 113, 0.5), 0 8px 24px rgba(0, 0, 0, 0.3);
+  transform: translateY(-4px) scale(1.02);
+  z-index: 1;
 }
 
 .card.locked:hover {
-  transform: translateY(-2px);
+  transform: translateY(-4px) scale(1.02);
 }
 
 .card.storyteller-card {
   border-color: #f59e0b;
-  box-shadow: 0 0 15px rgba(245, 158, 11, 0.3);
+  border-width: 4px;
+  box-shadow: 0 0 20px rgba(245, 158, 11, 0.5), 0 0 40px rgba(245, 158, 11, 0.2);
+  transform: scale(1.02);
+}
+
+/* Storyteller card header - more prominent styling */
+.storyteller-card-header {
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%) !important;
+  font-weight: 800;
 }
 
 .card-lock-indicator {
@@ -4165,6 +5031,174 @@ select {
   flex: 1;
 }
 
+/* Storyteller Card with Gold Border */
+.card.storyteller-card-gold {
+  border: 3px solid #ffd700 !important;
+  box-shadow: 0 0 20px rgba(255, 215, 0, 0.4), 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+/* Card Owner Header - top of card during reveal */
+.card-owner-header {
+  background: linear-gradient(
+    135deg,
+    rgba(0, 0, 0, 0.9) 0%,
+    rgba(30, 30, 50, 0.95) 100%
+  );
+  color: white;
+  padding: 0.5rem 0.625rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  border-radius: 12px 12px 0 0;
+  min-height: 2.75rem;
+}
+
+/* Storyteller header with gold styling */
+.card-owner-header.storyteller-gold {
+  background: linear-gradient(135deg, #b8860b 0%, #daa520 50%, #ffd700 100%);
+  color: #1a1a2e;
+}
+
+.card-owner-header .owner-profile {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.card-owner-header .owner-avatar {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+}
+
+.card-owner-header.storyteller-gold .owner-avatar {
+  border-color: #1a1a2e;
+}
+
+.card-owner-header .owner-avatar-fallback {
+  /* background is set inline via getPlayerColor() */
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 0.875rem;
+}
+
+.card-owner-header.storyteller-gold .owner-avatar-fallback {
+  /* Storyteller gets gold border instead of different background */
+  color: #ffd700;
+  box-shadow: 0 0 0 2px #ffd700;
+}
+
+.card-owner-header .owner-name {
+  font-weight: 700;
+  font-size: 0.9rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.card-owner-header .owner-points {
+  font-weight: 800;
+  font-size: 1rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: 6px;
+  min-width: 2.25rem;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.card-owner-header .owner-points.positive {
+  background: rgba(46, 204, 113, 0.95);
+  color: white;
+}
+
+.card-owner-header .owner-points.negative {
+  background: rgba(231, 76, 60, 0.95);
+  color: white;
+}
+
+.card-owner-header .owner-points.zero {
+  background: rgba(149, 165, 166, 0.5);
+  color: white;
+}
+
+.card-owner-header.storyteller-gold .owner-points.positive {
+  background: rgba(0, 100, 0, 0.9);
+}
+
+.card-owner-header.storyteller-gold .owner-points.zero {
+  background: rgba(0, 0, 0, 0.4);
+  color: #1a1a2e;
+}
+
+/* Voter Profile Images - overlaid on bottom of card */
+.card-voters-overlay {
+  position: absolute;
+  bottom: 1rem;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  z-index: 10;
+  background: rgba(0, 0, 0, 0.75);
+  padding: 0.375rem 0.625rem;
+  border-radius: 12px;
+  backdrop-filter: blur(4px);
+  min-width: 60px;
+}
+
+.card-voters-overlay .voters-title {
+  font-size: 0.65rem;
+  font-weight: 600;
+  color: #bdc3c7;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+}
+
+.card-voters-overlay .voters-list {
+  display: flex;
+  gap: 0.25rem;
+}
+
+.card-voters-overlay .voter-profile {
+  flex-shrink: 0;
+}
+
+.card-voters-overlay .voter-img {
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid white;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.card-voters-overlay .voter-img-fallback {
+  /* background is set inline via getPlayerColor() */
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 0.75rem;
+}
+
+.card-voters-overlay .voter-overflow .voter-img-fallback {
+  background: rgba(50, 50, 70, 0.9);
+  font-size: 0.65rem;
+}
+
 .card-image-container img {
   width: 100%;
   height: 100%;
@@ -4204,11 +5238,7 @@ select {
   align-items: center;
 }
 
-.voter-name::before {
-  content: "→";
-  margin-right: 0.5rem;
-  color: #667eea;
-}
+/* Arrow removed per user request */
 
 .vote-count-badge {
   position: absolute;
@@ -4886,11 +5916,11 @@ select {
 
   /* Make status bar more compact on mobile to give board more space */
   .game-status-bar {
-    padding: 0.5rem 0.75rem;
-    margin-bottom: 0.25rem;
+    padding: 0.6rem 1rem;
+    margin-bottom: 0.35rem;
     flex-direction: row;
     text-align: left;
-    gap: 0.5rem;
+    gap: 0.75rem;
     flex-shrink: 0;
     width: 100%;
     box-sizing: border-box;
@@ -4900,17 +5930,17 @@ select {
   }
 
   .status-icon {
-    font-size: 1.5rem;
+    font-size: 1.8rem;
     flex-shrink: 0;
   }
 
   .status-text {
-    font-size: 0.85rem;
-    line-height: 1.1;
+    font-size: 1.1rem;
+    line-height: 1.2;
   }
 
   .status-subtext {
-    font-size: 0.7rem;
+    font-size: 0.9rem;
   }
 
   /* Adjust score track container for better mobile visibility */
@@ -4977,6 +6007,44 @@ select {
   }
 
   .card-voters-top .voters-label {
+    font-size: 0.65rem;
+  }
+
+  /* Responsive styles for card reveal UI */
+  .card-owner-header {
+    padding: 0.4rem 0.5rem;
+    min-height: 2.25rem;
+  }
+
+  .card-owner-header .owner-avatar {
+    width: 1.75rem;
+    height: 1.75rem;
+  }
+
+  .card-owner-header .owner-name {
+    font-size: 0.8rem;
+  }
+
+  .card-owner-header .owner-points {
+    font-size: 0.85rem;
+    padding: 0.2rem 0.4rem;
+  }
+
+  .card-voters-overlay {
+    padding: 0.25rem 0.375rem;
+  }
+
+  .card-voters-overlay .voters-title {
+    font-size: 0.55rem;
+  }
+
+  .card-voters-overlay .voter-img {
+    width: 1.5rem;
+    height: 1.5rem;
+    border-width: 1.5px;
+  }
+
+  .card-voters-overlay .voter-img-fallback {
     font-size: 0.65rem;
   }
 
@@ -5079,55 +6147,42 @@ select {
     min-height: 44px;
   }
 
+  /* Modal Timer - stays inside modal on mobile */
+  .modal-timer {
+    position: absolute;
+    top: 0.5rem;
+    left: 0.5rem;
+  }
+
+  /* Floating buttons container for mobile */
+  .floating-buttons-container {
+    bottom: 1rem;
+    right: 1rem;
+    gap: 0.75rem;
+    flex-wrap: wrap-reverse;
+    justify-content: flex-end;
+    max-width: calc(100vw - 2rem);
+  }
+
+  /* Start button takes full width on mobile - appears on top */
+  .floating-buttons-container .floating-action-button.start-game-button {
+    flex-basis: 100%;
+    justify-content: center;
+  }
+
   /* Adjust floating action button for mobile */
   .floating-action-button {
-    bottom: 1rem;
-    right: 1rem;
-    padding: 1rem 1.5rem;
-    font-size: 1rem;
-  }
-
-  .floating-action-button.settings-button {
-    bottom: 5rem;
-  }
-
-  .floating-action-button.cards-button {
-    bottom: 1rem;
-    right: 1rem;
-  }
-
-  .floating-action-button.qr-button {
-    bottom: 1rem;
-    right: 6rem; /* Middle position - to the left of settings */
-    padding: 1rem 1.5rem;
-    font-size: 1rem;
-  }
-
-  .floating-action-button.upload-button {
-    bottom: 1rem;
-    right: 11rem; /* Between QR and Start Game */
-    padding: 1rem 1.5rem;
-    font-size: 1rem;
-  }
-
-  .floating-action-button.start-game-button {
-    bottom: 1rem;
-    right: 16rem; /* Leftmost position - to the left of upload */
-    padding: 1rem 1.5rem;
-    font-size: 1rem;
-  }
-
-  .floating-action-button.admin-settings-button {
-    bottom: 1rem;
-    right: 6rem; /* Left of main cards button */
     padding: 1rem 1.5rem;
     font-size: 1rem;
   }
 
   .floating-action-button.continue-button {
-    bottom: 5rem;
     padding: 1rem 1.5rem;
     font-size: 1rem;
+  }
+
+  .floating-action-button.continue-button .continue-button-text {
+    font-size: 0.85rem;
   }
 
   .game-header {
@@ -5406,6 +6461,11 @@ select {
     line-height: 1.1;
   }
 
+  .clue-highlight {
+    font-size: 1em;
+    padding: 0.05em 0.25em;
+  }
+
   .modal-body {
     padding: 0.2rem 0;
     gap: 0.4rem;
@@ -5413,6 +6473,22 @@ select {
 
   .modal-section {
     padding: 0 0.2rem;
+  }
+
+  /* Compact clue submit row for small screens */
+  .clue-submit-row {
+    gap: 0.5rem;
+  }
+
+  .clue-input-inline {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.9rem;
+  }
+
+  .btn-inline {
+    padding: 0.5rem 1rem;
+    font-size: 0.9rem;
+    min-width: 70px;
   }
 
   /* Compact card header for small screens */
@@ -5445,6 +6521,55 @@ select {
     font-size: 0.6rem;
   }
 
+  /* Small mobile styles for card reveal UI */
+  .card-owner-header {
+    padding: 0.3rem 0.4rem;
+    min-height: 2rem;
+    gap: 0.375rem;
+  }
+
+  .card-owner-header .owner-profile {
+    gap: 0.375rem;
+  }
+
+  .card-owner-header .owner-avatar {
+    width: 1.5rem;
+    height: 1.5rem;
+  }
+
+  .card-owner-header .owner-avatar-fallback {
+    font-size: 0.7rem;
+  }
+
+  .card-owner-header .owner-name {
+    font-size: 0.7rem;
+  }
+
+  .card-owner-header .owner-points {
+    font-size: 0.75rem;
+    padding: 0.15rem 0.3rem;
+    min-width: 1.75rem;
+  }
+
+  .card-voters-overlay {
+    padding: 0.2rem 0.3rem;
+    gap: 0.15rem;
+  }
+
+  .card-voters-overlay .voters-title {
+    font-size: 0.5rem;
+  }
+
+  .card-voters-overlay .voter-img {
+    width: 1.25rem;
+    height: 1.25rem;
+    border-width: 1px;
+  }
+
+  .card-voters-overlay .voter-img-fallback {
+    font-size: 0.55rem;
+  }
+
   .modal-close-button {
     position: fixed;
     top: 0.5rem;
@@ -5457,55 +6582,42 @@ select {
     min-height: 44px;
   }
 
+  /* Modal Timer - stays inside modal on small mobile */
+  .modal-timer {
+    position: absolute;
+    top: 0.5rem;
+    left: 0.5rem;
+  }
+
+  /* Floating buttons container for small mobile */
+  .floating-buttons-container {
+    bottom: 0.5rem;
+    right: 0.5rem;
+    gap: 0.5rem;
+    flex-wrap: wrap-reverse;
+    justify-content: flex-end;
+    max-width: calc(100vw - 1rem);
+  }
+
+  /* Start button takes full width on small mobile */
+  .floating-buttons-container .floating-action-button.start-game-button {
+    flex-basis: 100%;
+    justify-content: center;
+  }
+
   /* Make floating buttons smaller */
   .floating-action-button {
-    padding: 0.75rem 1rem;
-    font-size: 0.9rem;
-    bottom: 0.5rem;
-    right: 0.5rem;
-  }
-
-  .floating-action-button.settings-button {
-    bottom: 4rem;
-  }
-
-  .floating-action-button.cards-button {
-    bottom: 0.5rem;
-    right: 0.5rem;
-  }
-
-  .floating-action-button.qr-button {
-    bottom: 0.5rem;
-    right: 5rem; /* Middle position - to the left of settings */
-    padding: 0.75rem 1rem;
-    font-size: 0.9rem;
-  }
-
-  .floating-action-button.upload-button {
-    bottom: 0.5rem;
-    right: 9.5rem; /* Between QR and Start Game */
-    padding: 0.75rem 1rem;
-    font-size: 0.9rem;
-  }
-
-  .floating-action-button.start-game-button {
-    bottom: 0.5rem;
-    right: 14rem; /* Leftmost position - to the left of upload */
-    padding: 0.75rem 1rem;
-    font-size: 0.9rem;
-  }
-
-  .floating-action-button.admin-settings-button {
-    bottom: 0.5rem;
-    right: 5rem; /* Left of main cards button */
     padding: 0.75rem 1rem;
     font-size: 0.9rem;
   }
 
   .floating-action-button.continue-button {
-    bottom: 4rem;
     padding: 0.75rem 1rem;
     font-size: 0.9rem;
+  }
+
+  .floating-action-button.continue-button .continue-button-text {
+    font-size: 0.8rem;
   }
 
   /* Compact clue display */

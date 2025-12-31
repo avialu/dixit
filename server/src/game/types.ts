@@ -59,12 +59,15 @@ export interface GameState {
   boardBackgroundImage: string | null; // Custom board background image (base64 data URL)
   boardPattern: BoardPattern; // Snake (zigzag) or Spiral (snail) pattern
   language: Language; // Room language preference set by admin
+  soundEnabled: boolean; // Whether turn notification sounds are enabled (admin-controlled)
   currentRound: number;
   storytellerId: string | null;
   currentClue: string | null;
   submittedCards: SubmittedCard[];
   votes: Vote[];
   lastScoreDeltas: Map<string, number>; // playerId -> score change
+  phaseStartTime: number | null; // Unix timestamp when current phase started (for timer)
+  phaseDuration: number | null; // Duration in seconds for current phase timer (null = no timer)
 }
 
 // Public state sent to all clients
@@ -86,6 +89,7 @@ export interface RoomState {
   boardBackgroundImage: string | null; // Custom board background image (base64 data URL)
   boardPattern: BoardPattern; // Snake (zigzag) or Spiral (snail) pattern
   language: Language; // Room language preference set by admin
+  soundEnabled: boolean; // Whether turn notification sounds are enabled (admin-controlled)
   deckImages: {
     id: string;
     uploadedBy: string;
@@ -98,6 +102,7 @@ export interface RoomState {
     cardId: string;
     imageData: string;
     position: number;
+    playerId: string; // Who submitted this card
   }[]; // Only populated during REVEAL, VOTING, SCORING phases
   votes: {
     voterId: string;
@@ -108,6 +113,8 @@ export interface RoomState {
     delta: number;
   }[];
   serverUrl: string; // LAN URL for joining
+  phaseStartTime: number | null; // Unix timestamp when current phase started (for timer)
+  phaseDuration: number | null; // Duration in seconds for current phase timer (null = no timer)
 }
 
 // Private state sent to individual player

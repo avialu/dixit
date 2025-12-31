@@ -34,12 +34,15 @@ export class GameManager {
       boardBackgroundImage: null, // No custom background by default
       boardPattern: "spiral", // Default: spiral (snail) pattern
       language: "en", // Default language: English
+      soundEnabled: true, // Turn notification sounds enabled by default
       currentRound: 0,
       storytellerId: null,
       currentClue: null,
       submittedCards: [],
       votes: [],
       lastScoreDeltas: new Map(),
+      phaseStartTime: null, // No timer during deck building
+      phaseDuration: null,
     };
     this.deckManager = new DeckManager(""); // Will set admin on first player
     this.submittedCardsData = new Map();
@@ -193,6 +196,68 @@ export class GameManager {
       clientId,
       playerName: player.name,
     });
+  }
+
+  /**
+   * Auto-transfer admin role when admin is disconnected
+   * Called after grace period expires if admin hasn't reconnected
+   * @param disconnectedAdminId The client ID of the disconnected admin
+   * @returns true if admin was transferred, false otherwise
+   */
+  autoTransferAdmin(disconnectedAdminId: string): boolean {
+    const disconnectedAdmin = this.state.players.get(disconnectedAdminId);
+
+    // Verify the player is still disconnected and still admin
+    if (!disconnectedAdmin) {
+      logger.debug("Auto-transfer admin: player not found", {
+        disconnectedAdminId,
+      });
+      return false;
+    }
+
+    if (disconnectedAdmin.isConnected) {
+      logger.debug("Auto-transfer admin: player already reconnected", {
+        disconnectedAdminId,
+      });
+      return false;
+    }
+
+    if (!disconnectedAdmin.isAdmin) {
+      logger.debug("Auto-transfer admin: player is no longer admin", {
+        disconnectedAdminId,
+      });
+      return false;
+    }
+
+    // Find first connected player to become admin
+    for (const [pid, p] of this.state.players.entries()) {
+      if (pid !== disconnectedAdminId && p.isConnected) {
+        // Demote disconnected admin
+        disconnectedAdmin.isAdmin = false;
+
+        // Promote new admin
+        p.isAdmin = true;
+
+        // Update deck manager admin
+        this.deckManager.setAdmin(pid);
+
+        logger.info("Auto-transferred admin from disconnected player", {
+          previousAdminId: disconnectedAdminId,
+          previousAdminName: disconnectedAdmin.name,
+          newAdminId: pid,
+          newAdminName: p.name,
+        });
+
+        return true;
+      }
+    }
+
+    // No connected players to transfer to - keep admin with disconnected player
+    logger.warn("No connected players to transfer admin to", {
+      disconnectedAdminId,
+      disconnectedAdminName: disconnectedAdmin.name,
+    });
+    return false;
   }
 
   kickPlayer(adminId: string, targetPlayerId: string): void {
@@ -478,6 +543,16 @@ export class GameManager {
     logger.info("Game language updated", { adminId, language });
   }
 
+  /**
+   * Set sound enabled/disabled (admin only)
+   */
+  setSoundEnabled(enabled: boolean, adminId: string): void {
+    this.validateAdmin(adminId);
+
+    this.state.soundEnabled = enabled;
+    logger.info("Sound setting updated", { adminId, enabled });
+  }
+
   uploadImage(imageData: string, playerId: string): Card {
     const card = this.deckManager.addImage(imageData, playerId);
     return card;
@@ -485,6 +560,10 @@ export class GameManager {
 
   deleteImage(cardId: string, playerId: string): boolean {
     return this.deckManager.deleteImage(cardId, playerId);
+  }
+
+  getDeckSize(): number {
+    return this.deckManager.getDeckSize();
   }
 
   lockDeck(adminId: string): void {
@@ -555,6 +634,10 @@ export class GameManager {
     this.state.storytellerId = admin!.id;
     this.state.currentRound = 1;
 
+    // Start phase timer for storyteller
+    this.state.phaseStartTime = Date.now();
+    this.state.phaseDuration = GAME_CONSTANTS.PHASE_TIMERS.STORYTELLER_CHOICE;
+
     this.state.phase = GamePhase.STORYTELLER_CHOICE;
   }
 
@@ -576,16 +659,21 @@ export class GameManager {
       throw new Error("You do not have that card");
     }
 
-    const card = player.removeCard(cardId);
+    // Find the card in hand (don't remove it yet - will be removed at end of round)
+    const card = player.hand.find((c) => c.id === cardId);
     if (!card) {
       throw new Error("Card not found in hand");
     }
 
-    // Store card image data
+    // Store card image data for reveal phase
     this.submittedCardsData.set(cardId, card.imageData);
 
     this.state.currentClue = clue;
     this.state.submittedCards = [{ cardId, playerId }];
+
+    // Start phase timer for players
+    this.state.phaseStartTime = Date.now();
+    this.state.phaseDuration = GAME_CONSTANTS.PHASE_TIMERS.PLAYERS_CHOICE;
 
     this.state.phase = GamePhase.PLAYERS_CHOICE;
   }
@@ -617,12 +705,13 @@ export class GameManager {
       throw new Error("You do not have that card");
     }
 
-    const card = player.removeCard(cardId);
+    // Find the card in hand (don't remove it yet - will be removed at end of round)
+    const card = player.hand.find((c) => c.id === cardId);
     if (!card) {
       throw new Error("Card not found in hand");
     }
 
-    // Store card image data
+    // Store card image data for reveal phase
     this.submittedCardsData.set(cardId, card.imageData);
 
     this.state.submittedCards.push({ cardId, playerId });
@@ -657,6 +746,11 @@ export class GameManager {
     });
 
     this.state.submittedCards = shuffled;
+
+    // Start phase timer for voting
+    this.state.phaseStartTime = Date.now();
+    this.state.phaseDuration = GAME_CONSTANTS.PHASE_TIMERS.VOTING;
+
     this.state.phase = GamePhase.VOTING;
   }
 
@@ -738,13 +832,139 @@ export class GameManager {
       }
     }
 
+    // Start timer for reveal phase (30 seconds to view results)
+    this.state.phaseStartTime = Date.now();
+    this.state.phaseDuration = GAME_CONSTANTS.PHASE_TIMERS.REVEAL;
+
     this.state.phase = GamePhase.REVEAL;
   }
 
-  // Admin advances from REVEAL to next round (or game end)
-  advanceToNextRound(adminId: string): void {
-    this.validateAdmin(adminId);
+  // Auto-submit for storyteller when timer expires (server-side)
+  autoSubmitStoryteller(): boolean {
+    if (this.state.phase !== GamePhase.STORYTELLER_CHOICE) {
+      return false;
+    }
 
+    const storytellerId = this.state.storytellerId;
+    if (!storytellerId) return false;
+
+    // Check if already submitted
+    if (this.state.submittedCards.length > 0) {
+      return false;
+    }
+
+    const player = this.state.players.get(storytellerId);
+    if (!player || player.hand.length === 0) return false;
+
+    // Pick random card
+    const randomCard =
+      player.hand[Math.floor(Math.random() * player.hand.length)];
+    const defaultClue = `${player.name} was sleeping...`;
+
+    // Store card image data for reveal phase
+    this.submittedCardsData.set(randomCard.id, randomCard.imageData);
+
+    this.state.currentClue = defaultClue;
+    this.state.submittedCards = [
+      { cardId: randomCard.id, playerId: storytellerId },
+    ];
+
+    // Start phase timer for players
+    this.state.phaseStartTime = Date.now();
+    this.state.phaseDuration = GAME_CONSTANTS.PHASE_TIMERS.PLAYERS_CHOICE;
+
+    this.state.phase = GamePhase.PLAYERS_CHOICE;
+    return true;
+  }
+
+  // Auto-submit for players who haven't submitted when timer expires
+  autoSubmitPlayers(): boolean {
+    if (this.state.phase !== GamePhase.PLAYERS_CHOICE) {
+      return false;
+    }
+
+    const submittedPlayerIds = this.state.submittedCards.map(
+      (sc) => sc.playerId
+    );
+    let anySubmitted = false;
+
+    for (const [playerId, player] of this.state.players) {
+      // Skip storyteller
+      if (playerId === this.state.storytellerId) continue;
+
+      // Skip if already submitted
+      if (submittedPlayerIds.includes(playerId)) continue;
+
+      // Skip if no cards in hand (shouldn't happen but safety check)
+      if (player.hand.length === 0) continue;
+
+      // Auto-submit random card
+      const randomCard =
+        player.hand[Math.floor(Math.random() * player.hand.length)];
+      this.submittedCardsData.set(randomCard.id, randomCard.imageData);
+      this.state.submittedCards.push({ cardId: randomCard.id, playerId });
+      anySubmitted = true;
+    }
+
+    // If we submitted for anyone, check if we should advance
+    if (anySubmitted) {
+      const expectedSubmissions = this.state.players.size;
+      if (this.state.submittedCards.length >= expectedSubmissions) {
+        this.shuffleCardsForVoting();
+      }
+    }
+
+    // Return true if we auto-submitted or if phase advanced to VOTING
+    return anySubmitted || (this.state.phase as string) === "VOTING";
+  }
+
+  // Auto-vote for players who haven't voted when timer expires
+  autoVotePlayers(): boolean {
+    if (this.state.phase !== GamePhase.VOTING) {
+      return false;
+    }
+
+    const votedPlayerIds = this.state.votes.map((v) => v.voterId);
+    let anyVoted = false;
+
+    for (const [playerId, player] of this.state.players) {
+      // Skip storyteller
+      if (playerId === this.state.storytellerId) continue;
+
+      // Skip if already voted
+      if (votedPlayerIds.includes(playerId)) continue;
+
+      // Get own card to exclude from voting options
+      const ownCard = this.state.submittedCards.find(
+        (sc) => sc.playerId === playerId
+      );
+      const validCards = this.state.submittedCards.filter(
+        (sc) => sc.cardId !== ownCard?.cardId
+      );
+
+      if (validCards.length === 0) continue;
+
+      // Auto-vote for random valid card
+      const randomCard =
+        validCards[Math.floor(Math.random() * validCards.length)];
+      this.state.votes.push({ voterId: playerId, cardId: randomCard.cardId });
+      anyVoted = true;
+    }
+
+    // If we voted for anyone, check if we should advance to reveal
+    if (anyVoted) {
+      const expectedVotes = this.state.players.size - 1; // minus storyteller
+      if (this.state.votes.length >= expectedVotes) {
+        this.transitionToReveal();
+      }
+    }
+
+    // Return true if we auto-voted or if phase advanced to REVEAL
+    return anyVoted || (this.state.phase as string) === "REVEAL";
+  }
+
+  // Core logic to advance from REVEAL to next round (shared between admin and auto-advance)
+  private advanceFromReveal(): void {
     if (this.state.phase !== GamePhase.REVEAL) {
       throw new Error("Can only advance from REVEAL phase");
     }
@@ -777,6 +997,14 @@ export class GameManager {
       }
     }
 
+    // Remove submitted cards from players' hands (they were kept for display until now)
+    for (const submittedCard of this.state.submittedCards) {
+      const player = this.state.players.get(submittedCard.playerId);
+      if (player) {
+        player.removeCard(submittedCard.cardId);
+      }
+    }
+
     // Check if deck has enough cards to continue
     const needCards = this.state.players.size; // Each player needs 1 to refill to 6
     if (this.deckManager.getDeckSize() < needCards) {
@@ -806,7 +1034,22 @@ export class GameManager {
     this.state.currentRound++;
     this.submittedCardsData.clear();
 
+    // Start phase timer for new storyteller
+    this.state.phaseStartTime = Date.now();
+    this.state.phaseDuration = GAME_CONSTANTS.PHASE_TIMERS.STORYTELLER_CHOICE;
+
     this.state.phase = GamePhase.STORYTELLER_CHOICE;
+  }
+
+  // Admin advances from REVEAL to next round (or game end)
+  advanceToNextRound(adminId: string): void {
+    this.validateAdmin(adminId);
+    this.advanceFromReveal();
+  }
+
+  // Server auto-advances from REVEAL to next round (timer expired)
+  autoAdvanceFromReveal(): void {
+    this.advanceFromReveal();
   }
 
   resetGame(adminId: string): void {
@@ -829,6 +1072,10 @@ export class GameManager {
     this.state.votes = [];
     this.state.lastScoreDeltas.clear();
     this.submittedCardsData.clear();
+
+    // Clear timer
+    this.state.phaseStartTime = null;
+    this.state.phaseDuration = null;
 
     // Unlock and shuffle the deck for replay
     this.deckManager.reset();
@@ -861,6 +1108,10 @@ export class GameManager {
     this.state.allowPlayerUploads = true;
     this.state.winTarget = GAME_CONSTANTS.DEFAULT_WIN_TARGET; // Reset to default
     this.submittedCardsData.clear();
+
+    // Clear timer
+    this.state.phaseStartTime = null;
+    this.state.phaseDuration = null;
   }
 
   // State Projections
@@ -928,6 +1179,7 @@ export class GameManager {
       boardBackgroundImage: this.state.boardBackgroundImage,
       boardPattern: this.state.boardPattern,
       language: this.state.language,
+      soundEnabled: this.state.soundEnabled,
       deckImages,
       currentRound: this.state.currentRound,
       storytellerId: this.state.storytellerId,
@@ -937,6 +1189,8 @@ export class GameManager {
       votes,
       lastScoreDeltas,
       serverUrl: "", // Will be populated by server.ts
+      phaseStartTime: this.state.phaseStartTime,
+      phaseDuration: this.state.phaseDuration,
     };
   }
 
@@ -956,7 +1210,7 @@ export class GameManager {
 
     return {
       playerId,
-      hand: player.hand,
+      hand: player.hand, // Card stays in hand until next round
       mySubmittedCardId: mySubmittedCard?.cardId || null,
       mySubmittedCardImage,
       myVote: myVote?.cardId || null,

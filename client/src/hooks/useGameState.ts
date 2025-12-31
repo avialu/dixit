@@ -28,15 +28,23 @@ export interface RoomState {
   boardBackgroundImage: string | null; // Custom board background image (base64 data URL)
   boardPattern: "snake" | "spiral"; // Snake (zigzag) or Spiral (snail) pattern
   language: "en" | "he"; // Room language preference (admin sets, players can override locally)
+  soundEnabled: boolean; // Whether turn notification sounds are enabled (admin-controlled)
   deckImages: { id: string; uploadedBy: string; imageData: string }[];
   currentRound: number;
   storytellerId: string | null;
   currentClue: string | null;
   submittedPlayerIds: string[]; // Player IDs who have submitted cards
-  revealedCards: { cardId: string; imageData: string; position: number }[];
+  revealedCards: {
+    cardId: string;
+    imageData: string;
+    position: number;
+    playerId: string;
+  }[];
   votes: { voterId: string; cardId: string }[];
   lastScoreDeltas: { playerId: string; delta: number }[];
   serverUrl: string;
+  phaseStartTime: number | null; // Unix timestamp when current phase started (for timer)
+  phaseDuration: number | null; // Duration in seconds for current phase timer (null = no timer)
 }
 
 export interface PlayerState {
@@ -70,7 +78,11 @@ export function useGameState(socket: Socket | null) {
       setRoomState((prevState) => {
         // If we have cached images and the new state has empty deckImages,
         // preserve our cached images (server sends empty during active game for efficiency)
-        if (prevState && prevState.deckImages.length > 0 && state.deckImages.length === 0) {
+        if (
+          prevState &&
+          prevState.deckImages.length > 0 &&
+          state.deckImages.length === 0
+        ) {
           return { ...state, deckImages: prevState.deckImages };
         }
         return state;
@@ -78,37 +90,47 @@ export function useGameState(socket: Socket | null) {
     });
 
     // Incremental image updates - much more efficient than sending all images
-    socket.on("imageAdded", (image: { id: string; uploadedBy: string; imageData: string }) => {
-      setRoomState((prevState) => {
-        if (!prevState) return prevState;
-        // Avoid duplicates
-        if (prevState.deckImages.some((img) => img.id === image.id)) {
-          return prevState;
-        }
-        return {
-          ...prevState,
-          deckImages: [...prevState.deckImages, image],
-          deckSize: prevState.deckSize + 1,
-        };
-      });
-    });
+    // Server now sends deckSize with each image, eliminating need for full roomState broadcast
+    socket.on(
+      "imageAdded",
+      (image: {
+        id: string;
+        uploadedBy: string;
+        imageData: string;
+        deckSize: number;
+      }) => {
+        setRoomState((prevState) => {
+          if (!prevState) return prevState;
+          // Avoid duplicates
+          if (prevState.deckImages.some((img) => img.id === image.id)) {
+            return prevState;
+          }
+          return {
+            ...prevState,
+            deckImages: [...prevState.deckImages, image],
+            deckSize: image.deckSize, // Use server's deckSize for accuracy
+          };
+        });
+      }
+    );
 
-    socket.on("imageDeleted", (data: { id: string }) => {
+    // Incremental image deletion - server sends authoritative deckSize
+    socket.on("imageDeleted", (data: { id: string; deckSize: number }) => {
       setRoomState((prevState) => {
         if (!prevState) return prevState;
         return {
           ...prevState,
           deckImages: prevState.deckImages.filter((img) => img.id !== data.id),
-          deckSize: Math.max(0, prevState.deckSize - 1),
+          deckSize: data.deckSize, // Use server's deckSize for accuracy
         };
       });
     });
 
     socket.on("playerState", (state: PlayerState) => {
-      console.log("Received playerState:", { 
-        playerId: state.playerId, 
+      console.log("Received playerState:", {
+        playerId: state.playerId,
         handSize: state.hand?.length ?? 0,
-        mySubmittedCardId: state.mySubmittedCardId 
+        mySubmittedCardId: state.mySubmittedCardId,
       });
       setPlayerState(state);
     });
@@ -321,6 +343,10 @@ export function useGameState(socket: Socket | null) {
     socket?.emit("adminSetLanguage", { language });
   };
 
+  const setSoundEnabled = (enabled: boolean) => {
+    socket?.emit("adminSetSoundEnabled", { enabled });
+  };
+
   const dismissError = () => {
     setError(null);
   };
@@ -353,6 +379,7 @@ export function useGameState(socket: Socket | null) {
       setBoardBackground,
       setBoardPattern,
       setLanguage,
+      setSoundEnabled,
       dismissError,
     },
   };
