@@ -1039,9 +1039,10 @@ export function VotingModal(props: VotingModalProps): ModalContentResult {
   );
 
   // Calculate who we're waiting for (players who haven't voted yet)
-  // Also exclude current player if they've locally voted (before server state updates)
+  // Show for: players who voted, storyteller, and spectators
   const votedPlayerIds = roomState.votes.map((v) => v.voterId);
-  const waitingForPlayers = hasVoted
+  const shouldShowWaitingFor = hasVoted || isStoryteller || isSpectator;
+  const waitingForPlayers = shouldShowWaitingFor
     ? eligiblePlayers
         .filter((p) => !votedPlayerIds.includes(p.id))
         .filter((p) => p.id !== playerState?.playerId) // Exclude self if locally voted
@@ -1095,7 +1096,7 @@ export function VotingModal(props: VotingModalProps): ModalContentResult {
         </strong>{" "}
         <span className="clue-highlight">"{roomState.currentClue}"</span>
       </p>
-      {hasVoted && waitingForPlayers.length > 0 && !allVotesIn && (
+      {shouldShowWaitingFor && waitingForPlayers.length > 0 && !allVotesIn && (
         <p
           className="clue-reminder"
           style={{ color: "#95a5a6", fontSize: "0.95rem" }}
@@ -1131,7 +1132,7 @@ export function VotingModal(props: VotingModalProps): ModalContentResult {
     >
       {t("voting.submitVote")}
     </Button>
-  ) : (hasVoted || isStoryteller) && !allVotesIn ? (
+  ) : shouldShowWaitingFor && !allVotesIn ? (
     <div
       style={{
         display: "flex",

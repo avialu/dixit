@@ -29,7 +29,7 @@ export function ProfileImageUpload({
     : "profile-upload-wrapper";
 
   return (
-    <div className={wrapperClass}>
+    <div className={wrapperClass} onClick={(e) => e.stopPropagation()}>
       <label className="profile-upload-label" title="Click to upload profile image">
         {imageUrl ? (
           <img

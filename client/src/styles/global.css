@@ -4873,11 +4873,8 @@ select {
   flex-direction: column;
 }
 
-.card img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
+/* Note: Use .card-image-container > img for main card images
+   to avoid affecting nested images like voter profile images */
 
 /* When card has drawer, image container needs to flex */
 .card .card-image-container {
@@ -4886,7 +4883,7 @@ select {
   overflow: hidden;
 }
 
-.card .card-image-container img {
+.card .card-image-container > img {
   width: 100%;
   height: 100%;
   object-fit: cover;
@@ -5255,19 +5252,28 @@ select {
   flex-shrink: 0;
 }
 
-.card-voters-overlay .voter-img {
+/* Voter images in reveal phase - must be small profile pictures */
+.card .card-voters-overlay .voter-img {
   width: 1.75rem;
   height: 1.75rem;
+  min-width: 1.75rem;
+  max-width: 1.75rem;
+  min-height: 1.75rem;
+  max-height: 1.75rem;
   border-radius: 50%;
   object-fit: cover;
   border: 2px solid white;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
 }
 
-.card-voters-overlay .voter-img-fallback {
+.card .card-voters-overlay .voter-img-fallback {
   /* background is set inline via getPlayerColor() */
   width: 1.75rem;
   height: 1.75rem;
+  min-width: 1.75rem;
+  max-width: 1.75rem;
+  min-height: 1.75rem;
+  max-height: 1.75rem;
   border-radius: 50%;
   border: 2px solid white;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
@@ -5284,7 +5290,7 @@ select {
   font-size: 0.65rem;
 }
 
-.card-image-container img {
+.card-image-container > img {
   width: 100%;
   height: 100%;
   object-fit: cover;
@@ -6133,15 +6139,23 @@ select {
     font-size: 0.55rem;
   }
 
-  .card-voters-overlay .voter-img {
+  .card .card-voters-overlay .voter-img {
     width: 1.5rem;
     height: 1.5rem;
+    min-width: 1.5rem;
+    max-width: 1.5rem;
+    min-height: 1.5rem;
+    max-height: 1.5rem;
     border-width: 1.5px;
   }
 
-  .card-voters-overlay .voter-img-fallback {
+  .card .card-voters-overlay .voter-img-fallback {
     width: 1.5rem;
     height: 1.5rem;
+    min-width: 1.5rem;
+    max-width: 1.5rem;
+    min-height: 1.5rem;
+    max-height: 1.5rem;
     border-width: 1.5px;
     font-size: 0.65rem;
   }
@@ -6658,15 +6672,23 @@ select {
     font-size: 0.5rem;
   }
 
-  .card-voters-overlay .voter-img {
+  .card .card-voters-overlay .voter-img {
     width: 1.25rem;
     height: 1.25rem;
+    min-width: 1.25rem;
+    max-width: 1.25rem;
+    min-height: 1.25rem;
+    max-height: 1.25rem;
     border-width: 1px;
   }
 
-  .card-voters-overlay .voter-img-fallback {
+  .card .card-voters-overlay .voter-img-fallback {
     width: 1.25rem;
     height: 1.25rem;
+    min-width: 1.25rem;
+    max-width: 1.25rem;
+    min-height: 1.25rem;
+    max-height: 1.25rem;
     border-width: 1px;
     font-size: 0.55rem;
   }
