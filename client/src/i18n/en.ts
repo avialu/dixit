@@ -103,7 +103,7 @@ export const en: TranslationKeys = {
   deckUploader: {
     deck: "Deck",
     myImages: "My Images",
-    maxImages: "Maximum 200",
+    maxImages: "30 recommended",
     minPlayers: "Minimum 3",
     allImages: "All Images",
     needMore: "Need {count} more",

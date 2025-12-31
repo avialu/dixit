@@ -124,7 +124,7 @@ SERVER_URL=http://YOUR_IP:3000 npm start
 1. **Host starts server** on their computer
 2. **Players join** by visiting the LAN URL on their phones/laptops
 3. **First player** becomes admin (shows 👑)
-4. **Upload images** (100 minimum, 20 max per player)
+4. **Upload images** (100 minimum, 200 max per player)
    - Images auto-resize to 1024px max dimension
    - Compressed to ~500KB
 5. **Admin starts game** when ready
@@ -336,7 +336,7 @@ PORT=3001 npm start
 
 - Check file size (max 10MB before compression)
 - Only image files accepted
-- Max 20 images per player
+- Max 200 images per player (30 recommended)
 - Deck must not be locked
 
 ### Game Stuck in Phase

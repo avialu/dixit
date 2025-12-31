@@ -21,7 +21,7 @@ Be the best storyteller! Give creative clues that some (but not all) players gue
 
 - **Minimum Images**: 100 images required to start
 - **Upload Limits**:
-  - Max 200 images per player
+  - Max 200 images per player (30 recommended)
   - Max 10MB per image before compression
   - Images auto-resized to 1024px maximum dimension
 

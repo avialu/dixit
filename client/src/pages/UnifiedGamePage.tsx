@@ -693,9 +693,17 @@ export function UnifiedGamePage({
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
+    // Capture files immediately
+    const fileArray = Array.from(files);
+    
+    // Clear input to allow re-selecting same files
+    if (floatingUploadRef.current) {
+      floatingUploadRef.current.value = "";
+    }
+
     setIsFloatingUploading(true);
     try {
-      const results = await resizeAndCompressImages(Array.from(files));
+      const results = await resizeAndCompressImages(fileArray);
       for (const result of results) {
         if (!result.error && result.imageData) {
           _onUploadImage(result.imageData);
@@ -705,9 +713,6 @@ export function UnifiedGamePage({
       console.error("Upload error:", err);
     } finally {
       setIsFloatingUploading(false);
-      if (floatingUploadRef.current) {
-        floatingUploadRef.current.value = "";
-      }
     }
   };
 

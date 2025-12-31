@@ -102,7 +102,7 @@ export const he: TranslationKeys = {
   deckUploader: {
     deck: "חפיסה",
     myImages: "התמונות שלי",
-    maxImages: "מקסימום 200",
+    maxImages: "30 מומלץ",
     minPlayers: "מינימום 3",
     allImages: "כל התמונות",
     needMore: "דרושות עוד {count}",

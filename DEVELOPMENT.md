@@ -46,6 +46,7 @@ npm run dev
 ```
 
 This starts:
+
 - Server on `http://localhost:3000`
 - Client dev server with hot reload on `http://localhost:5174`
 - Automatic recompilation on file changes
@@ -62,6 +63,7 @@ npm start
 ```
 
 The server will display:
+
 ```
 =================================
 🎮 DIXIT GAME SERVER RUNNING
@@ -119,25 +121,27 @@ server/src/__tests__/
 ### Writing Tests
 
 **Unit Tests:**
-```typescript
-import { describe, it, expect, beforeEach } from 'vitest';
-import { GameManager } from '../game/GameManager.js';
 
-describe('GameManager', () => {
+```typescript
+import { describe, it, expect, beforeEach } from "vitest";
+import { GameManager } from "../game/GameManager.js";
+
+describe("GameManager", () => {
   let gameManager: GameManager;
 
   beforeEach(() => {
     gameManager = new GameManager();
   });
 
-  it('should add first player as admin', () => {
-    const player = gameManager.addPlayer('Alice', 'client-1');
+  it("should add first player as admin", () => {
+    const player = gameManager.addPlayer("Alice", "client-1");
     expect(player.isAdmin).toBe(true);
   });
 });
 ```
 
 **Integration Tests:**
+
 - Test complete game flows (join → upload → play → score)
 - Simulate multiple players
 - Verify state transitions
@@ -146,6 +150,7 @@ describe('GameManager', () => {
 ### Test Requirements
 
 Before committing:
+
 - ✅ All tests passing: `npm test`
 - ✅ Client builds: `cd client && npm run build`
 - ✅ No TypeScript errors
@@ -165,11 +170,13 @@ This builds both server and client workspaces.
 ### What Gets Built
 
 **Server (`server/dist/`):**
+
 - TypeScript compiled to JavaScript
 - Source maps for debugging
 - All dependencies bundled
 
 **Client (`server/public/`):**
+
 - Optimized React bundle
 - Minified CSS
 - Compressed assets
@@ -193,18 +200,21 @@ npm start
 ### Critical Workflow
 
 **Before ANY code changes:**
+
 1. Read and understand relevant code
 2. Run tests to establish baseline
 3. Check for linter errors
 4. Verify imports resolve
 
 **After ANY code changes:**
+
 1. Run linter on modified files
 2. Build client: `cd client && npm run build`
 3. Test in browser if UI changes
 4. Verify no regressions
 
 **If build fails:**
+
 - ❌ STOP - Do not proceed
 - 🔍 Fix TypeScript/build errors immediately
 - ✅ Verify fix with another build
@@ -249,6 +259,7 @@ if (condition) {
 ### Server Debugging
 
 **Check logs:**
+
 ```bash
 # Server logs show structured data
 [2025-12-23T21:45:21.152Z] INFO: Player joined as admin
@@ -259,6 +270,7 @@ if (condition) {
 ```
 
 **Debug Socket.IO:**
+
 ```typescript
 // server/src/server.ts
 socket.on("someEvent", (data) => {
@@ -270,6 +282,7 @@ socket.on("someEvent", (data) => {
 ### Client Debugging
 
 **Browser console:**
+
 ```javascript
 // Check socket connection
 console.log("Socket connected:", socket.id);
@@ -280,6 +293,7 @@ console.log("Player state:", playerState);
 ```
 
 **React DevTools:**
+
 - Install React DevTools extension
 - Inspect component props/state
 - Profile performance
@@ -287,16 +301,19 @@ console.log("Player state:", playerState);
 ### Common Debug Scenarios
 
 **State not updating:**
+
 - Check if server is emitting events
 - Verify socket listeners are set up
 - Check React dependencies in useEffect
 
 **Socket disconnects:**
+
 - Check network connectivity
 - Verify server is running
 - Check for rate limiting
 
 **Images not loading:**
+
 - Check base64 format is valid
 - Verify compression didn't corrupt data
 - Check browser console for errors
@@ -323,6 +340,7 @@ ifconfig en0 | grep "inet " | grep -v 127
 **Important:** macOS may not allow connecting to its own LAN IP. This is normal! Test from a different device.
 
 **From phone or another computer:**
+
 1. Ensure device is on **same WiFi network**
 2. Open browser
 3. Navigate to `http://YOUR_IP:3000`
@@ -333,19 +351,23 @@ ifconfig en0 | grep "inet " | grep -v 127
 **Can't connect from other devices:**
 
 1. **Check firewall:**
+
    - macOS: System Preferences → Security & Privacy → Firewall
    - Allow Node.js through firewall
 
 2. **Verify both devices on same network:**
+
    - Not cellular data
    - Not guest network
    - Same WiFi SSID
 
 3. **Check router settings:**
+
    - Disable "AP Isolation" or "Client Isolation"
    - Restart router if needed
 
 4. **Try different port:**
+
    ```bash
    PORT=8080 npm run build && PORT=8080 npm start
    ```
@@ -369,11 +391,13 @@ SERVER_URL=http://10.0.0.5:3000 npm start
 ### Build Errors
 
 **"Cannot find module"**
+
 - Run `npm install` in the workspace
 - Check import paths use `.js` extension (required for ES modules)
 - Verify file exists
 
 **TypeScript errors**
+
 - Check type imports: `import type { Foo } from '...'`
 - Verify all required properties are provided
 - Check for null/undefined handling
@@ -381,16 +405,19 @@ SERVER_URL=http://10.0.0.5:3000 npm start
 ### Runtime Errors
 
 **Socket.IO not connecting**
+
 - Verify server is running
 - Check CORS settings
 - Ensure client URL matches server URL
 
 **State not syncing**
+
 - Check socket listeners are set up in useEffect
 - Verify cleanup functions remove listeners
 - Check for timing issues (race conditions)
 
 **Images not uploading**
+
 - Check file size < 10MB
 - Verify format is JPEG, PNG, WebP, or GIF
 - Check compression is working
@@ -398,10 +425,12 @@ SERVER_URL=http://10.0.0.5:3000 npm start
 ### Performance Issues
 
 **Slow image upload**
+
 - Compression happens client-side (~100-500ms per image)
 - Batch upload to show progress
 
 **Lag during gameplay**
+
 - Check network latency
 - Verify no memory leaks (check browser DevTools)
 - Profile React renders
@@ -420,7 +449,7 @@ MIN_PLAYERS=3                       # Minimum players to start
 MAX_PLAYERS=10                      # Maximum players
 MIN_DECK_SIZE=100                   # Minimum images required
 MAX_DECK_SIZE=500                   # Maximum deck size
-MAX_IMAGES_PER_PLAYER=200          # Per-player upload limit
+MAX_IMAGES_PER_PLAYER=200          # Per-player upload limit (30 recommended)
 
 # Image Configuration
 MAX_IMAGE_SIZE=10485760            # 10MB in bytes
@@ -482,4 +511,3 @@ dixit/
 - See [GAME_RULES.md](GAME_RULES.md) for gameplay mechanics
 - Review [.cursorrules](.cursorrules) for coding standards
 - Read [CONTRIBUTING.md](CONTRIBUTING.md) for PR guidelines
-
