@@ -359,6 +359,32 @@ export const he: TranslationKeys = {
     tapToChange: "לחץ לשינוי תמונה",
   },
 
+  // Settings Modal
+  settings: {
+    swipeToSeeMore: "החלק לראות עוד תמונות",
+  },
+
+  // Admin Password System
+  admin: {
+    setPasswordTitle: "הגדר סיסמת מנהל",
+    setPasswordDescription: "הגדר סיסמה כדי להתחיל את המשחק. שתף אותה עם שחקנים מהימנים כדי שיוכלו לתבוע את הניהול אם תתנתק.",
+    password: "סיסמה",
+    confirmPassword: "אשר סיסמה",
+    setPassword: "הגדר סיסמה",
+    passwordTooShort: "הסיסמה חייבת להכיל לפחות 4 תווים",
+    passwordTooLong: "הסיסמה חייבת להכיל לכל היותר 20 תווים",
+    passwordsDoNotMatch: "הסיסמאות אינן תואמות",
+    passwordSet: "הסיסמה הוגדרה!",
+    claimAdmin: "תבע הרשאות מנהל",
+    claimAdminTitle: "תביעת תפקיד מנהל",
+    claimAdminDescription: "הזן את סיסמת המנהל כדי להפוך למנהל המשחק.",
+    enterPassword: "הזן סיסמת מנהל",
+    claim: "תבע",
+    wrongPassword: "סיסמה שגויה",
+    noPassword: "לא הוגדרה סיסמת מנהל",
+    passwordRequired: "אנא הגדר סיסמה כדי להתחיל את המשחק",
+  },
+
   // Rules Modal
   rules: {
     title: "איך לשחק",

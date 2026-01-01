@@ -357,6 +357,32 @@ export interface TranslationKeys {
     tapToChange: string;
   };
 
+  // Settings Modal
+  settings: {
+    swipeToSeeMore: string;
+  };
+
+  // Admin Password System
+  admin: {
+    setPasswordTitle: string;
+    setPasswordDescription: string;
+    password: string;
+    confirmPassword: string;
+    setPassword: string;
+    passwordTooShort: string;
+    passwordTooLong: string;
+    passwordsDoNotMatch: string;
+    passwordSet: string;
+    claimAdmin: string;
+    claimAdminTitle: string;
+    claimAdminDescription: string;
+    enterPassword: string;
+    claim: string;
+    wrongPassword: string;
+    noPassword: string;
+    passwordRequired: string;
+  };
+
   // Rules Modal
   rules: {
     title: string;

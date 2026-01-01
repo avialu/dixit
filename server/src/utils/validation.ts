@@ -89,3 +89,11 @@ export const adminSetLanguageSchema = z.object({
 export const adminSetSoundEnabledSchema = z.object({
   enabled: z.boolean(),
 });
+
+export const setAdminPasswordSchema = z.object({
+  password: z.string().min(4).max(20),
+});
+
+export const claimAdminSchema = z.object({
+  password: z.string(),
+});

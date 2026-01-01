@@ -22,6 +22,7 @@ export class GameManager {
   private deckManager: DeckManager;
   private submittedCardsData: Map<string, string>; // cardId -> imageData
   private phaseTransitionLock: boolean = false; // Prevent race conditions during phase transitions
+  private adminPassword: string | null = null; // Password for claiming admin role
 
   constructor() {
     this.state = {
@@ -387,6 +388,75 @@ export class GameManager {
     });
   }
 
+  /**
+   * Set the admin password (admin only)
+   * Required before starting the game
+   */
+  setAdminPassword(adminId: string, password: string): void {
+    this.validateAdmin(adminId);
+
+    if (!password || password.length < 4) {
+      throw new Error("Password must be at least 4 characters");
+    }
+
+    if (password.length > 20) {
+      throw new Error("Password must be at most 20 characters");
+    }
+
+    this.adminPassword = password;
+    logger.info("Admin password set", { adminId });
+  }
+
+  /**
+   * Claim admin role with password
+   * Any player can become admin if they have the correct password
+   */
+  claimAdmin(playerId: string, password: string): boolean {
+    const player = this.state.players.get(playerId);
+    if (!player) {
+      throw new Error("Player not found");
+    }
+
+    if (!this.adminPassword) {
+      throw new Error("No admin password has been set");
+    }
+
+    if (password !== this.adminPassword) {
+      throw new Error("Incorrect password");
+    }
+
+    // Already admin? No change needed
+    if (player.isAdmin) {
+      return true;
+    }
+
+    // Demote current admin(s)
+    for (const [pid, p] of this.state.players.entries()) {
+      if (p.isAdmin) {
+        p.isAdmin = false;
+        logger.info("Admin demoted via claim", { playerName: p.name, playerId: pid });
+      }
+    }
+
+    // Promote new admin
+    player.isAdmin = true;
+    this.deckManager.setAdmin(playerId);
+
+    logger.info("Admin claimed with password", {
+      newAdminId: playerId,
+      newAdminName: player.name,
+    });
+
+    return true;
+  }
+
+  /**
+   * Check if admin password has been set
+   */
+  hasAdminPassword(): boolean {
+    return this.adminPassword !== null;
+  }
+
   reconnectPlayer(clientId: string): Player | null {
     const player = this.state.players.get(clientId);
     if (player) {
@@ -575,6 +645,11 @@ export class GameManager {
   // Game Flow
   startGame(adminId: string): void {
     this.validateAdmin(adminId);
+
+    // Require admin password to be set before starting game
+    if (!this.adminPassword) {
+      throw new Error("PASSWORD_REQUIRED");
+    }
 
     if (this.state.phase !== GamePhase.DECK_BUILDING) {
       const phaseNames: Record<GamePhase, string> = {
@@ -1191,6 +1266,7 @@ export class GameManager {
       serverUrl: "", // Will be populated by server.ts
       phaseStartTime: this.state.phaseStartTime,
       phaseDuration: this.state.phaseDuration,
+      hasAdminPassword: this.adminPassword !== null,
     };
   }
 

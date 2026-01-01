@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { RoomState } from "../hooks/useGameState";
 import { QRCode } from "./QRCode";
-import { CloseButton, Icon, IconSize } from "./ui";
+import { Button, CloseButton, Icon, IconSize } from "./ui";
 import { getMinimumDeckSize } from "../utils/imageConstants";
 import { useTranslation } from "../i18n";
 import { handleImageUploadEvent } from "../utils/imageResize";
@@ -500,10 +500,13 @@ export function GameBoard({
             <p className="board-qr-hint">{t("join.scanToJoin")}</p>
             <QRCode url={roomState.serverUrl} size={180} />
             {/* Copyable link below QR code */}
-            <button
+            <Button
+              variant="secondary"
+              size="small"
               className="qr-copy-link"
               onClick={handleCopyLink}
               title={t("qr.clickToCopy")}
+              aria-label={t("qr.clickToCopy")}
             >
               <Icon.Copy size={IconSize.small} />
               <span className="qr-link-text">
@@ -514,7 +517,7 @@ export function GameBoard({
                       .slice(0, 25) +
                     (roomState.serverUrl.length > 32 ? "..." : "")}
               </span>
-            </button>
+            </Button>
           </div>
         </div>
       )}

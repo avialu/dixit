@@ -115,6 +115,7 @@ export interface RoomState {
   serverUrl: string; // LAN URL for joining
   phaseStartTime: number | null; // Unix timestamp when current phase started (for timer)
   phaseDuration: number | null; // Duration in seconds for current phase timer (null = no timer)
+  hasAdminPassword: boolean; // Whether admin password has been set (required to start game)
 }
 
 // Private state sent to individual player

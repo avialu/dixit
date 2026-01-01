@@ -26,6 +26,8 @@ import {
   setBoardPatternSchema,
   adminSetLanguageSchema,
   adminSetSoundEnabledSchema,
+  setAdminPasswordSchema,
+  claimAdminSchema,
 } from "./utils/validation.js";
 import { getLanIpAddress } from "./utils/network.js";
 import {
@@ -938,6 +940,35 @@ npm start</pre>
       });
     });
 
+    // Set admin password (required before starting game)
+    socket.on("setAdminPassword", (data) => {
+      withClientId(socket, (clientId) => {
+        const { password } = setAdminPasswordSchema.parse(data);
+        gameManager.setAdminPassword(clientId, password);
+
+        logger.info("Admin password set", { clientId });
+        broadcastRoomState();
+        socket.emit("setAdminPasswordAck", { success: true });
+      });
+    });
+
+    // Claim admin role with password (any player can become admin)
+    socket.on("claimAdmin", (data) => {
+      withClientId(socket, (clientId) => {
+        const { password } = claimAdminSchema.parse(data);
+        
+        try {
+          gameManager.claimAdmin(clientId, password);
+          logger.info("Admin claimed", { clientId });
+          broadcastRoomState();
+          socket.emit("claimAdminAck", { success: true });
+        } catch (error) {
+          const message = error instanceof Error ? error.message : "Failed to claim admin";
+          socket.emit("claimAdminAck", { success: false, error: message });
+        }
+      });
+    });
+
     socket.on("leave", () => {
       try {
         const clientId = socketToClient.get(socket.id);
@@ -1005,15 +1036,8 @@ npm start</pre>
               wasAdmin,
             });
 
-            // If disconnected player was admin, transfer admin to another connected player
-            if (wasAdmin) {
-              const transferred = gameManager.autoTransferAdmin(clientId);
-              if (transferred) {
-                logger.info("Admin role auto-transferred after grace period", {
-                  previousAdminId: clientId,
-                });
-              }
-            }
+            // No auto-transfer of admin role - players must claim admin with password
+            // This prevents admin ping-pong on flaky WiFi connections
 
             // Broadcast updated state
             broadcastRoomState();

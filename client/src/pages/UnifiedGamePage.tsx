@@ -11,6 +11,7 @@ import { ProfileImageUpload } from "../components/ProfileImageUpload";
 import { Button, Icon, IconSize } from "../components/ui";
 import { storage } from "../utils/storage";
 import { ConfirmModal } from "../components/ConfirmModal";
+import { SetAdminPasswordModal } from "../components/SetAdminPasswordModal";
 import { getMinimumDeckSize } from "../utils/imageConstants";
 import { resizeAndCompressImages } from "../utils/imageResize";
 import { useTranslation } from "../i18n";
@@ -152,6 +153,9 @@ export function UnifiedGamePage({
     message: "",
     onConfirm: () => {},
   });
+
+  // SetAdminPassword modal state
+  const [showSetPasswordModal, setShowSetPasswordModal] = useState(false);
 
   // Loading states for actions
   const [isJoining, setIsJoining] = useState(false);
@@ -779,12 +783,6 @@ export function UnifiedGamePage({
     setManuallyClosedModal(false);
   };
 
-  const openRules = () => {
-    setModalType("rules");
-    setShowModal(true);
-    setManuallyClosedModal(false);
-  };
-
   // Check if we're waiting for reconnection (hasJoined but no roomState yet)
   const isPendingReconnect =
     !isDemoMode && !roomState && storage.hasJoined.get();
@@ -974,8 +972,13 @@ export function UnifiedGamePage({
                   }`}
                   onClick={() => {
                     if (!isStartingGame && !isDisabled) {
-                      setIsStartingGame(true);
-                      onStartGame();
+                      // Check if password is set, if not show password modal first
+                      if (!roomState.hasAdminPassword) {
+                        setShowSetPasswordModal(true);
+                      } else {
+                        setIsStartingGame(true);
+                        onStartGame();
+                      }
                     }
                   }}
                   disabled={isDisabled}
@@ -1057,21 +1060,12 @@ export function UnifiedGamePage({
             )}
           </button>
 
-          {/* Rules Button - Always available */}
-          <button
-            className="floating-action-button rules-button"
-            onClick={openRules}
-            title={t("rules.title")}
-          >
-            <Icon.Book size={IconSize.large} />
-          </button>
-
-          {/* Admin Settings Button - During active game */}
-          {isAdmin && isInGame && (
+          {/* Settings Button - Available to all players during game */}
+          {isInGame && (
             <button
               className="floating-action-button admin-settings-button"
               onClick={openAdminSettings}
-              title={t("adminSettings.title")}
+              title={t("common.settings")}
             >
               <Icon.Settings size={IconSize.large} />
             </button>
@@ -1116,15 +1110,6 @@ export function UnifiedGamePage({
             title="Players"
           >
             <Icon.Settings size={IconSize.large} />
-          </button>
-
-          {/* Rules Button - Available for spectators too */}
-          <button
-            className="floating-action-button rules-button"
-            onClick={openRules}
-            title={t("rules.title")}
-          >
-            <Icon.Book size={IconSize.large} />
           </button>
         </div>
       )}
@@ -1267,7 +1252,7 @@ export function UnifiedGamePage({
               });
             }
           } else if (modalType === "adminSettings") {
-            // Admin Settings Modal - Available during active game
+            // Game Settings Modal - Available to all players during game
             modalContent = AdminSettingsModal({
               roomState,
               playerId,
@@ -1279,7 +1264,27 @@ export function UnifiedGamePage({
               onSetWinTarget,
               onKickPlayer: handleKickPlayer,
               onPromotePlayer: handlePromotePlayer,
+              onDeleteImage: _onDeleteImage,
               onConfirmWinTargetChange: handleConfirmWinTargetChange,
+              onClaimAdmin: socket ? async (password: string) => {
+                return new Promise((resolve) => {
+                  socket.emit("claimAdmin", { password });
+                  // Listen for response
+                  const handleAck = (data: { success: boolean }) => {
+                    socket.off("claimAdminAck", handleAck);
+                    resolve(data.success);
+                  };
+                  socket.on("claimAdminAck", handleAck);
+                  // Timeout after 5 seconds
+                  setTimeout(() => {
+                    socket.off("claimAdminAck", handleAck);
+                    resolve(false);
+                  }, 5000);
+                });
+              } : undefined,
+              onShowRules: () => {
+                setModalType("rules");
+              },
               t,
             });
           } else if (modalType === "rules") {
@@ -1319,6 +1324,26 @@ export function UnifiedGamePage({
         confirmVariant="success"
         onConfirm={confirmModal.onConfirm}
         onCancel={() => setConfirmModal({ ...confirmModal, isOpen: false })}
+      />
+
+      {/* Set Admin Password Modal */}
+      <SetAdminPasswordModal
+        isOpen={showSetPasswordModal}
+        onClose={() => setShowSetPasswordModal(false)}
+        onSetPassword={(password) => {
+          if (socket) {
+            socket.emit("setAdminPassword", { password });
+            // Listen for acknowledgment, then start the game
+            const handleAck = () => {
+              socket.off("setAdminPasswordAck", handleAck);
+              // Password set, now start the game
+              setIsStartingGame(true);
+              onStartGame();
+            };
+            socket.on("setAdminPasswordAck", handleAck);
+          }
+        }}
+        language={roomState?.language}
       />
     </div>
   );

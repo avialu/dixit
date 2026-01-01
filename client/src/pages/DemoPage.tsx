@@ -36,6 +36,7 @@ const generateMockRoomState = (
       serverUrl: currentUrl,
       phaseStartTime: null,
       phaseDuration: null,
+      hasAdminPassword: true, // Demo mode assumes password is set
     };
   }
 
@@ -100,6 +101,7 @@ const generateMockRoomState = (
     serverUrl: currentUrl,
     phaseStartTime: null,
     phaseDuration: null,
+    hasAdminPassword: true, // Demo mode assumes password is set
   };
 
   // Phase-specific modifications
@@ -712,6 +714,7 @@ export function DemoPage() {
       serverUrl: detectedServerUrl || currentUrl,
       phaseStartTime,
       phaseDuration,
+      hasAdminPassword: true, // Demo mode assumes password is set
     };
 
     // Phase-specific data

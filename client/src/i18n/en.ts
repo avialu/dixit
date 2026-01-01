@@ -362,6 +362,32 @@ export const en: TranslationKeys = {
     tapToChange: "Tap to change photo",
   },
 
+  // Settings Modal
+  settings: {
+    swipeToSeeMore: "Swipe to see more images",
+  },
+
+  // Admin Password System
+  admin: {
+    setPasswordTitle: "Set Admin Password",
+    setPasswordDescription: "Set a password to start the game. Share it with trusted players so they can reclaim admin if you disconnect.",
+    password: "Password",
+    confirmPassword: "Confirm Password",
+    setPassword: "Set Password",
+    passwordTooShort: "Password must be at least 4 characters",
+    passwordTooLong: "Password must be at most 20 characters",
+    passwordsDoNotMatch: "Passwords do not match",
+    passwordSet: "Password set!",
+    claimAdmin: "Claim Admin",
+    claimAdminTitle: "Claim Admin Role",
+    claimAdminDescription: "Enter the admin password to become the game admin.",
+    enterPassword: "Enter admin password",
+    claim: "Claim",
+    wrongPassword: "Incorrect password",
+    noPassword: "No admin password has been set",
+    passwordRequired: "Please set a password to start the game",
+  },
+
   // Rules Modal
   rules: {
     title: "How to Play",

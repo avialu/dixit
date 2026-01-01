@@ -132,6 +132,15 @@ export const config = {
     /** Enable detailed logging */
     enableDetailedLogs: process.env.ENABLE_DETAILED_LOGS === "true",
   },
+
+  // Admin Password Configuration
+  admin: {
+    /** Minimum password length */
+    minPasswordLength: Number(process.env.ADMIN_MIN_PASSWORD_LENGTH) || 4,
+
+    /** Maximum password length */
+    maxPasswordLength: Number(process.env.ADMIN_MAX_PASSWORD_LENGTH) || 20,
+  },
 } as const;
 
 // Export individual sections for convenience
