@@ -346,6 +346,17 @@ export interface TranslationKeys {
     secondsRemaining: string;
   };
 
+  // QR Code
+  qr: {
+    clickToCopy: string;
+    copied: string;
+  };
+
+  // Profile
+  profile: {
+    tapToChange: string;
+  };
+
   // Rules Modal
   rules: {
     title: string;

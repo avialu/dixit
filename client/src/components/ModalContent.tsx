@@ -19,7 +19,7 @@ import {
   setPlayerLanguage,
   hasPlayerLanguageOverride,
 } from "../i18n";
-import { resizeAndCompressImage } from "../utils/imageResize";
+import { handleImageUploadEvent } from "../utils/imageResize";
 
 // Common modal return type with optional timer
 export interface ModalContentResult {
@@ -160,19 +160,12 @@ export function LobbyModal(props: LobbyModalProps): ModalContentResult {
     onUploadTokenImage(null);
   };
 
-  const handleBoardBackgroundUpload = async (
+  const handleBoardBackgroundUpload = (
     e: React.ChangeEvent<HTMLInputElement>
   ) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    try {
-      const imageData = await resizeAndCompressImage(file);
-      onSetBoardBackground(imageData);
-    } catch (error) {
-      console.error("Failed to process background image:", error);
-      alert(t("errors.uploadFailed"));
-    }
+    handleImageUploadEvent(e, onSetBoardBackground, () =>
+      alert(t("errors.uploadFailed"))
+    );
   };
 
   const handleRemoveBoardBackground = () => {
@@ -200,10 +193,22 @@ export function LobbyModal(props: LobbyModalProps): ModalContentResult {
             const isMe = player.id === playerId;
             const isEditing = editingPlayerId === player.id;
 
+            // For current player: make entire card clickable to edit name (except profile image area)
+            const canEditName = isMe && !isSpectator && !isEditing;
+
             return (
               <div
                 key={player.id}
-                className={`player-card ${isMe ? "you" : ""}`}
+                className={`player-card ${isMe ? "you" : ""} ${
+                  canEditName ? "clickable-card" : ""
+                }`}
+                onClick={
+                  canEditName
+                    ? () => handleStartEditName(player.id, player.name)
+                    : undefined
+                }
+                title={canEditName ? t("lobby.clickToEditName") : ""}
+                style={{ cursor: canEditName ? "pointer" : "default" }}
               >
                 {/* Token Image Display/Upload */}
                 {isMe && !isSpectator ? (
@@ -228,7 +233,10 @@ export function LobbyModal(props: LobbyModalProps): ModalContentResult {
                 )}
 
                 {isEditing ? (
-                  <div className="player-name-edit">
+                  <div
+                    className="player-name-edit"
+                    onClick={(e) => e.stopPropagation()}
+                  >
                     <Input
                       type="text"
                       variant="inline"
@@ -264,21 +272,7 @@ export function LobbyModal(props: LobbyModalProps): ModalContentResult {
                   </div>
                 ) : (
                   <div className="player-info">
-                    <span
-                      className={`player-name ${
-                        isMe && !isSpectator ? "editable" : ""
-                      }`}
-                      onClick={() =>
-                        isMe && !isSpectator
-                          ? handleStartEditName(player.id, player.name)
-                          : null
-                      }
-                      title={
-                        isMe && !isSpectator ? t("lobby.clickToEditName") : ""
-                      }
-                    >
-                      {player.name}
-                    </span>
+                    <span className="player-name">{player.name}</span>
                     {player.isAdmin && (
                       <Icon.Crown
                         size={IconSize.medium}
@@ -291,7 +285,10 @@ export function LobbyModal(props: LobbyModalProps): ModalContentResult {
 
                     {/* Admin controls */}
                     {isAdmin && !isMe && (
-                      <div className="admin-controls">
+                      <div
+                        className="admin-controls"
+                        onClick={(e) => e.stopPropagation()}
+                      >
                         {!player.isAdmin && (
                           <Button
                             variant="icon"
@@ -1042,9 +1039,10 @@ export function VotingModal(props: VotingModalProps): ModalContentResult {
   );
 
   // Calculate who we're waiting for (players who haven't voted yet)
-  // Also exclude current player if they've locally voted (before server state updates)
+  // Show for: players who voted, storyteller, and spectators
   const votedPlayerIds = roomState.votes.map((v) => v.voterId);
-  const waitingForPlayers = hasVoted
+  const shouldShowWaitingFor = hasVoted || isStoryteller || isSpectator;
+  const waitingForPlayers = shouldShowWaitingFor
     ? eligiblePlayers
         .filter((p) => !votedPlayerIds.includes(p.id))
         .filter((p) => p.id !== playerState?.playerId) // Exclude self if locally voted
@@ -1098,7 +1096,7 @@ export function VotingModal(props: VotingModalProps): ModalContentResult {
         </strong>{" "}
         <span className="clue-highlight">"{roomState.currentClue}"</span>
       </p>
-      {hasVoted && waitingForPlayers.length > 0 && !allVotesIn && (
+      {shouldShowWaitingFor && waitingForPlayers.length > 0 && !allVotesIn && (
         <p
           className="clue-reminder"
           style={{ color: "#95a5a6", fontSize: "0.95rem" }}
@@ -1134,7 +1132,7 @@ export function VotingModal(props: VotingModalProps): ModalContentResult {
     >
       {t("voting.submitVote")}
     </Button>
-  ) : (hasVoted || isStoryteller) && !allVotesIn ? (
+  ) : shouldShowWaitingFor && !allVotesIn ? (
     <div
       style={{
         display: "flex",

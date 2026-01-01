@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef } from "react";
 import { RoomState } from "../hooks/useGameState";
 import { QRCode } from "./QRCode";
-import { CloseButton } from "./ui";
+import { CloseButton, Icon, IconSize } from "./ui";
 import { getMinimumDeckSize } from "../utils/imageConstants";
 import { useTranslation } from "../i18n";
+import { handleImageUploadEvent } from "../utils/imageResize";
 
 interface GameBoardProps {
   roomState: RoomState;
@@ -11,6 +12,7 @@ interface GameBoardProps {
   showQR?: boolean;
   onCloseQR?: () => void;
   revealModalOpen?: boolean; // Track if REVEAL modal is open
+  onUploadTokenImage?: (imageData: string | null) => void; // Callback to upload profile image
 }
 
 export function GameBoard({
@@ -19,13 +21,33 @@ export function GameBoard({
   showQR = true,
   onCloseQR,
   revealModalOpen = false,
+  onUploadTokenImage,
 }: GameBoardProps) {
   const { t } = useTranslation(roomState.language);
   const svgContainerRef = useRef<HTMLDivElement>(null);
+  const tokenFileInputRef = useRef<HTMLInputElement>(null);
   const [containerDimensions, setContainerDimensions] = useState({
     width: 0,
     height: 0,
   });
+  const [copiedLink, setCopiedLink] = useState(false);
+
+  // Handle token image upload
+  const handleTokenImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!onUploadTokenImage) return;
+    handleImageUploadEvent(e, onUploadTokenImage, undefined, tokenFileInputRef);
+  };
+
+  // Copy link to clipboard
+  const handleCopyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(roomState.serverUrl);
+      setCopiedLink(true);
+      setTimeout(() => setCopiedLink(false), 2000);
+    } catch (error) {
+      console.error("Failed to copy link:", error);
+    }
+  };
 
   // Freeze scores at previous positions while REVEAL modal is open
   const [frozenScores, setFrozenScores] = useState<{
@@ -454,6 +476,16 @@ export function GameBoard({
         </div>
       </div>
 
+      {/* Hidden file input for token image upload */}
+      <input
+        ref={tokenFileInputRef}
+        type="file"
+        accept="image/*"
+        onChange={handleTokenImageUpload}
+        style={{ display: "none" }}
+        aria-label={t("profile.tapToChange")}
+      />
+
       {/* QR Code during DECK_BUILDING phase */}
       {roomState.phase === "DECK_BUILDING" && showQR && (
         <div className="board-qr-code-section">
@@ -467,6 +499,22 @@ export function GameBoard({
             )}
             <p className="board-qr-hint">{t("join.scanToJoin")}</p>
             <QRCode url={roomState.serverUrl} size={180} />
+            {/* Copyable link below QR code */}
+            <button
+              className="qr-copy-link"
+              onClick={handleCopyLink}
+              title={t("qr.clickToCopy")}
+            >
+              <Icon.Copy size={IconSize.small} />
+              <span className="qr-link-text">
+                {copiedLink
+                  ? t("qr.copied")
+                  : roomState.serverUrl
+                      .replace(/^https?:\/\//, "")
+                      .slice(0, 25) +
+                    (roomState.serverUrl.length > 32 ? "..." : "")}
+              </span>
+            </button>
           </div>
         </div>
       )}
@@ -574,8 +622,23 @@ export function GameBoard({
             const tokenX = position.x + offsetX;
             const tokenY = position.y - 5 * scaleFactor;
 
+            // Check if this is the current player's token (editable)
+            const isCurrentPlayer = player.id === playerId;
+            const isEditable = isCurrentPlayer && onUploadTokenImage;
+
             return (
-              <g key={player.id} style={{ pointerEvents: "none" }}>
+              <g
+                key={player.id}
+                style={{
+                  pointerEvents: isEditable ? "auto" : "none",
+                  cursor: isEditable ? "pointer" : "default",
+                }}
+                onClick={
+                  isEditable
+                    ? () => tokenFileInputRef.current?.click()
+                    : undefined
+                }
+              >
                 <g>
                   {player.tokenImage ? (
                     /* Token with custom image */
@@ -652,7 +715,6 @@ export function GameBoard({
           })}
         </svg>
       </div>
-
     </div>
   );
 }

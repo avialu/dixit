@@ -1,4 +1,4 @@
-import { resizeAndCompressImage } from "../utils/imageResize";
+import { handleImageUploadEvent } from "../utils/imageResize";
 import { Button } from "./ui";
 
 interface ProfileImageUploadProps {
@@ -16,24 +16,12 @@ export function ProfileImageUpload({
   playerColor,
   size = "small",
 }: ProfileImageUploadProps) {
-  const handleImageUpload = async (
-    event: React.ChangeEvent<HTMLInputElement>
-  ) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    try {
-      console.log("Processing profile image:", file.name);
-      const imageData = await resizeAndCompressImage(file);
-      console.log("Profile image processed successfully, data length:", imageData.length);
-      onUpload(imageData);
-    } catch (error) {
-      console.error("Error processing profile image:", error);
-      alert("Failed to process image. Please try another image.");
-    } finally {
-      // Reset the input
-      event.target.value = "";
-    }
+  const handleUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    handleImageUploadEvent(
+      event,
+      onUpload,
+      () => alert("Failed to process image. Please try another image.")
+    );
   };
 
   const wrapperClass = size === "large" 
@@ -41,7 +29,7 @@ export function ProfileImageUpload({
     : "profile-upload-wrapper";
 
   return (
-    <div className={wrapperClass}>
+    <div className={wrapperClass} onClick={(e) => e.stopPropagation()}>
       <label className="profile-upload-label" title="Click to upload profile image">
         {imageUrl ? (
           <img
@@ -60,7 +48,7 @@ export function ProfileImageUpload({
         <input
           type="file"
           accept="image/*"
-          onChange={handleImageUpload}
+          onChange={handleUpload}
           style={{ display: "none" }}
         />
       </label>

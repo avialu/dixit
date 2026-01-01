@@ -266,11 +266,15 @@ export function UnifiedGamePage({
   const isAdmin = myPlayer?.isAdmin || false;
   const isStoryteller = roomState?.storytellerId === playerId;
   // Single source of truth for submitted card (local optimistic || server confirmed)
-  const submittedCardId = localSubmittedCardId || playerState?.mySubmittedCardId || null;
+  const submittedCardId =
+    localSubmittedCardId || playerState?.mySubmittedCardId || null;
 
   // Reset hasAdvancedRound when entering a new round
   useEffect(() => {
-    if (roomState?.phase === "REVEAL" && roomState.currentRound !== lastRoundForTimer.current) {
+    if (
+      roomState?.phase === "REVEAL" &&
+      roomState.currentRound !== lastRoundForTimer.current
+    ) {
       lastRoundForTimer.current = roomState.currentRound;
       setHasAdvancedRound(false);
     }
@@ -283,37 +287,46 @@ export function UnifiedGamePage({
   // Notify player when it's their turn (sound + vibration)
   useEffect(() => {
     if (!roomState || isDemoMode || isSpectator) return;
-    
+
     const phase = roomState.phase;
     const round = roomState.currentRound;
-    
+
     // Skip on initial load
     if (prevPhaseRef.current === null) {
       prevPhaseRef.current = phase;
       prevRoundRef.current = round;
       return;
     }
-    
+
     // Only notify on phase changes or new rounds
     const phaseChanged = prevPhaseRef.current !== phase;
     const newRound = prevRoundRef.current !== round;
-    
+
     if (!phaseChanged && !newRound) return;
-    
+
     prevPhaseRef.current = phase;
     prevRoundRef.current = round;
-    
-    // Check if it's my turn to act
-    const isMyTurn = 
-      (phase === 'STORYTELLER_CHOICE' && isStoryteller) ||
-      (phase === 'PLAYERS_CHOICE' && !isStoryteller) ||
-      (phase === 'VOTING' && !isStoryteller);
-    
+
+    // Check if it's my turn to act (spectators never get notifications)
+    const isMyTurn =
+      !isSpectator &&
+      ((phase === "STORYTELLER_CHOICE" && isStoryteller) ||
+        (phase === "PLAYERS_CHOICE" && !isStoryteller) ||
+        (phase === "VOTING" && !isStoryteller));
+
     // Only notify if sounds are enabled (admin setting)
     if (isMyTurn && roomState.soundEnabled) {
       notifyTurn();
     }
-  }, [roomState?.phase, roomState?.currentRound, roomState?.soundEnabled, isStoryteller, isSpectator, isDemoMode, roomState]);
+  }, [
+    roomState?.phase,
+    roomState?.currentRound,
+    roomState?.soundEnabled,
+    isStoryteller,
+    isSpectator,
+    isDemoMode,
+    roomState,
+  ]);
 
   // Handle advancing to next round
   const handleAdvanceRound = useCallback(() => {
@@ -336,7 +349,9 @@ export function UnifiedGamePage({
     // Calculate remaining time from server phaseStartTime and phaseDuration
     const updateTimer = () => {
       if (roomState?.phaseStartTime && roomState?.phaseDuration) {
-        const elapsed = Math.floor((Date.now() - roomState.phaseStartTime) / 1000);
+        const elapsed = Math.floor(
+          (Date.now() - roomState.phaseStartTime) / 1000
+        );
         const remaining = Math.max(0, roomState.phaseDuration - elapsed);
         setRevealSecondsLeft(remaining);
       }
@@ -349,11 +364,41 @@ export function UnifiedGamePage({
     const interval = setInterval(updateTimer, 1000);
 
     return () => clearInterval(interval);
-  }, [roomState?.phase, roomState?.phaseStartTime, roomState?.phaseDuration, hasAdvancedRound]);
+  }, [
+    roomState?.phase,
+    roomState?.phaseStartTime,
+    roomState?.phaseDuration,
+    hasAdvancedRound,
+  ]);
+
+  // Track previous phase to detect phase changes and reset manuallyClosedModal
+  const prevPhaseForModalRef = useRef<string | null>(null);
 
   // Auto-open modal for game phases where player needs to take action
   useEffect(() => {
     const phase = roomState?.phase;
+    const prevPhase = prevPhaseForModalRef.current;
+    const phaseChanged = prevPhase !== phase;
+
+    // Update the ref
+    if (phaseChanged) {
+      prevPhaseForModalRef.current = phase || null;
+    }
+
+    // Reset manuallyClosedModal flag when phase changes (so auto-open works for each new phase)
+    if (phaseChanged) {
+      // Only reset if transitioning to an action phase
+      if (
+        phase === "STORYTELLER_CHOICE" ||
+        phase === "PLAYERS_CHOICE" ||
+        phase === "VOTING" ||
+        phase === "REVEAL" ||
+        phase === "GAME_END"
+      ) {
+        setManuallyClosedModal(false);
+      }
+    }
+
     let shouldAutoOpen = false;
     let delayMs = 0; // Delay before opening modal
 
@@ -364,8 +409,8 @@ export function UnifiedGamePage({
     } else if (phase === "PLAYERS_CHOICE" && !isStoryteller && !isSpectator) {
       // Only open for non-storyteller players
       shouldAutoOpen = true;
-    } else if (phase === "VOTING" && !isStoryteller && !isSpectator) {
-      // Only open for non-storyteller players (who need to vote)
+    } else if (phase === "VOTING" && !isSpectator) {
+      // Open for all players including storyteller (storyteller can see but not vote)
       shouldAutoOpen = true;
     } else if (phase === "REVEAL") {
       // Open for everyone - but DON'T trigger animation yet
@@ -404,13 +449,24 @@ export function UnifiedGamePage({
     ) {
       // Close modal for spectators during action phases (they have no cards to show)
       setShowModal(false);
-    } else if (phase === "DECK_BUILDING" && modalType !== "adminSettings") {
+    } else if (
+      phaseChanged &&
+      phase === "DECK_BUILDING" &&
+      modalType !== "adminSettings"
+    ) {
       // When returning to deck building (e.g., after game reset), close modal
       // But don't close if admin settings are open
+      // Only do this on phase change, not on every render
       setShowModal(false);
       setManuallyClosedModal(false);
     }
-  }, [roomState?.phase, isStoryteller, isSpectator, manuallyClosedModal, modalType]);
+  }, [
+    roomState?.phase,
+    isStoryteller,
+    isSpectator,
+    manuallyClosedModal,
+    modalType,
+  ]);
 
   // Auto-join spectators when they connect (only if not already joined)
   useEffect(() => {
@@ -681,6 +737,7 @@ export function UnifiedGamePage({
   };
 
   const openCards = () => {
+    unlockAudio(); // Unlock audio on user interaction (required for iOS)
     setModalType("cards");
     setShowModal(true);
     setManuallyClosedModal(false); // Clear manual close flag when user opens it
@@ -693,9 +750,17 @@ export function UnifiedGamePage({
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
+    // Capture files immediately
+    const fileArray = Array.from(files);
+
+    // Clear input to allow re-selecting same files
+    if (floatingUploadRef.current) {
+      floatingUploadRef.current.value = "";
+    }
+
     setIsFloatingUploading(true);
     try {
-      const results = await resizeAndCompressImages(Array.from(files));
+      const results = await resizeAndCompressImages(fileArray);
       for (const result of results) {
         if (!result.error && result.imageData) {
           _onUploadImage(result.imageData);
@@ -705,9 +770,6 @@ export function UnifiedGamePage({
       console.error("Upload error:", err);
     } finally {
       setIsFloatingUploading(false);
-      if (floatingUploadRef.current) {
-        floatingUploadRef.current.value = "";
-      }
     }
   };
 
@@ -860,6 +922,7 @@ export function UnifiedGamePage({
           showQR={showQR}
           onCloseQR={() => setShowQR(false)}
           revealModalOpen={showModal && roomState.phase === "REVEAL"}
+          onUploadTokenImage={onUploadTokenImage}
         />
       </div>
 
@@ -1065,7 +1128,6 @@ export function UnifiedGamePage({
           </button>
         </div>
       )}
-
 
       {/* Modal Popup - Shows when player needs to act */}
       {showModal &&

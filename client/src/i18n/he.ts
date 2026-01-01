@@ -102,7 +102,7 @@ export const he: TranslationKeys = {
   deckUploader: {
     deck: "חפיסה",
     myImages: "התמונות שלי",
-    maxImages: "מקסימום 200",
+    maxImages: "30 מומלץ",
     minPlayers: "מינימום 3",
     allImages: "כל התמונות",
     needMore: "דרושות עוד {count}",
@@ -346,6 +346,17 @@ export const he: TranslationKeys = {
     storytellerSleeping: "{name} ישן/ה...",
     timeUp: "נגמר הזמן!",
     secondsRemaining: "נותרו {seconds} שניות",
+  },
+
+  // QR Code
+  qr: {
+    clickToCopy: "לחץ להעתקת הקישור",
+    copied: "הועתק!",
+  },
+
+  // Profile
+  profile: {
+    tapToChange: "לחץ לשינוי תמונה",
   },
 
   // Rules Modal

@@ -73,10 +73,17 @@ export function DeckUploader({
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
+    // Capture files immediately
+    const fileArray = Array.from(files);
+    
+    // Clear input to allow re-selecting same files
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+
     // Show immediate processing feedback
     setIsProcessing(true);
 
-    const fileArray = Array.from(files);
     const remainingSlots = 200 - myImages.length;
 
     if (fileArray.length > remainingSlots) {
@@ -204,10 +211,7 @@ export function DeckUploader({
       setUploadProgress("");
       setUploadStats({ completed: 0, total: 0, failed: 0 });
 
-      // Reset both inputs
-      if (fileInputRef.current) {
-        fileInputRef.current.value = "";
-      }
+      // Reset folder input (file input already cleared in handleFileSelect for iOS)
       if (folderInputRef.current) {
         folderInputRef.current.value = "";
       }
@@ -246,8 +250,19 @@ export function DeckUploader({
           {/* My Images */}
           <div className="deck-stat-card">
             <div className="deck-stat-title">{t("deckUploader.myImages")}</div>
-            <div className="deck-stat-value">{myImages.length}</div>
-            <div className="deck-stat-subtitle">{t("deckUploader.maxImages")}</div>
+            <div 
+              className="deck-stat-value"
+              style={{
+                color: myImages.length >= 25 && myImages.length <= 35 
+                  ? '#2ecc71' // Green for optimal range
+                  : undefined
+              }}
+            >
+              {myImages.length}
+            </div>
+            <div className="deck-stat-subtitle" style={{ color: '#f39c12' }}>
+              {t("deckUploader.maxImages")}
+            </div>
           </div>
 
           {/* Total Deck */}

@@ -103,7 +103,7 @@ export const en: TranslationKeys = {
   deckUploader: {
     deck: "Deck",
     myImages: "My Images",
-    maxImages: "Maximum 200",
+    maxImages: "30 recommended",
     minPlayers: "Minimum 3",
     allImages: "All Images",
     needMore: "Need {count} more",
@@ -349,6 +349,17 @@ export const en: TranslationKeys = {
     storytellerSleeping: "{name} is sleeping...",
     timeUp: "Time's up!",
     secondsRemaining: "{seconds} seconds remaining",
+  },
+
+  // QR Code
+  qr: {
+    clickToCopy: "Click to copy link",
+    copied: "Copied!",
+  },
+
+  // Profile
+  profile: {
+    tapToChange: "Tap to change photo",
   },
 
   // Rules Modal

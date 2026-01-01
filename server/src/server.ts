@@ -443,16 +443,24 @@ npm start</pre>
           // Send fresh state
           broadcastRoomState();
 
-          // Always send player state, especially important during game phases
-          sendPlayerState(socket.id, clientId);
+          // Only send player state during active game phases (when players have hands)
+          // During DECK_BUILDING, there's no hand to send
+          if (currentPhase !== "DECK_BUILDING") {
+            sendPlayerState(socket.id, clientId);
 
-          // Log hand size for debugging
-          const playerState = gameManager.getPlayerState(clientId);
-          if (playerState) {
-            logger.info("Sent hand to reconnected player", {
+            // Log hand size for debugging
+            const playerState = gameManager.getPlayerState(clientId);
+            if (playerState) {
+              logger.info("Sent hand to reconnected player", {
+                clientId,
+                handSize: playerState.hand.length,
+                phase: currentPhase,
+              });
+            }
+          } else {
+            logger.debug("Skipped sending hand during DECK_BUILDING phase", {
               clientId,
-              handSize: playerState.hand.length,
-              phase: currentPhase,
+              playerName: player.name,
             });
           }
 
